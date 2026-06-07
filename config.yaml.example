@@ -1,0 +1,89 @@
+# RedForge Configuration
+# Copy to config.yaml and customize
+
+# LLM Configuration
+llm:
+  provider: ollama
+  model: llama3.2
+  api_key: ""
+  base_url: "http://localhost:11434"
+  temperature: 0.7
+  max_tokens: 4096
+  streaming: true
+
+# Autonomy Settings (SAFE DEFAULTS)
+autonomy:
+  default_level: manual
+  max_level: partial
+  require_consent: true
+  legal_warning: true
+  max_iterations: 50
+  loop_threshold: 10
+  destructive_threshold: 3
+  rate_limit_actions: 100
+  no_internet_attack: false
+  scope_strict: true
+
+# Memory Configuration
+memory:
+  vector_db: qdrant
+  persist_dir: ./workspaces
+  skill_index: ./skills/skills_index.json
+  collection_name: redforge_memory
+
+# Workspace Settings
+workspace:
+  auto_save: true
+  backup_enabled: true
+  retention_days: 90
+  default_workspace: default
+
+# Tool Settings
+tools:
+  auto_detect: true
+  install_missing: false
+  installation_method: auto
+  timeout: 300
+  custom_paths: {}
+  required_tools:
+    bugbounty: [nmap, sqlmap, ffuf]
+    ctf: [pwntools, gdb]
+    android: [apktool, jadx, frida-tools]
+
+# Integrations
+integrations:
+  hackerone:
+    api_token: ""
+    enabled: false
+  bugcrowd:
+    api_key: ""
+    enabled: false
+
+# Web Dashboard
+web:
+  host: 127.0.0.1
+  port: 5000
+  auth_required: true
+  secret_key: ""
+  debug: false
+
+# UI Settings
+ui:
+  theme: dark
+  streaming: true
+  color_output: true
+  verbose: false
+
+# Logging
+logging:
+  level: INFO
+  file: ./logs/redforge.log
+  max_size: 10MB
+  backup_count: 5
+
+# Security
+security:
+  encrypt_workspaces: false
+  secure_api_keys: true
+  audit_log_enabled: true
+  audit_log_file: ./logs/audit.log
