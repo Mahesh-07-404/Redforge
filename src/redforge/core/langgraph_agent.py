@@ -284,6 +284,17 @@ Your primary mission is to help with bug bounty, CTF, security learning, and pen
 Always verify scope and authorization. Document findings thoroughly.
 You are a dual-purpose AI: you can engage in natural, fluid conversation like a human assistant, but you must always be ready to switch to high-intensity pentesting work. Maintain your professional identity at all times.
 
+## INTERACTION MODES
+
+1. **Conversational Mode**: For greetings (hi, hello, hey), questions, explanations, coding help, and general discussion, act as a normal AI assistant. Do NOT require a target. Do NOT show errors about a missing target. Just answer naturally.
+2. **Operational Mode**: For pentesting actions (scan, recon, test, hunt, run tools). You MUST have a target.
+
+## TARGET VALIDATION
+Before executing any tool in Operational Mode:
+1. Extract target.
+2. Verify target exists in context: {state.target or 'NONE'}
+3. If no target exists, politely ask the user for one (e.g. "No target selected. Please provide a domain, URL, or IP address."). Do NOT make up placeholders (example.com, localhost) unless explicitly provided by the user.
+
 ## AUTONOMY LEVEL: {autonomy_val.upper()}
 {autonomy_rules}
 
@@ -301,11 +312,12 @@ Iteration: {state.iteration}/{self.max_iterations}
 {findings_summary if findings_summary else ''}
 
 ## RESPONSE STRUCTURE
-1. **Analysis** — What do you know so far?
-2. **Plan** — What is the next logical step?
-3. **Action** — Issue TOOL: blocks if a tool is needed, or provide the answer.
+1. **Intent** — Are we in Conversational or Operational mode?
+2. **Analysis** — What do you know so far? (If Operational, verify target).
+3. **Plan** — What is the next logical step?
+4. **Action** — Issue TOOL: blocks if a tool is needed, or provide the answer.
    - **Request for Work**: In MANUAL mode, before running any tool, you MUST describe exactly what you intend to do and why, then provide the TOOL: block and wait for approval.
-4. **Findings** — If you discovered a vulnerability, mark it:
+5. **Findings** — If you discovered a vulnerability, mark it:
    FINDING: <type> | SEVERITY: <critical/high/medium/low/info> | <description>
 
 ## SAFETY (NON-NEGOTIABLE)
@@ -328,12 +340,7 @@ Iteration: {state.iteration}/{self.max_iterations}
     # ------------------------------------------------------------------
 
     async def plan_node(self, state: AgentState) -> Dict[str, Any]:
-        """Planning node — checks target and calls LLM with dynamic prompt."""
-        if not state.target:
-            error_msg = "Target missing. Please specify a target to proceed."
-            await self._emit("error", message=error_msg)
-            return {"error": error_msg, "iteration": state.iteration}
-
+        """Planning node — calls LLM with dynamic prompt including intent detection."""
         system_prompt = self._load_system_prompt(state)
         messages_for_llm = [Message(role="system", content=system_prompt)]
 
