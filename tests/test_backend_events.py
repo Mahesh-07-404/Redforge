@@ -103,11 +103,12 @@ async def test_langgraph_agent_emits_streaming_events(monkeypatch):
 
     state = await agent.run(
         user_input="say hello",
+        target="example.com",
         autonomy_level=AutonomyLevel.MANUAL,
         mode=AgentMode.KNOWLEDGE_BASED,
     )
 
-    assert state.messages[-1]["content"] == "Hello world"
+    assert any(msg.get("content") == "Hello world" for msg in state.messages)
     assert state.total_tokens > 0
     assert [event["event"] for event in events].count("assistant_start") == 1
     assert [event["event"] for event in events].count("token") == 3
@@ -124,6 +125,7 @@ async def test_langgraph_agent_emits_tool_and_finding_events(monkeypatch):
 
     state = await agent.run(
         user_input="run a safe command",
+        target="example.com",
         autonomy_level=AutonomyLevel.PARTIAL,
         mode=AgentMode.GOAL_BASED,
     )

@@ -327,12 +327,16 @@ Iteration: {state.iteration}/{self.max_iterations}
     # Graph nodes
     # ------------------------------------------------------------------
 
-    async def think_node(self, state: AgentState) -> Dict[str, Any]:
-        """Main reasoning node — calls LLM with dynamic prompt."""
+    async def plan_node(self, state: AgentState) -> Dict[str, Any]:
+        """Planning node — checks target and calls LLM with dynamic prompt."""
+        if not state.target:
+            error_msg = "Target missing. Please specify a target to proceed."
+            await self._emit("error", message=error_msg)
+            return {"error": error_msg, "iteration": state.iteration}
+
         system_prompt = self._load_system_prompt(state)
         messages_for_llm = [Message(role="system", content=system_prompt)]
 
-        # Append conversation history (cap at last 20 to manage context)
         for msg in state.messages[-20:]:
             role = msg.get("role", "user")
             if role == "tool":
@@ -342,7 +346,7 @@ Iteration: {state.iteration}/{self.max_iterations}
             )
 
         response_content, used_tokens = await self._llm_chat_with_events(
-            node="think",
+            node="plan",
             messages=messages_for_llm,
         )
 
@@ -352,7 +356,6 @@ Iteration: {state.iteration}/{self.max_iterations}
             "timestamp": datetime.now().isoformat(),
         }
 
-        # Loop detection
         state_hash = self._compute_state_hash(state)
         loop_count = (state.loop_count + 1) if state_hash == state.last_state_hash else 0
 
@@ -363,10 +366,11 @@ Iteration: {state.iteration}/{self.max_iterations}
             "last_state_hash": state_hash,
             "pending_confirmation": None,
             "total_tokens": state.total_tokens + used_tokens,
+            "workflow_phase": "execute",
         }
 
-    async def execute_tool_node(self, state: AgentState) -> Dict[str, Any]:
-        """Parse tool calls from the last assistant message and execute them."""
+    async def execute_node(self, state: AgentState) -> Dict[str, Any]:
+        """Execute node - Parse tool calls from the last assistant message and execute them."""
         last_msg = state.messages[-1] if state.messages else {}
         response_text = last_msg.get("content", "") if last_msg.get("role") == "assistant" else ""
 
@@ -394,32 +398,31 @@ Iteration: {state.iteration}/{self.max_iterations}
                     result = await self.tool_executor.python_run(code)
 
                 elif tool_name == "nmap":
-                    target = call.get("target", "")
+                    target = call.get("target", state.target)
                     flags = call.get("flags", "-sV -T4 --top-ports 1000")
                     result = await self.tool_executor.nmap(target, flags)
 
                 elif tool_name == "ffuf":
-                    url = call.get("url", "")
+                    url = call.get("url", state.target)
                     result = await self.tool_executor.ffuf(url)
 
                 elif tool_name in ("http_get", "http"):
-                    url = call.get("url", "")
+                    url = call.get("url", state.target)
                     result = await self.tool_executor.http_get(url)
 
                 elif tool_name == "dns_enum":
-                    target = call.get("target", "")
+                    target = call.get("target", state.target)
                     result = await self.tool_executor.dns_enum(target)
 
                 elif tool_name == "whois":
-                    target = call.get("target", "")
+                    target = call.get("target", state.target)
                     result = await self.tool_executor.whois(target)
 
                 elif tool_name == "whatweb":
-                    url = call.get("url") or call.get("target") or ""
+                    url = call.get("url") or call.get("target") or state.target
                     result = await self.tool_executor.whatweb(url)
 
                 else:
-                    # Unknown tool — run as bash if it looks safe
                     cmd = call.get("command", call.get("args", ""))
                     if cmd:
                         result = await self.tool_executor.bash(str(cmd))
@@ -439,7 +442,7 @@ Iteration: {state.iteration}/{self.max_iterations}
                 new_tools_used.append(tool_name)
                 status = "✓" if result.success else "✗"
                 output_block = (
-                    f"\n\n---\nOUTPUT [{status} {tool_name}] ({result.duration_s:.1f}s)\n"
+                    f"\n\n---\nOUTPUT [{status} {tool_name}] (Exit: {result.returncode}, Time: {result.duration_s:.1f}s)\n"
                     f"{result.output}\n---"
                 )
                 if result.error:
@@ -458,23 +461,20 @@ Iteration: {state.iteration}/{self.max_iterations}
         return {
             "messages": state.messages + [tool_output_msg],
             "tools_used": new_tools_used,
+            "workflow_phase": "verify",
         }
 
-    async def reflect_node(self, state: AgentState) -> Dict[str, Any]:
-        """
-        After tool execution, ask the LLM to interpret results,
-        extract findings, and decide next step.
-        """
-        last_msgs = state.messages[-3:]  # think + tool_output
+    async def verify_node(self, state: AgentState) -> Dict[str, Any]:
+        """Verify node - ask the LLM to interpret results, extract findings, verify success."""
+        last_msgs = state.messages[-3:]
         if not any(m.get("role") == "tool" for m in last_msgs):
-            return {}  # nothing to reflect on
+            return {}
 
         system_prompt = self._load_system_prompt(state)
         messages_for_llm = [Message(role="system", content=system_prompt)]
 
         for msg in state.messages[-20:]:
             role = msg.get("role", "user")
-            # LangGraph "tool" role is displayed as user for LLMs that don't support it
             if role == "tool":
                 role = "user"
             messages_for_llm.append(Message(role=role, content=msg.get("content", "")))
@@ -482,26 +482,27 @@ Iteration: {state.iteration}/{self.max_iterations}
         messages_for_llm.append(Message(
             role="user",
             content=(
-                "Analyse the tool output above.\n"
-                "1. What did you find? Any vulnerabilities, open ports, misconfigs, flags?\n"
-                "2. Mark discoveries with: FINDING: <type> | SEVERITY: <level> | <description>\n"
-                "3. What is the next logical step? Issue another TOOL: block if needed, "
-                "or summarise if the task is complete."
+                "VERIFICATION PHASE:\n"
+                "1. Did the tool execute successfully? (Check exit code and error messages)\n"
+                "2. If Exit code != 0, the task status is FAILED. Do NOT claim the task is COMPLETE.\n"
+                "3. If Exit code == 0, analyze the output. What did you find? Any vulnerabilities, open ports, misconfigs, flags?\n"
+                "4. Mark discoveries with: FINDING: <type> | SEVERITY: <level> | <description>\n"
+                "5. Only mark a task as COMPLETE if output was captured, parsed, findings generated, and report saved. Otherwise mark as PARTIAL or FAILED.\n"
+                "6. Issue another TOOL: block if needed, or summarise if the task is complete."
             ),
         ))
 
         response_content, used_tokens = await self._llm_chat_with_events(
-            node="reflect",
+            node="verify",
             messages=messages_for_llm,
         )
 
-        reflect_msg = {
+        verify_msg = {
             "role": "assistant",
             "content": response_content,
             "timestamp": datetime.now().isoformat(),
         }
 
-        # Extract inline FINDING: markers
         new_findings = list(state.findings)
         for match in re.finditer(
             r"FINDING:\s*(?P<type>[^|]+)\s*\|\s*SEVERITY:\s*(?P<sev>[^|]+)\s*\|\s*(?P<desc>.+)",
@@ -514,39 +515,41 @@ Iteration: {state.iteration}/{self.max_iterations}
                 "severity": match.group("sev").strip().lower(),
                 "title": match.group("desc").strip()[:120],
                 "description": match.group("desc").strip(),
+                "target": state.target or "",
                 "timestamp": datetime.now().isoformat(),
             }
             new_findings.append(finding)
             await self._emit("finding", finding=finding)
 
         return {
-            "messages": state.messages + [reflect_msg],
+            "messages": state.messages + [verify_msg],
             "findings": new_findings,
             "iteration": state.iteration + 1,
             "total_tokens": state.total_tokens + used_tokens,
+            "workflow_phase": "store",
         }
 
-    async def save_findings_node(self, state: AgentState) -> Dict[str, Any]:
-        """Persist new findings to workspace memory."""
+    async def store_node(self, state: AgentState) -> Dict[str, Any]:
+        """Store node - Persist new findings to workspace memory."""
         mem = self._get_memory(state.workspace_id)
-        if not mem or not state.findings:
-            return {}
+        if not mem:
+            return {"workflow_phase": "report"}
 
-        try:
-            # Only save findings that don't yet have a persisted flag
-            for finding in state.findings:
-                if not finding.get("_saved"):
-                    mem.add_finding(
-                        finding_type=finding.get("type", "general"),
-                        title=finding.get("title", "Unknown"),
-                        description=finding.get("description", ""),
-                        severity=finding.get("severity", "info"),
-                    )
-                    finding["_saved"] = True
-        except Exception:
-            pass
+        if state.findings:
+            try:
+                for finding in state.findings:
+                    if not finding.get("_saved"):
+                        mem.add_finding(
+                            finding_type=finding.get("type", "general"),
+                            title=finding.get("title", "Unknown"),
+                            description=finding.get("description", ""),
+                            severity=finding.get("severity", "info"),
+                            target=finding.get("target", state.target or ""),
+                        )
+                        finding["_saved"] = True
+            except Exception:
+                pass
 
-        # Also save the conversation exchange
         try:
             user_msgs = [m for m in state.messages if m.get("role") == "user"]
             assist_msgs = [m for m in state.messages if m.get("role") == "assistant"]
@@ -558,7 +561,50 @@ Iteration: {state.iteration}/{self.max_iterations}
         except Exception:
             pass
 
-        return {"findings": state.findings}
+        return {"findings": state.findings, "workflow_phase": "report"}
+
+    async def report_node(self, state: AgentState) -> Dict[str, Any]:
+        """Report node - Generates a final report for the user if task is complete."""
+        # For now, append a system message indicating completion and return to idle.
+        last_msg = state.messages[-1] if state.messages else {}
+        content = last_msg.get("content", "") if last_msg.get("role") == "assistant" else ""
+
+        report_summary = "No report generated."
+        if state.findings or "REPORT:" in content:
+            from redforge.advanced import ReportGenerator
+            rg = ReportGenerator()
+            target_str = state.target or "Unknown Target"
+            ws_name = state.workspace_name or "default"
+            
+            report_data = {
+                "title": f"Security Assessment - {target_str}",
+                "target": target_str,
+                "author": "RedForge Autonomous Agent",
+                "findings": state.findings,
+                "summary": "Automated security assessment generated by RedForge.",
+                "methodology": "Autonomous penetration testing workflow."
+            }
+            rg.create_report(report_data)
+            
+            import os
+            report_dir = Path("workspaces") / str(state.workspace_id or "default") / "reports"
+            report_dir.mkdir(parents=True, exist_ok=True)
+            report_path = report_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+            
+            try:
+                rg.save_report(report_path, format="md")
+                report_summary = f"Report successfully generated and saved to {report_path}"
+                state.reports.append({"path": str(report_path), "timestamp": datetime.now().isoformat()})
+            except Exception as e:
+                report_summary = f"Failed to generate report: {str(e)}"
+                
+        system_msg = {
+            "role": "system",
+            "content": f"Task completed. {report_summary}",
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        return {"messages": state.messages + [system_msg], "workflow_phase": "plan"}
 
     async def await_confirmation_node(self, state: AgentState) -> Dict[str, Any]:
         """Signal that user confirmation is needed (handled by the CLI loop)."""
@@ -578,19 +624,17 @@ Iteration: {state.iteration}/{self.max_iterations}
     # Routing
     # ------------------------------------------------------------------
 
-    def _route_after_think(self, state: AgentState) -> str:
-        """Decide what to do after thinking."""
-        # Hard stop conditions
+    def _route_after_plan(self, state: AgentState) -> str:
+        if state.error:
+            return "handle_error"
         if state.iteration >= self.max_iterations:
-            return "save_findings"
+            return "store_node"
         if state.loop_count >= self.loop_threshold:
-            return "save_findings"
+            return "store_node"
 
         last_msg = state.messages[-1] if state.messages else {}
         content = last_msg.get("content", "") if last_msg.get("role") == "assistant" else ""
 
-        # If there are TOOL: blocks, execute them
-        from redforge.core.tool_executor import parse_tool_calls
         calls = parse_tool_calls(content)
         if calls:
             autonomy = (
@@ -606,27 +650,24 @@ Iteration: {state.iteration}/{self.max_iterations}
                 ac = AutonomyController()
                 for call in calls:
                     tool = call.get("tool", "")
-                    # If any tool is not definitely safe, ask for confirmation
                     if ac.assess_action_risk(tool).value not in ("safe", "low"):
                         return "await_confirmation"
             
-            return "execute_tool"
+            return "execute_node"
 
-        return "save_findings"
+        return "store_node"
 
     def _route_after_execute(self, state: AgentState) -> str:
-        """After tool execution, always reflect."""
         last_msgs = state.messages[-3:]
         if any(m.get("role") == "tool" for m in last_msgs):
-            return "reflect"
-        return "save_findings"
+            return "verify_node"
+        return "store_node"
 
-    def _route_after_reflect(self, state: AgentState) -> str:
-        """After reflection, check if more tool calls are needed."""
+    def _route_after_verify(self, state: AgentState) -> str:
         if state.iteration >= self.max_iterations:
-            return "save_findings"
+            return "store_node"
         if state.loop_count >= self.loop_threshold:
-            return "save_findings"
+            return "store_node"
 
         last_msg = state.messages[-1] if state.messages else {}
         content = last_msg.get("content", "") if last_msg.get("role") == "assistant" else ""
@@ -645,13 +686,12 @@ Iteration: {state.iteration}/{self.max_iterations}
                 ac = AutonomyController()
                 for call in calls:
                     tool = call.get("tool", "")
-                    # If any tool is not definitely safe, ask for confirmation
                     if ac.assess_action_risk(tool).value not in ("safe", "low"):
                         return "await_confirmation"
             
-            return "execute_tool"
+            return "execute_node"
 
-        return "save_findings"
+        return "store_node"
 
     # ------------------------------------------------------------------
     # Graph construction
@@ -660,40 +700,43 @@ Iteration: {state.iteration}/{self.max_iterations}
     def _build_graph(self) -> Any:
         graph = StateGraph(AgentState)
 
-        graph.add_node("think", self.think_node)
-        graph.add_node("execute_tool", self.execute_tool_node)
-        graph.add_node("reflect", self.reflect_node)
-        graph.add_node("save_findings", self.save_findings_node)
+        graph.add_node("plan_node", self.plan_node)
+        graph.add_node("execute_node", self.execute_node)
+        graph.add_node("verify_node", self.verify_node)
+        graph.add_node("store_node", self.store_node)
+        graph.add_node("report_node", self.report_node)
         graph.add_node("await_confirmation", self.await_confirmation_node)
         graph.add_node("handle_error", self.handle_error_node)
 
-        graph.set_entry_point("think")
+        graph.set_entry_point("plan_node")
 
         graph.add_conditional_edges(
-            "think",
-            self._route_after_think,
+            "plan_node",
+            self._route_after_plan,
             {
-                "execute_tool": "execute_tool",
+                "execute_node": "execute_node",
                 "await_confirmation": "await_confirmation",
-                "save_findings": "save_findings",
+                "store_node": "store_node",
+                "handle_error": "handle_error",
             },
         )
         graph.add_conditional_edges(
-            "execute_tool",
+            "execute_node",
             self._route_after_execute,
-            {"reflect": "reflect", "save_findings": "save_findings"},
+            {"verify_node": "verify_node", "store_node": "store_node"},
         )
         graph.add_conditional_edges(
-            "reflect",
-            self._route_after_reflect,
+            "verify_node",
+            self._route_after_verify,
             {
-                "execute_tool": "execute_tool",
+                "execute_node": "execute_node",
                 "await_confirmation": "await_confirmation",
-                "save_findings": "save_findings",
+                "store_node": "store_node",
             },
         )
-        graph.add_edge("save_findings", END)
-        graph.add_edge("await_confirmation", END)   # CLI will re-invoke after approval
+        graph.add_edge("store_node", "report_node")
+        graph.add_edge("report_node", END)
+        graph.add_edge("await_confirmation", END)
         graph.add_edge("handle_error", END)
 
         return graph.compile()
@@ -712,6 +755,7 @@ Iteration: {state.iteration}/{self.max_iterations}
     async def run(
         self,
         user_input: str,
+        target: Optional[str] = None,
         workspace_id: Optional[str] = None,
         workspace_name: Optional[str] = None,
         autonomy_level: AutonomyLevel = AutonomyLevel.MANUAL,
@@ -738,10 +782,13 @@ Iteration: {state.iteration}/{self.max_iterations}
             state_dict["pending_confirmation"] = None
             state_dict["autonomy_level"] = autonomy_level
             state_dict["mode"] = mode
+            if target:
+                state_dict["target"] = target
             initial_state = AgentState(**state_dict)
         else:
             initial_state = create_initial_state(
                 user_input=user_input,
+                target=target,
                 workspace_id=workspace_id,
                 workspace_name=workspace_name,
                 autonomy_level=autonomy_level,
@@ -750,29 +797,38 @@ Iteration: {state.iteration}/{self.max_iterations}
 
         result = initial_state
         try:
-            result = self._merge_state(result, await self.think_node(result))
-            next_step = self._route_after_think(result)
+            result = self._merge_state(result, await self.plan_node(result))
+            next_step = self._route_after_plan(result)
 
             while True:
                 if next_step == "await_confirmation":
                     result = self._merge_state(result, await self.await_confirmation_node(result))
                     break
 
-                if next_step == "save_findings":
-                    result = self._merge_state(result, await self.save_findings_node(result))
-                    break
-
-                if next_step == "execute_tool":
-                    result = self._merge_state(result, await self.execute_tool_node(result))
+                if next_step == "execute_node":
+                    result = self._merge_state(result, await self.execute_node(result))
                     next_step = self._route_after_execute(result)
                     continue
 
-                if next_step == "reflect":
-                    result = self._merge_state(result, await self.reflect_node(result))
-                    next_step = self._route_after_reflect(result)
+                if next_step == "verify_node":
+                    result = self._merge_state(result, await self.verify_node(result))
+                    next_step = self._route_after_verify(result)
                     continue
 
-                result = self._merge_state(result, await self.handle_error_node(result))
+                if next_step == "store_node":
+                    result = self._merge_state(result, await self.store_node(result))
+                    next_step = "report_node"
+                    continue
+
+                if next_step == "report_node":
+                    result = self._merge_state(result, await self.report_node(result))
+                    break
+
+                if next_step == "handle_error":
+                    result = self._merge_state(result, await self.handle_error_node(result))
+                    break
+
+                # Fallback break to prevent infinite loop
                 break
         except Exception as exc:
             error_state = result.model_dump()

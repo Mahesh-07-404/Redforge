@@ -19,6 +19,14 @@ class AgentMode(str, Enum):
     KNOWLEDGE_BASED = "knowledge"
 
 
+class WorkflowPhase(str, Enum):
+    PLAN = "plan"
+    EXECUTE = "execute"
+    VERIFY = "verify"
+    STORE = "store"
+    REPORT = "report"
+
+
 class TaskStatus(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
@@ -70,9 +78,12 @@ class Message:
 
 class AgentState(BaseModel):
     messages: List[Dict[str, Any]] = Field(default_factory=list)
+    target: Optional[str] = None
+    workflow_phase: WorkflowPhase = WorkflowPhase.PLAN
     current_task: Optional[str] = None
     tasks: List[Dict[str, Any]] = Field(default_factory=list)
     findings: List[Dict[str, Any]] = Field(default_factory=list)
+    reports: List[Dict[str, Any]] = Field(default_factory=list)
     tools_used: List[str] = Field(default_factory=list)
     iteration: int = 0
     total_tokens: int = 0
@@ -90,6 +101,7 @@ class AgentState(BaseModel):
 
 def create_initial_state(
     user_input: str,
+    target: Optional[str] = None,
     workspace_id: Optional[str] = None,
     workspace_name: Optional[str] = None,
     autonomy_level: AutonomyLevel = AutonomyLevel.MANUAL,
@@ -102,11 +114,14 @@ def create_initial_state(
             "content": user_input,
             "timestamp": datetime.now().isoformat()
         }],
+        target=target,
         workspace_id=workspace_id,
         workspace_name=workspace_name,
         autonomy_level=autonomy_level,
         mode=mode,
+        workflow_phase=WorkflowPhase.PLAN,
         context={
+            "target": target,
             "workspace_id": workspace_id,
             "workspace_name": workspace_name,
             "started_at": datetime.now().isoformat()

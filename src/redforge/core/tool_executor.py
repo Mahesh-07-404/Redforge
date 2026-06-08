@@ -437,6 +437,10 @@ def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
     """
     import re
 
+    # Strip markdown code blocks if the LLM wrongly wrapped the TOOL block
+    text = re.sub(r"```[a-zA-Z]*", "", text)
+    text = text.replace("```", "")
+    
     calls = []
     blocks = re.split(r"TOOL:\s*", text, flags=re.IGNORECASE)
 
@@ -445,27 +449,31 @@ def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
         if not lines:
             continue
 
-        tool_name = lines[0].strip().lower()
+        # Strip any trailing backticks from tool_name just in case
+        tool_name = lines[0].strip().strip('`').lower()
         params: Dict[str, str] = {}
         code_lines: List[str] = []
         in_code = False
 
         for line in lines[1:]:
-            if re.match(r"^CODE:\s*$", line, re.IGNORECASE):
+            line_stripped = line.strip()
+            if re.match(r"^CODE:\s*$", line_stripped, re.IGNORECASE):
                 in_code = True
                 continue
             if in_code:
-                if re.match(r"^(TOOL:|COMMAND:|TARGET:|FLAGS:|ARGS:)", line, re.IGNORECASE):
+                if re.match(r"^(TOOL:|COMMAND:|TARGET:|FLAGS:|ARGS:)", line_stripped, re.IGNORECASE):
                     in_code = False
                 else:
                     code_lines.append(line)
                     continue
-            m = re.match(r"^([A-Z]+):\s*(.*)", line, re.IGNORECASE)
+            m = re.match(r"^([A-Z]+):\s*(.*)", line_stripped, re.IGNORECASE)
             if m:
-                params[m.group(1).lower()] = m.group(2).strip()
+                key = m.group(1).lower()
+                val = m.group(2).strip().strip('`')
+                params[key] = val
 
         if code_lines:
-            params["code"] = "\n".join(code_lines)
+            params["code"] = "\n".join(code_lines).strip('`\n')
 
         if tool_name:
             calls.append({"tool": tool_name, **params})

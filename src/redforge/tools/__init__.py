@@ -516,8 +516,12 @@ class ToolManager:
             )
             
             if result.returncode == 0:
-                self.installed_tools[tool.name] = self._check_tool(tool)
-                return True, f"Successfully installed {tool.name}"
+                status = self._check_tool(tool)
+                if status.installed:
+                    self.installed_tools[tool.name] = status
+                    return True, f"Successfully installed and verified {tool.name}"
+                else:
+                    return False, f"Install command succeeded, but {tool.name} could not be verified on PATH."
             else:
                 return False, f"Install failed: {result.stderr}"
         
@@ -545,9 +549,13 @@ class ToolManager:
                 go_path = Path.home() / "go" / "bin"
                 if go_path.exists() and str(go_path) not in os.environ.get("PATH", ""):
                     os.environ["PATH"] = f"{go_path}:{os.environ.get('PATH', '')}"
-                
-                self.installed_tools[tool.name] = self._check_tool(tool)
-                return True, f"Successfully installed {tool.name}"
+
+                status = self._check_tool(tool)
+                if status.installed:
+                    self.installed_tools[tool.name] = status
+                    return True, f"Successfully installed and verified {tool.name}"
+                else:
+                    return False, f"Install command succeeded, but {tool.name} could not be verified on PATH."
             else:
                 return False, f"Install failed: {result.stderr}"
         
@@ -573,8 +581,12 @@ class ToolManager:
             )
             
             if result.returncode == 0:
-                self.installed_tools[tool.name] = self._check_tool(tool)
-                return True, f"Successfully installed {tool.name}"
+                status = self._check_tool(tool)
+                if status.installed:
+                    self.installed_tools[tool.name] = status
+                    return True, f"Successfully installed and verified {tool.name}"
+                else:
+                    return False, f"Install command succeeded, but {tool.name} could not be verified on PATH."
             else:
                 return False, f"Install failed: {result.stderr}"
         
@@ -596,8 +608,12 @@ class ToolManager:
             )
             
             if result.returncode == 0:
-                self.installed_tools[tool.name] = self._check_tool(tool)
-                return True, f"Successfully installed {tool.name}"
+                status = self._check_tool(tool)
+                if status.installed:
+                    self.installed_tools[tool.name] = status
+                    return True, f"Successfully installed and verified {tool.name}"
+                else:
+                    return False, f"Install command succeeded, but {tool.name} could not be verified on PATH."
             else:
                 return False, f"Install failed: {result.stderr}"
         

@@ -213,6 +213,23 @@ async def _chat_loop(agent, autonomy_ctrl, mode, workspace, initial_target=None)
     else:
         first_input = None
 
+    # Startup Continuity Summary
+    from redforge.memory.memory_manager import WorkspaceMemoryManager
+    mm = WorkspaceMemoryManager(workspace.id, get_settings().memory.persist_dir, get_settings().memory.vector_db)
+    recent_sessions = mm.list_sessions(limit=1)
+    open_findings = mm.list_findings()
+    
+    if recent_sessions or open_findings:
+        console.print(Panel(
+            f"[cyan]Target:[/cyan] {initial_target or 'None'}\n"
+            f"[cyan]Last Action:[/cyan] {recent_sessions[0].get('user_input', 'None')[:60] if recent_sessions else 'None'}\n"
+            f"[cyan]Open Findings:[/cyan] {len(open_findings)}",
+            title="[bold]Previous Session Restored[/bold]",
+            border_style="green"
+        ))
+    else:
+        console.print(Panel("[dim]No previous session data found. Starting fresh.[/dim]", title="[bold]New Session[/bold]"))
+
     while True:
         try:
             if first_input:
@@ -237,6 +254,39 @@ async def _chat_loop(agent, autonomy_ctrl, mode, workspace, initial_target=None)
             if cmd == "/findings" or cmd == "findings":
                 _print_findings(prior_state)
                 continue
+            if cmd.startswith("/session"):
+                parts = cmd.split()
+                subcmd = parts[1] if len(parts) > 1 else ""
+                sid = parts[2] if len(parts) > 2 else ""
+                
+                from redforge.memory.workspace import WorkspaceManager
+                wm = WorkspaceManager(get_settings().memory.persist_dir)
+                
+                if subcmd == "list":
+                    workspaces = wm.list_workspaces()
+                    console.print(f"[cyan]Sessions:[/cyan] {len(workspaces)}")
+                    for w in workspaces:
+                        console.print(f"  {w.id[:8]} - {w.name} (Mode: {w.mode})")
+                elif subcmd == "current":
+                    console.print(f"[cyan]Current Session:[/cyan] {workspace.name} ({workspace.id})")
+                elif subcmd == "save":
+                    console.print("[green]Session saved implicitly to persistent store.[/green]")
+                elif subcmd == "load" and sid:
+                    loaded_ws = wm.get_workspace(sid)
+                    if loaded_ws:
+                        workspace = loaded_ws
+                        console.print(f"[green]Loaded session:[/green] {workspace.name}")
+                    else:
+                        console.print(f"[red]Session not found:[/red] {sid}")
+                elif subcmd == "delete" and sid:
+                    if wm.delete_workspace(sid):
+                        console.print(f"[green]Deleted session:[/green] {sid}")
+                    else:
+                        console.print(f"[red]Session not found:[/red] {sid}")
+                else:
+                    console.print("[yellow]Usage: /session [list|load <id>|save|delete <id>|current][/yellow]")
+                continue
+
             if cmd == "approved" or cmd == "/approved":
                 run_autonomy = AutonomyLevel.PARTIAL
                 run_input = "[APPROVED] Execute the planned action."
@@ -256,6 +306,7 @@ async def _chat_loop(agent, autonomy_ctrl, mode, workspace, initial_target=None)
                 # 1. Run agent task in background
                 task = asyncio.create_task(agent.run(
                     user_input=run_input,
+                    target=initial_target,
                     workspace_id=workspace.id,
                     workspace_name=workspace.name,
                     autonomy_level=run_autonomy,
