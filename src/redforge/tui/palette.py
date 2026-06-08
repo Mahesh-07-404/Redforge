@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import time
 from typing import Awaitable, Callable, Dict, List, Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 from textual import events, on
 from textual.app import ComposeResult
@@ -16,11 +19,134 @@ from textual.css.query import NoMatches
 from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widget import Widget
-from textual.widgets import Button, Input, Select, Static
+from textual.widgets import Button, Input, Select, Static, OptionList
+from textual.widgets.option_list import Option
 
 from rich.markup import escape
+from rich.text import Text
 
 from redforge.tui.renderer import ACCENT, BG, BG_PANEL, BORDER, FG, FG_DIM, FG_MUTED, _e
+
+
+# ─── CommandRegistry ──────────────────────────────────────
+
+class CommandRegistry:
+    """Registry for built-in and dynamic slash commands in RedForge."""
+    
+    _builtins: Dict[str, str] = {
+        "/help": "Show all available commands",
+        "/clear": "Clear conversation output",
+        "/mode": "Change active mode (bugbounty/ctf/...)",
+        "/model": "Open provider/model selection",
+        "/target": "Set scan target",
+        "/autonomy": "Set autonomy (manual/partial/full)",
+        "/status": "Show agent status",
+        "/findings": "List all findings",
+        "/files": "List CTF files in the active root",
+        "/file": "Attach a CTF file for analysis",
+        "/unfile": "Detach an attached CTF file",
+        "/cwd": "Change the CTF file root directory",
+        "/report": "Generate findings report",
+        "/session": "Manage sessions (list, load, save, etc.)",
+        "/tools": "Manage tools (list, install, etc.)",
+        "/memory": "Manage memory (stats, search, etc.)",
+        "/approved": "Execute the planned action"
+    }
+    
+    _nested_commands: Dict[str, List[Dict[str, str]]] = {
+        "/session": [
+            {"cmd": "list", "desc": "List all sessions"},
+            {"cmd": "load", "desc": "Load a session by ID"},
+            {"cmd": "save", "desc": "Save current session"},
+            {"cmd": "delete", "desc": "Delete a session"},
+            {"cmd": "current", "desc": "Show current session info"},
+            {"cmd": "export", "desc": "Export session data"},
+            {"cmd": "resume", "desc": "Resume a past session"},
+        ],
+        "/tools": [
+            {"cmd": "list", "desc": "List all tools"},
+            {"cmd": "install", "desc": "Install a tool"},
+            {"cmd": "update", "desc": "Update tools"},
+            {"cmd": "verify", "desc": "Verify tool installations"},
+        ],
+        "/memory": [
+            {"cmd": "stats", "desc": "Show memory statistics"},
+            {"cmd": "clear", "desc": "Clear workspace memory"},
+            {"cmd": "search", "desc": "Search memory"},
+            {"cmd": "rebuild", "desc": "Rebuild memory index"},
+        ]
+    }
+    
+    _dynamic_commands: Dict[str, str] = {}
+    _discovered_cli: bool = False
+
+    @classmethod
+    def register(cls, name: str, desc: str) -> None:
+        """Register a command dynamically."""
+        if not name.startswith("/"):
+            name = f"/{name}"
+        cls._dynamic_commands[name] = desc
+        logger.info(f"Command Registered: {name}")
+
+    @classmethod
+    def get_nested_commands(cls, prefix: str) -> List[Dict[str, str]]:
+        """Retrieve nested commands for a given prefix command."""
+        return cls._nested_commands.get(prefix, [])
+
+    @classmethod
+    def _discover_cli_commands(cls) -> None:
+        """Dynamically discover CLI commands from the Click main module."""
+        if cls._discovered_cli:
+            return
+        try:
+            from redforge.cli import main
+            if hasattr(main, "commands") and isinstance(main.commands, dict):
+                for name, cmd in main.commands.items():
+                    cmd_str = f"/{name}"
+                    desc = "Run CLI command"
+                    if cmd is not None:
+                        desc = getattr(cmd, "help", desc) or desc
+                    if cmd_str not in cls._builtins and cmd_str not in cls._dynamic_commands:
+                        cls._dynamic_commands[cmd_str] = desc
+                        logger.info(f"Command Registered: {cmd_str}")
+                cls._discovered_cli = True
+        except (ImportError, AttributeError, KeyError, IndexError) as e:
+            logger.error(f"Failed to discover CLI commands: {e}")
+
+    @classmethod
+    def get_commands(cls) -> List[Dict[str, str]]:
+        """Retrieve all commands from builtins and dynamic commands."""
+        cls._discover_cli_commands()
+        commands = []
+        for name, desc in cls._builtins.items():
+            commands.append({"cmd": name, "desc": desc})
+        for name, desc in cls._dynamic_commands.items():
+            if not any(c["cmd"] == name for c in commands):
+                commands.append({"cmd": name, "desc": desc})
+        return commands
+
+    @classmethod
+    def exists(cls, name: str) -> bool:
+        """Check if a command is valid in the registry (supports nested commands)."""
+        cls._discover_cli_commands()
+        if not name.startswith("/"):
+            name = f"/{name}"
+        
+        parts = name.split()
+        if not parts:
+            return False
+            
+        base = parts[0]
+        all_cmds = [c["cmd"] for c in cls.get_commands()]
+        if base not in all_cmds:
+            return False
+            
+        if len(parts) > 1 and base in cls._nested_commands:
+            sub = parts[1]
+            nested_list = [n["cmd"] for n in cls._nested_commands[base]]
+            return sub in nested_list
+            
+        return True
 
 
 # ─── CommandPalette ──────────────────────────────────────
@@ -45,7 +171,6 @@ class CommandPalette(Widget):
         background: {BG_PANEL};
         border: thick {ACCENT};
         layout: vertical;
-        shadow: box 0 0 10 2 #000000;
     }}
     #cp-input {{
         border: none;
@@ -54,100 +179,187 @@ class CommandPalette(Widget):
         color: {FG};
         padding: 1 2;
     }}
-    #cp-list {{
+    #cp-option-list {{
         height: 1fr;
-        padding: 1 1;
-        overflow-y: auto;
-    }}
-    .cp-item {{
+        background: {BG_PANEL};
         color: {FG_MUTED};
+        border: none;
+    }}
+    #cp-option-list > .option-list--option {{
         padding: 0 2;
     }}
-    .cp-item-active {{
-        color: {BG};
+    #cp-option-list > .option-list--option-highlighted {{
         background: {ACCENT};
+        color: {BG};
         text-style: bold;
-        padding: 0 2;
     }}
     """
 
-    COMMANDS = [
-        {"cmd": "/help", "desc": "Show keyboard shortcuts and help"},
-        {"cmd": "/clear", "desc": "Clear conversation output"},
-        {"cmd": "/mode", "desc": "Change active mode (bugbounty/ctf/...)"},
-        {"cmd": "/model", "desc": "Open provider/model selection"},
-        {"cmd": "/workspace", "desc": "Set active workspace"},
-        {"cmd": "/target", "desc": "Set scan target"},
-        {"cmd": "/autonomy", "desc": "Set autonomy (manual/partial/full)"},
-        {"cmd": "/status", "desc": "Show agent status"},
-        {"cmd": "/findings", "desc": "List all findings"},
-        {"cmd": "/files", "desc": "List CTF files in the active root"},
-        {"cmd": "/file", "desc": "Attach a CTF file for analysis"},
-        {"cmd": "/unfile", "desc": "Detach an attached CTF file"},
-        {"cmd": "/cwd", "desc": "Change the CTF file root directory"},
-        {"cmd": "/skills", "desc": "Show loaded skills stats"},
-        {"cmd": "/report", "desc": "Generate findings report"},
-        {"cmd": "/memory", "desc": "Search or view workspace memory"},
-    ]
+    def __init__(self, initial_query: str = "") -> None:
+        super().__init__()
+        self.initial_query = initial_query
+        self._matches: List[Dict[str, str]] = []
+        self._idx = 0
 
-    on_select: Optional[Callable[[str], None]] = None
-
-    _matches: List[Dict[str, str]] = []
-    _idx: int = 0
+    def _get_base_commands(self) -> List[Dict[str, str]]:
+        return CommandRegistry.get_commands()
 
     def compose(self) -> ComposeResult:
         with Vertical(id="cp-box"):
-            yield Input(placeholder="Search commands...", id="cp-input")
-            yield Vertical(id="cp-list")
+            yield Input(placeholder="Search commands...", id="cp-input", value=self.initial_query)
+            yield OptionList(id="cp-option-list")
 
     def on_mount(self) -> None:
-        self._matches = self.COMMANDS[:]
-        self._render_list()
-        self.query_one("#cp-input", Input).focus()
+        base_cmds = self._get_base_commands()
+        
+        # Filter out invalid base commands before initial display
+        valid_cmds = []
+        for c in base_cmds:
+            try:
+                if c.get("cmd") and CommandRegistry.exists(c["cmd"]):
+                    valid_cmds.append(c)
+            except (KeyError, AttributeError, IndexError):
+                pass
+        self._matches = valid_cmds
+        
+        if self.initial_query:
+            self._filter(self.initial_query)
+        else:
+            self._render_list()
+        
+        inp = self.query_one("#cp-input", Input)
+        inp.focus()
+        inp.cursor_position = len(inp.value)
 
     @on(Input.Changed, "#cp-input")
     def _on_input(self, event: Input.Changed) -> None:
-        q = event.value.lower()
-        if not q:
-            self._matches = self.COMMANDS[:]
+        self._filter(event.value)
+
+    def _filter(self, query: str) -> None:
+        q = query.strip()
+        
+        base_commands = self._get_base_commands()
+        
+        # Verify commands exist in registry before displaying
+        valid_commands = []
+        for c in base_commands:
+            try:
+                if c.get("cmd") and CommandRegistry.exists(c["cmd"]):
+                    valid_commands.append(c)
+            except (KeyError, AttributeError, IndexError):
+                pass
+
+        def is_fuzzy_match(query: str, target: str) -> bool:
+            query = query.lower()
+            target = target.lower()
+            i = 0
+            for char in query:
+                i = target.find(char, i)
+                if i == -1:
+                    return False
+                i += 1
+            return True
+        
+        trigger_nested = False
+        prefix = ""
+        subquery = ""
+        for p in ["/session", "/tools", "/memory"]:
+            if query.startswith(p + " "):
+                trigger_nested = True
+                prefix = p
+                subquery = query[len(p) + 1:].strip()
+                break
+
+        if trigger_nested:
+            nested = CommandRegistry.get_nested_commands(prefix)
+            valid_nested = []
+            for n in nested:
+                try:
+                    full_cmd = f"{prefix} {n['cmd']}"
+                    if CommandRegistry.exists(full_cmd):
+                        valid_nested.append(n)
+                except (KeyError, AttributeError, IndexError):
+                    pass
+            
+            if not subquery:
+                self._matches = [{"cmd": f"{prefix} {n['cmd']}", "desc": n["desc"]} for n in valid_nested]
+            else:
+                self._matches = [
+                    {"cmd": f"{prefix} {n['cmd']}", "desc": n["desc"]} for n in valid_nested
+                    if is_fuzzy_match(subquery, n["cmd"]) or is_fuzzy_match(subquery, n["desc"])
+                ]
         else:
-            self._matches = [
-                c for c in self.COMMANDS
-                if q in c["cmd"].lower() or q in c["desc"].lower()
-            ]
+            q_lower = q.lower()
+            if not q_lower:
+                self._matches = valid_commands
+            else:
+                self._matches = [
+                    c for c in valid_commands
+                    if is_fuzzy_match(q_lower, c["cmd"]) or is_fuzzy_match(q_lower, c["desc"])
+                ]
+                
         self._idx = 0
         self._render_list()
 
     def _render_list(self) -> None:
         try:
-            lst = self.query_one("#cp-list", Vertical)
-            lst.remove_children()
-            for i, match in enumerate(self._matches):
-                cls = "cp-item-active" if i == self._idx else "cp-item"
-                lst.mount(Static(
-                    f"[bold {ACCENT}]{match['cmd']:<12}[/] {escape(match['desc'])}",
-                    classes=cls
-                ))
+            ol = self.query_one("#cp-option-list", OptionList)
+            ol.clear_options()
+            
+            options = []
+            for match in self._matches:
+                prompt = Text.from_markup(f"[bold {ACCENT}]{match['cmd']:<12}[/] {escape(match['desc'])}")
+                options.append(Option(prompt, id=match['cmd']))
+                
+            ol.add_options(options)
+            if self._matches:
+                ol.highlighted = self._idx
         except NoMatches:
             pass
+
+    @on(OptionList.OptionSelected, "#cp-option-list")
+    def _on_option_selected(self, event: OptionList.OptionSelected) -> None:
+        if event.option_id:
+            logger.info(f"Command Selected: {event.option_id}")
+            if self.on_select:
+                self.on_select(event.option_id)
+        self.remove()
+
+    @on(OptionList.OptionHighlighted, "#cp-option-list")
+    def _on_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
+        if event.option_index is not None:
+            self._idx = event.option_index
 
     async def on_key(self, event: events.Key) -> None:
         if event.key == "escape":
             self.remove()
-        elif event.key == "down":
+            event.prevent_default()
+            event.stop()
+        elif event.key in ("down", "tab"):
+            ol = self.query_one("#cp-option-list", OptionList)
             if self._matches:
                 self._idx = (self._idx + 1) % len(self._matches)
-                self._render_list()
+                ol.highlighted = self._idx
+                ol.scroll_to_highlight()
             event.prevent_default()
-        elif event.key == "up":
+            event.stop()
+        elif event.key in ("up", "shift+tab"):
+            ol = self.query_one("#cp-option-list", OptionList)
             if self._matches:
                 self._idx = (self._idx - 1) % len(self._matches)
-                self._render_list()
+                ol.highlighted = self._idx
+                ol.scroll_to_highlight()
             event.prevent_default()
+            event.stop()
         elif event.key == "enter":
-            if self._matches and self.on_select:
-                self.on_select(self._matches[self._idx]["cmd"])
+            if self._matches and 0 <= self._idx < len(self._matches):
+                selected_cmd = self._matches[self._idx]["cmd"]
+                logger.info(f"Command Selected: {selected_cmd}")
+                if self.on_select:
+                    self.on_select(selected_cmd)
             self.remove()
+            event.prevent_default()
+            event.stop()
 
 
 # ─── Toast Notifications ─────────────────────────────────
@@ -573,8 +785,20 @@ class FileMentionScreen(ModalScreen[str | None]):
         if not q:
             self._matches = self._files[:]
         else:
-            self._matches = [path for path in self._files if q in path.lower()]
+            matches = []
+            for path in self._files:
+                path_lower = path.lower()
+                i = 0
+                for char in q:
+                    i = path_lower.find(char, i)
+                    if i == -1:
+                        break
+                    i += 1
+                else:
+                    matches.append(path)
+            self._matches = matches
         self._idx = 0
+        logger.debug(f"Suggestions Generated: {len(self._matches)} matches for query '{query}'")
         self._render_list()
 
     def _render_list(self) -> None:
@@ -605,6 +829,8 @@ class FileMentionScreen(ModalScreen[str | None]):
             event.prevent_default()
         elif event.key == "enter":
             if self._matches:
-                self.dismiss(f"@{self._matches[self._idx]}")
+                selection = f"@{self._matches[self._idx]}"
+                logger.debug(f"Mention Selected: {selection}")
+                self.dismiss(selection)
             else:
                 self.dismiss(None)

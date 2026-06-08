@@ -148,6 +148,24 @@ class VimInput(Widget):
         except NoMatches:
             pass
 
+        if self.vim_mode == "insert":
+            inp = self._get_input()
+            if inp:
+                if val == "/":
+                    opener = getattr(self.app, "open_command_palette", None)
+                    if callable(opener):
+                        # Clear input so it doesn't stay as '/' after palette closes
+                        inp.value = ""
+                        self.app.call_later(opener, "/")
+                
+                cursor = inp.cursor_position
+                if cursor > 0 and val[cursor - 1] == "@":
+                    if cursor == 1 or val[cursor - 2].isspace():
+                        opener = getattr(self.app, "open_file_mention_picker", None)
+                        if callable(opener):
+                            # Call later to avoid interfering with current event processing
+                            self.app.call_later(opener, "")
+
         # Ghost text
         ghost = ""
         if val and self.vim_mode == "insert":
@@ -222,6 +240,16 @@ class VimInput(Widget):
                     event.prevent_default()
                     return
 
+            # Tab when input starts with '/' -> open command palette
+            if inp.value.startswith("/"):
+                opener = getattr(self.app, "open_command_palette", None)
+                if callable(opener):
+                    val = inp.value
+                    inp.value = ""
+                    self.app.call_later(opener, val)
+                    event.prevent_default()
+                    return
+
             # Tab → accept ghost text
             if self.ghost:
                 inp.value = inp.value + self.ghost
@@ -263,7 +291,9 @@ class VimInput(Widget):
 
     def set_value(self, v: str) -> None:
         try:
-            self.query_one("#vi-input", Input).value = v
+            inp = self.query_one("#vi-input", Input)
+            inp.value = v
+            inp.cursor_position = len(v)
         except NoMatches:
             pass
 

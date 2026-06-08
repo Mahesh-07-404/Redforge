@@ -9,8 +9,11 @@ import asyncio
 import os
 import re
 import time
+import logging
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from textual import on
 from textual.app import App, ComposeResult
@@ -22,6 +25,7 @@ from textual.widgets import Input, RichLog, Static
 
 from redforge.tui.palette import (
     CommandPalette,
+    CommandRegistry,
     ConfirmationModal,
     FileMentionScreen,
     ModelSelectionScreen,
@@ -250,7 +254,6 @@ class RedForgeTUI(App):
         self._attached_files: list[Path] = []
         self._live_agent_events = False
         self._confirmation_announced = False
-        self._refresh_project_files()
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="layout"):
@@ -272,8 +275,10 @@ class RedForgeTUI(App):
         self._sync_chrome()
         self.renderer.feed_system("RedForge terminal ready.")
         self.renderer.feed_system("Use /help for commands, !shell for local commands, and @file mentions for project files.")
+        self._refresh_project_files()
         self._refresh_transcript()
         self.set_interval(0.08, self._tick_spinner)
+        self.set_interval(5.0, self._refresh_project_files)
         self.call_later(self._init_agent)
         osc_title(f"RedForge [{self.mode}]")
 
@@ -507,23 +512,37 @@ class RedForgeTUI(App):
             pass
 
     def _refresh_project_files(self) -> None:
-        files: list[Path] = []
-        ignored = {".git", "__pycache__", ".venv", "venv", "node_modules", "dist", "build"}
-        root = self._project_root
-        if not root.exists():
-            self._project_files = []
+        if getattr(self, "_is_refreshing", False):
             return
+        self._is_refreshing = True
 
-        for current_root, dirs, names in os.walk(root):
-            dirs[:] = [name for name in dirs if name not in ignored and not name.startswith(".")]
-            for name in sorted(names):
-                if name.startswith("."):
-                    continue
-                files.append(Path(current_root) / name)
-                if len(files) >= 20:
-                    self._project_files = files
-                    return
-        self._project_files = files
+        def scan_files() -> list[Path]:
+            files: list[Path] = []
+            ignored = {".git", "__pycache__", ".venv", "venv", "node_modules", "dist", "build"}
+            root = self._project_root
+            if not root.exists():
+                return []
+
+            for current_root, dirs, names in os.walk(root):
+                dirs[:] = [name for name in dirs if name not in ignored and not name.startswith(".")]
+                for name in sorted(names):
+                    if name.startswith("."):
+                        continue
+                    files.append(Path(current_root) / name)
+            return files
+
+        async def do_refresh():
+            try:
+                files = await asyncio.to_thread(scan_files)
+                self._project_files = files
+                logger.debug(f"Files Indexed: {len(files)} files found in {self._project_root}")
+                self._sync_chrome()
+            except Exception as e:
+                logger.error(f"Failed to index files: {e}")
+            finally:
+                self._is_refreshing = False
+
+        asyncio.create_task(do_refresh())
 
     def _resolve_project_path(self, raw_path: str) -> Path:
         path = Path(raw_path).expanduser()
@@ -543,15 +562,17 @@ class RedForgeTUI(App):
         except Exception as exc:
             return f"{self._format_relpath(path)}: failed to read ({exc})"
 
+        metadata = f"Path: {self._format_relpath(path)} | Ext: {path.suffix or 'none'} | Dir: {self._format_relpath(path.parent)}"
+
         if b"\x00" in data[:512]:
             preview = data[:32].hex()
-            return f"{self._format_relpath(path)} | binary | {len(data)} bytes | first32={preview}"
+            return f"FILE METADATA: {metadata} | Type: binary | Size: {len(data)} bytes\nCONTENT PREVIEW: {preview}"
 
         text = data.decode("utf-8", errors="replace")
         trimmed = text[:limit]
         if len(text) > limit:
             trimmed += "\n[TRUNCATED]"
-        return f"FILE: {self._format_relpath(path)}\n{trimmed}"
+        return f"FILE METADATA: {metadata}\nCONTENT:\n{trimmed}"
 
     def _extract_mentioned_paths(self, message: str) -> list[Path]:
         paths: list[Path] = []
@@ -656,20 +677,22 @@ class RedForgeTUI(App):
 
     async def on_key(self, event) -> None:
         vim = self.query_one(VimInput)
-        if event.key == "tab" and vim.value.startswith("/"):
-            palette = CommandPalette()
-            palette.on_select = self._execute_palette_cmd
-            await self.mount(palette)
-            event.prevent_default()
-            return
-
         if event.key in ("up", "down") and not vim.value:
             vim.set_value(vim.recall_prev() if event.key == "up" else vim.recall_next())
             event.prevent_default()
 
     def _execute_palette_cmd(self, command: str) -> None:
-        self.call_later(self._slash, command)
-        self.call_later(self.action_focus_input)
+        try:
+            vim = self.query_one(VimInput)
+            vim.set_value(command + " ")
+            vim.focus_input()
+        except NoMatches:
+            pass
+
+    def open_command_palette(self, initial_query: str = "") -> None:
+        palette = CommandPalette(initial_query=initial_query)
+        palette.on_select = self._execute_palette_cmd
+        self.mount(palette)
 
     def open_file_mention_picker(self, query: str = "") -> None:
         self.push_screen(
@@ -706,160 +729,229 @@ class RedForgeTUI(App):
         cmd = parts[0].lower() if parts else ""
         arg = parts[1].strip() if len(parts) > 1 else ""
 
-        if cmd == "help":
-            self.renderer.feed_system("Commands: /help /clear /mode /model /target /autonomy /status /findings /approved /files /file /unfile /cwd")
-            self.renderer.feed_system("Type @ and press Tab to insert project files into any prompt.")
-        elif cmd == "clear":
-            self.store.clear()
-        elif cmd == "approved":
-            await self._chat("[APPROVED] Execute the planned action.")
+        clean_raw = raw.strip()
+        
+        # Check command registry to verify if command exists
+        if not CommandRegistry.exists(clean_raw):
+            base_cmd = f"/{cmd}"
+            if not CommandRegistry.exists(base_cmd):
+                logger.error(f"Command Failed: {clean_raw}. Reason: Command does not exist in registry.")
+                error_msg = f"Command Failed\nReason: Command {clean_raw} does not exist\nSuggested Fix: Use /help to see all available commands."
+                self.renderer.feed_error(error_msg)
+                self._refresh_transcript()
+                return
 
-        elif cmd == "mode":
-            if not arg:
-                self.push_screen(
-                    OptionSelectionScreen(
-                        title="Mode Selection",
-                        current_value=self.mode,
-                        options=[(mode, mode) for mode in MODES],
-                        help_text="Choose the active RedForge operating mode.",
-                    ),
-                    self._handle_mode_selection,
-                )
-            elif arg in MODES:
-                self.mode = arg
-                self.renderer.feed_system(f"Mode set to {arg}")
-            else:
-                self.renderer.feed_error(f"Unknown mode: {arg or '<missing>'}")
-        elif cmd == "model":
-            if not arg:
-                from redforge.core.config import get_settings
+        logger.info(f"Command Executed: {clean_raw}")
 
-                settings = get_settings()
-                self.push_screen(
-                    ModelSelectionScreen(
-                        current_provider=settings.llm.provider,
-                        current_model=settings.llm.model,
-                        current_api_key=settings.llm.api_key if settings.llm.provider != "ollama" else "",
-                        list_models_cb=self._list_models_for_provider,
-                    ),
-                    self._handle_model_selection,
-                )
-            else:
-                try:
-                    from redforge.llm.base import ProviderFactory
+        try:
+            if cmd == "help":
+                all_cmds = sorted([c["cmd"] for c in CommandRegistry.get_commands()])
+                self.renderer.feed_system(f"Available Commands: {' '.join(all_cmds)}")
+                self.renderer.feed_system("Type @ and start typing to insert project files into any prompt.")
+            elif cmd == "clear":
+                self.store.clear()
+            elif cmd == "approved":
+                await self._chat("[APPROVED] Execute the planned action.")
 
-                    provider, model = self._parse_model_arg(arg)
-                    if provider not in ProviderFactory.list_providers():
-                        raise ValueError(f"unknown provider '{provider}'")
-                    if not model:
-                        raise ValueError("missing model name")
-                    settings_api_key = ""
-                    if provider != "ollama":
-                        from redforge.core.config import get_settings
-                        settings_api_key = get_settings().llm.api_key
-                        if not settings_api_key:
-                            raise ValueError("API key required for hosted providers; use /model to open selector")
-                    self._persist_llm_settings(provider, model, settings_api_key)
-                    self._rebuild_agent(provider, model)
-                except Exception as exc:
-                    self.renderer.feed_error(f"Model switch failed: {exc}")
-        elif cmd == "files":
-            self._refresh_project_files()
-            if self._project_files:
-                self.renderer.feed_system(f"Project root: {self._project_root}")
-                for path in self._project_files[:12]:
-                    self.renderer.feed_system(self._format_relpath(path))
-            else:
-                self.renderer.feed_system(f"No files found under {self._project_root}")
-        elif cmd == "cwd":
-            next_root = self._resolve_project_path(arg or ".")
-            if not next_root.exists() or not next_root.is_dir():
-                self.renderer.feed_error(f"Invalid directory: {next_root}")
-            else:
-                self._project_root = next_root
-                self._attached_files = [path for path in self._attached_files if path.exists()]
+            elif cmd == "mode":
+                if not arg:
+                    self.push_screen(
+                        OptionSelectionScreen(
+                            title="Mode Selection",
+                            current_value=self.mode,
+                            options=[(mode, mode) for mode in MODES],
+                            help_text="Choose the active RedForge operating mode.",
+                        ),
+                        self._handle_mode_selection,
+                    )
+                elif arg in MODES:
+                    self.mode = arg
+                    self.renderer.feed_system(f"Mode set to {arg}")
+                else:
+                    raise ValueError(f"Unknown mode: {arg or '<missing>'}")
+            elif cmd == "model":
+                if not arg:
+                    from redforge.core.config import get_settings
+
+                    settings = get_settings()
+                    self.push_screen(
+                        ModelSelectionScreen(
+                            current_provider=settings.llm.provider,
+                            current_model=settings.llm.model,
+                            current_api_key=settings.llm.api_key if settings.llm.provider != "ollama" else "",
+                            list_models_cb=self._list_models_for_provider,
+                        ),
+                        self._handle_model_selection,
+                    )
+                else:
+                    try:
+                        from redforge.llm.base import ProviderFactory
+
+                        provider, model = self._parse_model_arg(arg)
+                        if provider not in ProviderFactory.list_providers():
+                            raise ValueError(f"unknown provider '{provider}'")
+                        if not model:
+                            raise ValueError("missing model name")
+                        settings_api_key = ""
+                        if provider != "ollama":
+                            from redforge.core.config import get_settings
+                            settings_api_key = get_settings().llm.api_key
+                            if not settings_api_key:
+                                raise ValueError("API key required for hosted providers; use /model to open selector")
+                        self._persist_llm_settings(provider, model, settings_api_key)
+                        self._rebuild_agent(provider, model)
+                    except Exception as exc:
+                        raise RuntimeError(f"Model switch failed: {exc}")
+            elif cmd == "files":
                 self._refresh_project_files()
-                self.renderer.feed_system(f"Project root set to {self._project_root}")
-        elif cmd == "file":
-            if not arg:
-                self.renderer.feed_error("Usage: /file <path>")
-            else:
-                path = self._resolve_project_path(arg)
-                if not path.exists() or not path.is_file():
-                    self.renderer.feed_error(f"File not found: {path}")
+                if self._project_files:
+                    self.renderer.feed_system(f"Project root: {self._project_root}")
+                    for path in self._project_files[:12]:
+                        self.renderer.feed_system(self._format_relpath(path))
                 else:
-                    if path not in self._attached_files:
-                        self._attached_files.append(path)
-                    self.renderer.feed_system(f"Attached {self._format_relpath(path)}")
-                    self.renderer.feed_tool_result(
-                        "file",
-                        f"attach {self._format_relpath(path)}",
-                        self._read_file_context(path, limit=1200),
-                        status="done",
+                    self.renderer.feed_system(f"No files found under {self._project_root}")
+            elif cmd == "cwd":
+                next_root = self._resolve_project_path(arg or ".")
+                if not next_root.exists() or not next_root.is_dir():
+                    raise ValueError(f"Invalid directory: {next_root}")
+                else:
+                    self._project_root = next_root
+                    self._attached_files = [path for path in self._attached_files if path.exists()]
+                    self._refresh_project_files()
+                    self.renderer.feed_system(f"Project root set to {self._project_root}")
+            elif cmd == "file":
+                if not arg:
+                    raise ValueError("Usage: /file <path>")
+                else:
+                    path = self._resolve_project_path(arg)
+                    if not path.exists() or not path.is_file():
+                        raise ValueError(f"File not found: {path}")
+                    else:
+                        if path not in self._attached_files:
+                            self._attached_files.append(path)
+                        self.renderer.feed_system(f"Attached {self._format_relpath(path)}")
+                        self.renderer.feed_tool_result(
+                            "file",
+                            f"attach {self._format_relpath(path)}",
+                            self._read_file_context(path, limit=1200),
+                            status="done",
+                        )
+            elif cmd == "unfile":
+                if not arg:
+                    raise ValueError("Usage: /unfile <path>")
+                else:
+                    path = self._resolve_project_path(arg)
+                    self._attached_files = [item for item in self._attached_files if item != path]
+                    self.renderer.feed_system(f"Detached {self._format_relpath(path)}")
+            elif cmd == "target":
+                self.target = arg
+                self.renderer.feed_system(f"Target set to {arg or 'cleared'}")
+            elif cmd == "autonomy":
+                if not arg:
+                    self.push_screen(
+                        OptionSelectionScreen(
+                            title="Autonomy Selection",
+                            current_value=self.autonomy,
+                            options=[(level, level) for level in ("manual", "partial", "full")],
+                            help_text="Choose how much the agent can act without confirmation.",
+                        ),
+                        self._handle_autonomy_selection,
                     )
-        elif cmd == "unfile":
-            if not arg:
-                self.renderer.feed_error("Usage: /unfile <path>")
-            else:
-                path = self._resolve_project_path(arg)
-                self._attached_files = [item for item in self._attached_files if item != path]
-                self.renderer.feed_system(f"Detached {self._format_relpath(path)}")
-        elif cmd == "target":
-            self.target = arg
-            self.renderer.feed_system(f"Target set to {arg or 'cleared'}")
-        elif cmd == "autonomy":
-            if not arg:
-                self.push_screen(
-                    OptionSelectionScreen(
-                        title="Autonomy Selection",
-                        current_value=self.autonomy,
-                        options=[(level, level) for level in ("manual", "partial", "full")],
-                        help_text="Choose how much the agent can act without confirmation.",
-                    ),
-                    self._handle_autonomy_selection,
+                elif arg in {"manual", "partial", "full"}:
+                    self.autonomy = arg
+                    self.renderer.feed_system(f"Autonomy set to {arg}")
+                else:
+                    raise ValueError(f"Unknown autonomy level: {arg or '<missing>'}")
+            elif cmd == "status":
+                self.renderer.feed_system(
+                    f"mode={self.mode} autonomy={self.autonomy} "
+                    f"target={self.target or 'unset'} model={self.model_label}"
                 )
-            elif arg in {"manual", "partial", "full"}:
-                self.autonomy = arg
-                self.renderer.feed_system(f"Autonomy set to {arg}")
-            else:
-                self.renderer.feed_error(f"Unknown autonomy level: {arg or '<missing>'}")
-        elif cmd == "status":
-            self.renderer.feed_system(
-                f"mode={self.mode} autonomy={self.autonomy} "
-                f"target={self.target or 'unset'} model={self.model_label}"
-            )
-        elif cmd == "findings":
-            findings = [m for m in self.store._msgs if m.role == "finding"]
-            if findings:
-                self.renderer.feed_system(f"{len(findings)} findings in session:")
-                for finding in findings[-10:]:
-                    self.renderer.feed_system(
-                        f"{finding.severity or 'info'}: {finding.content}"
-                    )
-            else:
-                self.renderer.feed_system("No findings in this session yet.")
-        elif cmd == "memory":
-            from redforge.core.config import get_settings
-            from redforge.memory.memory_manager import WorkspaceMemoryManager
-            
-            settings = get_settings()
-            # Use 'default' workspace id if none other available
-            ws_id = "default" 
-            mm = WorkspaceMemoryManager(ws_id, settings.memory.persist_dir, settings.memory.vector_db)
-            
-            if not arg or arg == "stats":
-                stats = mm.get_stats()
-                self.renderer.feed_system(f"Memory Stats: {stats.get('indexed_entries', 0)} entries, {stats.get('total_sessions', 0)} sessions, {stats.get('total_findings', 0)} findings.")
-            else:
-                results = mm.search(arg, limit=3)
-                if not results:
-                    self.renderer.feed_system(f"No memory results found for '{arg}'.")
+            elif cmd == "findings":
+                findings = [m for m in self.store._msgs if m.role == "finding"]
+                if findings:
+                    self.renderer.feed_system(f"{len(findings)} findings in session:")
+                    for finding in findings[-10:]:
+                        self.renderer.feed_system(
+                            f"{finding.severity or 'info'}: {finding.content}"
+                        )
                 else:
-                    self.renderer.feed_system(f"Memory search results for '{arg}':")
-                    for idx, res in enumerate(results, 1):
-                        self.renderer.feed_system(f"{idx}. [score: {res.score:.2f}] {res.content[:200]}")
-        else:
-            self.renderer.feed_error(f"Unknown command: {raw}")
+                    self.renderer.feed_system("No findings in this session yet.")
+            elif cmd == "memory":
+                from redforge.core.config import get_settings
+                from redforge.memory.memory_manager import WorkspaceMemoryManager
+                
+                settings = get_settings()
+                ws_id = "default" 
+                mm = WorkspaceMemoryManager(ws_id, settings.memory.persist_dir, settings.memory.vector_db)
+                
+                if not arg or arg == "stats":
+                    stats = mm.get_stats()
+                    self.renderer.feed_system(f"Memory Stats: {stats.get('indexed_entries', 0)} entries, {stats.get('total_sessions', 0)} sessions, {stats.get('total_findings', 0)} findings.")
+                else:
+                    results = mm.search(arg, limit=3)
+                    if not results:
+                        self.renderer.feed_system(f"No memory results found for '{arg}'.")
+                    else:
+                        self.renderer.feed_system(f"Memory search results for '{arg}':")
+                        for idx, res in enumerate(results, 1):
+                            self.renderer.feed_system(f"{idx}. [score: {res.score:.2f}] {res.content[:200]}")
+            elif cmd == "report":
+                findings = [m for m in self.store._msgs if m.role == "finding"]
+                if not findings:
+                    self.renderer.feed_system("No findings in this session to report.")
+                else:
+                    from datetime import datetime
+                    from redforge.advanced import ReportGenerator
+                    rg = ReportGenerator()
+                    
+                    report_findings = []
+                    for f in findings:
+                        report_findings.append({
+                            "title": "Vulnerability Finding",
+                            "severity": f.severity or "INFO",
+                            "cvss_score": 0.0,
+                            "cwe_id": "N/A",
+                            "description": f.content,
+                            "impact": "Potential security compromise.",
+                            "remediation": "Review codebase and apply appropriate fix."
+                        })
+                        
+                    report_data = {
+                        "title": f"Security Assessment Report for {self.target or 'Unknown Target'}",
+                        "target": self.target or "localhost",
+                        "author": "RedForge TUI",
+                        "scope": [self.target] if self.target else ["In-scope codebase"],
+                        "findings": report_findings,
+                        "summary": f"A total of {len(findings)} findings were identified during the assessment.",
+                        "methodology": "Automated security review and analysis.",
+                        "limitations": "Standard constraints of automated scanning."
+                    }
+                    
+                    rg.create_report(report_data)
+                    
+                    report_dir = Path("workspaces") / "default" / "reports"
+                    report_dir.mkdir(parents=True, exist_ok=True)
+                    report_path = report_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+                    rg.save_report(report_path, format="md")
+                    self.renderer.feed_system(f"Report successfully generated and saved to {report_path}")
+            else:
+                raise ValueError(f"Unknown command: {raw}")
+        except Exception as exc:
+            logger.error(f"Command Failed: {raw}. Reason: {exc}")
+            
+            suggested_fix = "Verify the command syntax or use /help."
+            if cmd == "mode":
+                suggested_fix = "Use one of the supported modes: bugbounty, ctf, learning, android, coding."
+            elif cmd == "autonomy":
+                suggested_fix = "Use one of the supported autonomy levels: manual, partial, full."
+            elif cmd == "model":
+                suggested_fix = "Open the selector using /model without arguments, or specify provider:model."
+            elif cmd == "file" or cmd == "unfile":
+                suggested_fix = "Verify that the path points to a valid file."
+            
+            error_msg = f"Command Failed\nReason: {exc}\nSuggested Fix: {suggested_fix}"
+            self.renderer.feed_error(error_msg)
 
         self._refresh_transcript()
 
