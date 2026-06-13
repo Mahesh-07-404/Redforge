@@ -84,7 +84,7 @@ class Sidebar(Static):
         project_root: str,
         project_files: list[str],
         attached_files: list[str],
-        tools_used: list[str] = None,
+        tools_used: list[str] | None = None,
         memory_hits: int = 0,
     ) -> None:
         if tools_used is None:
@@ -390,7 +390,7 @@ class RedForgeTUI(App):
         # Trigger modal
         self.push_screen(ConfirmationModal(msg, cmd_str), self._handle_approval_result)
 
-    def _handle_approval_result(self, approved: bool) -> None:
+    def _handle_approval_result(self, approved: bool | None) -> None:
         if approved:
             self.toast_mgr.show("Action approved", "success")
             asyncio.create_task(self._chat("[APPROVED] Execute the planned action."))
@@ -640,7 +640,7 @@ class RedForgeTUI(App):
                 project_files=[self._format_relpath(path) for path in self._project_files],
                 attached_files=[self._format_relpath(path) for path in self._attached_files],
                 tools_used=[m.tool_name for m in self.store._msgs if m.role == "tool" and m.tool_name],
-                memory_hits=len([m for m in self.store._msgs if "memory" in str(m.content).lower()]),
+                memory_hits=len([m for m in self.store._msgs if "memory" in m.content.lower()]),
             )
         except NoMatches:
             pass

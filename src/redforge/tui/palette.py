@@ -198,6 +198,7 @@ class CommandPalette(Widget):
     def __init__(self, initial_query: str = "") -> None:
         super().__init__()
         self.initial_query = initial_query
+        self.on_select: Callable[[str], None] | None = None
         self._matches: List[Dict[str, str]] = []
         self._idx = 0
 
