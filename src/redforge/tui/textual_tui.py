@@ -10,10 +10,14 @@ import os
 import re
 import time
 import logging
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+from redforge.core.database import SessionDatabase
 
 from textual import on
 from textual.app import App, ComposeResult
@@ -245,6 +249,11 @@ class RedForgeTUI(App):
         self.renderer = MessageRenderer(self.store, self.stream, "bugbounty")
         self.toast_mgr = ToastManager()
 
+        self.db = SessionDatabase()
+        self.session_id = str(uuid.uuid4())
+        self.session_name = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.store.on_append = self._on_message_appended
+
         self._agent = None
         self._prior_state = None
         self._agent_task: Optional[asyncio.Task] = None
@@ -254,6 +263,31 @@ class RedForgeTUI(App):
         self._attached_files: list[Path] = []
         self._live_agent_events = False
         self._confirmation_announced = False
+
+    def _on_message_appended(self, msg) -> None:
+        self.db.add_message(
+            session_id=self.session_id,
+            role=msg.role,
+            content=msg.content,
+            tool_name=msg.tool_name,
+            command=msg.command,
+            severity=msg.severity,
+            status=msg.status,
+            duration_s=msg.duration_s,
+            timestamp=msg.timestamp
+        )
+        if msg.role == "finding":
+            finding_id = msg.tool_name if msg.tool_name else str(uuid.uuid4())
+            self.db.add_finding(
+                session_id=self.session_id,
+                id=finding_id,
+                type=msg.tool_name or "finding",
+                title="Vulnerability Finding",
+                description=msg.content,
+                severity=msg.severity or "medium",
+                target=self.target,
+                evidence=None
+            )
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="layout"):
@@ -275,12 +309,66 @@ class RedForgeTUI(App):
         self._sync_chrome()
         self.renderer.feed_system("RedForge terminal ready.")
         self.renderer.feed_system("Use /help for commands, !shell for local commands, and @file mentions for project files.")
+        self.load_previous_session()
         self._refresh_project_files()
         self._refresh_transcript()
         self.set_interval(0.08, self._tick_spinner)
         self.set_interval(5.0, self._refresh_project_files)
         self.call_later(self._init_agent)
         osc_title(f"RedForge [{self.mode}]")
+
+    def load_previous_session(self) -> None:
+        latest = self.db.list_sessions()
+        if latest:
+            last_sess = latest[0]
+            success = self._load_session_state(last_sess["id"])
+            if success:
+                findings_count = len(self.db.get_findings(self.session_id))
+                open_tasks = [t for t in self.db.get_tasks(self.session_id) if t["status"] in ("pending", "in_progress")]
+                self.renderer.feed_system(f"Last Session: {self.session_name} ({self.session_id[:8]})")
+                self.renderer.feed_system(f"Last Target: {self.target or 'not set'}")
+                self.renderer.feed_system(f"Last Findings: {findings_count}")
+                self.renderer.feed_system(f"Open Tasks: {len(open_tasks)}")
+                if open_tasks:
+                    for t in open_tasks:
+                        self.renderer.feed_system(f"  - [ ] {t['description']}")
+                self.renderer.feed_system("Continuity Check: Resumed last session. To start a new session, use /session load or /session delete.")
+                return
+
+        # Start fresh session
+        self.db.create_session(self.session_id, self.session_name, self.mode, self.autonomy, self.model_label, self.target)
+        self.renderer.feed_system(f"Starting fresh session: {self.session_name} ({self.session_id[:8]})")
+
+    def _load_session_state(self, session_id: str) -> bool:
+        session = self.db.load_session(session_id)
+        if not session:
+            return False
+        self.session_id = session["id"]
+        self.session_name = session["name"]
+        self.target = session.get("target") or ""
+        self.mode = session.get("mode") or "bugbounty"
+        self.autonomy = session.get("autonomy") or "manual"
+        # Restore messages
+        self.store.clear()
+        old_on_append = self.store.on_append
+        self.store.on_append = None
+        try:
+            from redforge.tui.renderer import Msg
+            for m in self.db.get_messages(session_id):
+                msg = Msg(
+                    role=m["role"],
+                    content=m["content"],
+                    tool_name=m.get("tool_name") or "",
+                    command=m.get("command") or "",
+                    severity=m.get("severity") or "",
+                    status=m.get("status") or "",
+                    duration_s=m.get("duration_s") or 0.0,
+                    timestamp=m.get("timestamp") or time.time()
+                )
+                self.store.append(msg)
+        finally:
+            self.store.on_append = old_on_append
+        return True
 
     def _init_agent(self) -> None:
         try:
@@ -460,6 +548,17 @@ class RedForgeTUI(App):
 
         return provider, value
 
+    def _sync_session_meta(self) -> None:
+        if hasattr(self, "db") and hasattr(self, "session_id"):
+            self.db.save_session(
+                self.session_id,
+                self.session_name,
+                self.mode,
+                self.autonomy,
+                self.model_label,
+                self.target
+            )
+
     def watch_mode(self, mode: str) -> None:
         if not hasattr(self, "renderer"):
             return
@@ -469,23 +568,27 @@ class RedForgeTUI(App):
         self._render_header()
         self._sync_chrome()
         osc_title(f"RedForge [{mode}]")
+        self._sync_session_meta()
 
     def watch_autonomy(self, autonomy: str) -> None:
         if not hasattr(self, "store"):
             return
         self._render_header()
         self._sync_chrome()
+        self._sync_session_meta()
 
     def watch_target(self, target: str) -> None:
         if not hasattr(self, "store"):
             return
         self._render_header()
         self._sync_chrome()
+        self._sync_session_meta()
 
     def watch_model_label(self, model_label: str) -> None:
         if not hasattr(self, "store"):
             return
         self._sync_chrome()
+        self._sync_session_meta()
 
     def watch_tokens(self, tokens: int) -> None:
         if not hasattr(self, "store"):
@@ -752,7 +855,292 @@ class RedForgeTUI(App):
                 self.store.clear()
             elif cmd == "approved":
                 await self._chat("[APPROVED] Execute the planned action.")
-
+            elif cmd == "exit":
+                self.exit()
+            elif cmd == "config":
+                from redforge.core.config import ConfigManager
+                cm = ConfigManager()
+                if not arg:
+                    self.renderer.feed_system(f"Current Settings:\n{json.dumps(cm.settings.model_dump(), indent=2)}")
+                else:
+                    subparts = arg.split(maxsplit=1)
+                    if len(subparts) == 2:
+                        key, val = subparts[0], subparts[1]
+                        if val.lower() == "true":
+                            val = True
+                        elif val.lower() == "false":
+                            val = False
+                        else:
+                            try:
+                                val = float(val) if "." in val else int(val)
+                            except ValueError:
+                                pass
+                        cm.set(key, val)
+                        self.renderer.feed_system(f"Set config {key} = {val}")
+                    else:
+                        val = cm.get(subparts[0])
+                        self.renderer.feed_system(f"Config {subparts[0]} = {val}")
+            elif cmd == "doctor":
+                from redforge.utils.platform import detect_platform, check_tool_available
+                platform_info = detect_platform()
+                self.renderer.feed_system("🩺 RedForge System Health Check")
+                self.renderer.feed_system(f"OS: {platform_info.os_name} {platform_info.os_version}")
+                self.renderer.feed_system(f"Package Manager: {platform_info.package_manager.value}")
+                
+                # SQLite check
+                db_status = "OK" if Path(self.db.db_path).exists() else "Missing"
+                self.db._init_db()
+                self.renderer.feed_system(f"SQLite DB: {db_status} ({self.db.db_path})")
+                
+                # LLM check
+                if self._agent and self._agent.llm:
+                    llm_status = "Available" if await asyncio.to_thread(self._agent.llm.is_available) else "Unavailable"
+                else:
+                    llm_status = "Unavailable"
+                self.renderer.feed_system(f"LLM Provider ({self.model_label}): {llm_status}")
+                
+                # Memory Check
+                from redforge.core.config import get_settings
+                from redforge.memory.memory_manager import WorkspaceMemoryManager
+                settings = get_settings()
+                mm = WorkspaceMemoryManager("default", settings.memory.persist_dir, settings.memory.vector_db)
+                stats = mm.get_stats()
+                self.renderer.feed_system(f"RAG Memory Store: {'Available' if stats.get('vector_store_available') else 'Unavailable'}")
+                
+                # Tools check
+                tools_to_check = ["nmap", "ffuf", "sqlmap", "burpsuite", "gdb", "pwntools", "binwalk", "hashcat", "apktool", "git", "curl"]
+                self.renderer.feed_system("Core Pentesting Tools Status:")
+                for tool in tools_to_check:
+                    avail, path = check_tool_available(tool)
+                    status_icon = "✓" if avail else "✗"
+                    self.renderer.feed_system(f"  [{status_icon}] {tool}: {path or 'not found'}")
+            elif cmd == "workspace":
+                subparts = arg.split(maxsplit=1)
+                sub = subparts[0].lower() if subparts else ""
+                val = subparts[1].strip() if len(subparts) > 1 else ""
+                if not sub:
+                    sub = "info"
+                
+                if sub == "info":
+                    self.renderer.feed_system("Workspace Info:")
+                    self.renderer.feed_system(f"  Root path: {self._project_root}")
+                    self.renderer.feed_system(f"  Tracked files: {len(self._project_files)}")
+                    total_size = sum(f.stat().st_size for f in self._project_files if f.exists())
+                    self.renderer.feed_system(f"  Total size: {total_size / (1024*1024):.2f} MB")
+                elif sub == "files":
+                    self._refresh_project_files()
+                    if self._project_files:
+                        self.renderer.feed_system(f"Workspace files ({len(self._project_files)}):")
+                        for f in self._project_files[:20]:
+                            self.renderer.feed_system(f"  {self._format_relpath(f)}")
+                        if len(self._project_files) > 20:
+                            self.renderer.feed_system(f"  ... and {len(self._project_files) - 20} more.")
+                    else:
+                        self.renderer.feed_system("No files found.")
+                elif sub == "reset":
+                    self.store.clear()
+                    self._attached_files.clear()
+                    self._refresh_project_files()
+                    self.db.clear_session_data(self.session_id)
+                    self.renderer.feed_system("Workspace and active session reset completed.")
+                else:
+                    raise ValueError(f"Unknown workspace subcommand: {sub}")
+            elif cmd == "history":
+                messages = self.db.get_messages(self.session_id)
+                if not messages:
+                    self.renderer.feed_system("No history found in this session.")
+                else:
+                    self.renderer.feed_system(f"Session history ({len(messages)} items):")
+                    for m in messages:
+                        role, content = m["role"], m["content"]
+                        if arg and arg.lower() not in content.lower():
+                            continue
+                        self.renderer.feed_system(f"[{role.upper()}] {content[:100]}...")
+            elif cmd == "tools":
+                subparts = arg.split(maxsplit=1)
+                sub = subparts[0].lower() if subparts else ""
+                val = subparts[1].strip() if len(subparts) > 1 else ""
+                if not sub:
+                    sub = "list"
+                
+                if sub == "list":
+                    from redforge.tools import ToolRegistry, ToolManager
+                    tm = ToolManager()
+                    self.renderer.feed_system("RedForge Security Tools Registry:")
+                    for name, tool in ToolRegistry.get_all_tools().items():
+                        status = tm.check_tool(name)
+                        status_str = f"Installed ({status.version})" if status.installed else "Not Installed"
+                        self.renderer.feed_system(f"  {name:<12} | {status_str:<15} | {tool.description}")
+                elif sub == "verify":
+                    from redforge.tools import ToolManager
+                    tm = ToolManager()
+                    report = tm.get_status_report()
+                    self.renderer.feed_system(f"Verification completed. Installed: {report['installed']}/{report['total_tools']} tools.")
+                    for name, status in tm.installed_tools.items():
+                        if not status.installed:
+                            self.renderer.feed_system(f"  [MISSING] {name}")
+                elif sub == "install":
+                    if not val:
+                        raise ValueError("Usage: /tools install <tool_name>")
+                    from redforge.tools import ToolManager
+                    tm = ToolManager()
+                    self.renderer.feed_system(f"Installing {val}...")
+                    success, msg = tm.install_tool(val)
+                    self.renderer.feed_system(msg)
+                elif sub == "update":
+                    from redforge.tools import ToolManager
+                    tm = ToolManager()
+                    self.renderer.feed_system("Updating security tools...")
+                    for name in tm.installed_tools:
+                        status = tm.check_tool(name)
+                        if status.installed:
+                            self.renderer.feed_system(f"Updating {name}...")
+                            success, msg = tm.update_tool(name)
+                            self.renderer.feed_system(msg)
+                else:
+                    raise ValueError(f"Unknown tools subcommand: {sub}")
+            elif cmd == "report":
+                subparts = arg.split(maxsplit=1)
+                sub = subparts[0].lower() if subparts else ""
+                val = subparts[1].strip() if len(subparts) > 1 else ""
+                if not sub:
+                    sub = "generate"
+                
+                if sub == "generate":
+                    findings = [m for m in self.store._msgs if m.role == "finding"]
+                    if not findings:
+                        self.renderer.feed_system("No findings in this session to report.")
+                    else:
+                        from redforge.advanced import ReportGenerator
+                        rg = ReportGenerator()
+                        report_findings = [{"title": "Vulnerability Finding", "severity": f.severity or "INFO", "cvss_score": 0.0, "cwe_id": "N/A", "description": f.content, "impact": "Potential security compromise.", "remediation": "Review codebase and apply appropriate fix."} for f in findings]
+                        report_data = {
+                            "title": f"Security Assessment Report for {self.target or 'Unknown Target'}",
+                            "target": self.target or "localhost",
+                            "author": "RedForge TUI",
+                            "scope": [self.target] if self.target else ["In-scope codebase"],
+                            "findings": report_findings,
+                            "summary": f"A total of {len(findings)} findings were identified during the assessment.",
+                            "methodology": "Automated security review and analysis.",
+                            "limitations": "Standard constraints of automated scanning."
+                        }
+                        rg.create_report(report_data)
+                        report_dir = Path("workspaces") / "default" / "reports"
+                        report_dir.mkdir(parents=True, exist_ok=True)
+                        report_path = report_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+                        rg.save_report(report_path, format="md")
+                        self.renderer.feed_system(f"Report successfully generated and saved to {report_path}")
+                elif sub == "export":
+                    if not val:
+                        raise ValueError("Usage: /report export <path>")
+                    findings = [m for m in self.store._msgs if m.role == "finding"]
+                    from redforge.advanced import ReportGenerator
+                    rg = ReportGenerator()
+                    report_findings = [{"title": "Vulnerability Finding", "severity": f.severity or "INFO", "cvss_score": 0.0, "cwe_id": "N/A", "description": f.content, "impact": "Potential security compromise.", "remediation": "Review codebase and apply appropriate fix."} for f in findings]
+                    report_data = {
+                        "title": f"Security Assessment Report for {self.target or 'Unknown Target'}",
+                        "target": self.target or "localhost",
+                        "author": "RedForge TUI",
+                        "scope": [self.target] if self.target else ["In-scope codebase"],
+                        "findings": report_findings,
+                        "summary": f"A total of {len(findings)} findings were identified during the assessment.",
+                        "methodology": "Automated security review and analysis.",
+                        "limitations": "Standard constraints of automated scanning."
+                    }
+                    rg.create_report(report_data)
+                    dest = Path(val)
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    rg.save_report(dest, format="md")
+                    self.renderer.feed_system(f"Report successfully exported to {dest.resolve()}")
+                elif sub == "list":
+                    report_dir = Path("workspaces") / "default" / "reports"
+                    if report_dir.exists():
+                        reports = list(report_dir.glob("*.md"))
+                        if reports:
+                            self.renderer.feed_system("Generated Reports:")
+                            for r in reports:
+                                self.renderer.feed_system(f"  {r.name}")
+                        else:
+                            self.renderer.feed_system("No reports found.")
+                    else:
+                        self.renderer.feed_system("No reports directory exists yet.")
+                else:
+                    raise ValueError(f"Unknown report subcommand: {sub}")
+            elif cmd == "session":
+                subparts = arg.split(maxsplit=1)
+                sub = subparts[0].lower() if subparts else ""
+                val = subparts[1].strip() if len(subparts) > 1 else ""
+                if not sub:
+                    sub = "current"
+                
+                if sub == "list":
+                    sessions = self.db.list_sessions()
+                    self.renderer.feed_system(f"Saved Sessions ({len(sessions)}):")
+                    for s in sessions:
+                        self.renderer.feed_system(f"  {s['id'][:8]} | {s['name']} | target={s.get('target') or 'none'} | accessed={s['last_accessed']}")
+                elif sub == "save":
+                    name = val or self.session_name
+                    self.db.save_session(self.session_id, name, self.mode, self.autonomy, self.model_label, self.target)
+                    self.renderer.feed_system(f"Session saved successfully as '{name}'.")
+                elif sub == "load":
+                    if not val:
+                        raise ValueError("Usage: /session load <id>")
+                    target_id = None
+                    for s in self.db.list_sessions():
+                        if s["id"].startswith(val) or s["name"] == val:
+                            target_id = s["id"]
+                            break
+                    if not target_id:
+                        raise ValueError(f"Session not found matching '{val}'")
+                    success = self._load_session_state(target_id)
+                    if success:
+                        self.renderer.feed_system(f"Resumed session '{self.session_name}' ({self.session_id[:8]})")
+                    else:
+                        raise RuntimeError(f"Failed to load session state for '{val}'")
+                elif sub == "delete":
+                    if not val:
+                        raise ValueError("Usage: /session delete <id>")
+                    target_id = None
+                    for s in self.db.list_sessions():
+                        if s["id"].startswith(val) or s["name"] == val:
+                            target_id = s["id"]
+                            break
+                    if not target_id:
+                        raise ValueError(f"Session not found matching '{val}'")
+                    if self.db.delete_session(target_id):
+                        self.renderer.feed_system(f"Deleted session '{val}'.")
+                        if target_id == self.session_id:
+                            self.session_id = str(uuid.uuid4())
+                            self.session_name = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                            self.store.clear()
+                            self.db.create_session(self.session_id, self.session_name, self.mode, self.autonomy, self.model_label, self.target)
+                            self.renderer.feed_system("Active session deleted. Started a new fresh session.")
+                    else:
+                        raise RuntimeError(f"Failed to delete session '{val}'")
+                elif sub == "current":
+                    self.renderer.feed_system(f"Current Session: {self.session_name} ({self.session_id})")
+                    self.renderer.feed_system(f"  Target: {self.target or 'not set'}")
+                    self.renderer.feed_system(f"  Mode: {self.mode}")
+                    self.renderer.feed_system(f"  Autonomy: {self.autonomy}")
+                    self.renderer.feed_system(f"  Model: {self.model_label}")
+                elif sub == "export":
+                    export_path = Path(val or f"session_{self.session_id}.json")
+                    import json
+                    data = {
+                        "id": self.session_id,
+                        "name": self.session_name,
+                        "target": self.target,
+                        "mode": self.mode,
+                        "autonomy": self.autonomy,
+                        "messages": self.db.get_messages(self.session_id),
+                        "findings": self.db.get_findings(self.session_id),
+                        "tasks": self.db.get_tasks(self.session_id)
+                    }
+                    with open(export_path, "w") as f:
+                        json.dump(data, f, indent=2)
+                    self.renderer.feed_system(f"Session successfully exported to {export_path.resolve()}")
+                else:
+                    raise ValueError(f"Unknown session subcommand: {sub}")
             elif cmd == "mode":
                 if not arg:
                     self.push_screen(
@@ -882,59 +1270,43 @@ class RedForgeTUI(App):
                 from redforge.memory.memory_manager import WorkspaceMemoryManager
                 
                 settings = get_settings()
-                ws_id = "default" 
-                mm = WorkspaceMemoryManager(ws_id, settings.memory.persist_dir, settings.memory.vector_db)
+                mm = WorkspaceMemoryManager("default", settings.memory.persist_dir, settings.memory.vector_db)
                 
-                if not arg or arg == "stats":
+                subparts = arg.split(maxsplit=1)
+                sub = subparts[0].lower() if subparts else ""
+                val = subparts[1].strip() if len(subparts) > 1 else ""
+                if not sub:
+                    sub = "stats"
+                
+                if sub == "stats":
                     stats = mm.get_stats()
-                    self.renderer.feed_system(f"Memory Stats: {stats.get('indexed_entries', 0)} entries, {stats.get('total_sessions', 0)} sessions, {stats.get('total_findings', 0)} findings.")
-                else:
-                    results = mm.search(arg, limit=3)
-                    if not results:
-                        self.renderer.feed_system(f"No memory results found for '{arg}'.")
-                    else:
-                        self.renderer.feed_system(f"Memory search results for '{arg}':")
-                        for idx, res in enumerate(results, 1):
-                            self.renderer.feed_system(f"{idx}. [score: {res.score:.2f}] {res.content[:200]}")
-            elif cmd == "report":
-                findings = [m for m in self.store._msgs if m.role == "finding"]
-                if not findings:
-                    self.renderer.feed_system("No findings in this session to report.")
-                else:
-                    from datetime import datetime
-                    from redforge.advanced import ReportGenerator
-                    rg = ReportGenerator()
-                    
-                    report_findings = []
+                    self.renderer.feed_system(f"Memory Stats: {stats.get('indexed_entries', 0)} entries, {stats.get('total_notes', 0)} notes, {stats.get('total_findings', 0)} findings.")
+                elif sub == "clear":
+                    mm.clear()
+                    self.renderer.feed_system("Workspace memory cleared successfully.")
+                elif sub == "rebuild":
+                    self.renderer.feed_system("Rebuilding vector store index...")
+                    mm.clear()
+                    # Add current messages and findings
+                    messages = self.db.get_messages(self.session_id)
+                    findings = self.db.get_findings(self.session_id)
+                    for m in messages:
+                        mm.add_session(m["role"], m["content"], {"timestamp": m.get("timestamp")})
                     for f in findings:
-                        report_findings.append({
-                            "title": "Vulnerability Finding",
-                            "severity": f.severity or "INFO",
-                            "cvss_score": 0.0,
-                            "cwe_id": "N/A",
-                            "description": f.content,
-                            "impact": "Potential security compromise.",
-                            "remediation": "Review codebase and apply appropriate fix."
-                        })
-                        
-                    report_data = {
-                        "title": f"Security Assessment Report for {self.target or 'Unknown Target'}",
-                        "target": self.target or "localhost",
-                        "author": "RedForge TUI",
-                        "scope": [self.target] if self.target else ["In-scope codebase"],
-                        "findings": report_findings,
-                        "summary": f"A total of {len(findings)} findings were identified during the assessment.",
-                        "methodology": "Automated security review and analysis.",
-                        "limitations": "Standard constraints of automated scanning."
-                    }
-                    
-                    rg.create_report(report_data)
-                    
-                    report_dir = Path("workspaces") / "default" / "reports"
-                    report_dir.mkdir(parents=True, exist_ok=True)
-                    report_path = report_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-                    rg.save_report(report_path, format="md")
-                    self.renderer.feed_system(f"Report successfully generated and saved to {report_path}")
+                        mm.add_finding(f["type"], f["title"], f["description"], f["severity"], f["target"], f.get("evidence"))
+                    self.renderer.feed_system("Vector store index rebuilt successfully.")
+                elif sub == "search":
+                    if not val:
+                        raise ValueError("Usage: /memory search <query>")
+                    results = mm.search(val, limit=5)
+                    if not results:
+                        self.renderer.feed_system(f"No memory results found for '{val}'.")
+                    else:
+                        self.renderer.feed_system(f"Memory search results for '{val}':")
+                        for idx, res in enumerate(results, 1):
+                            self.renderer.feed_system(f"{idx}. [score: {res.score:.2f}] {res.content}")
+                else:
+                    raise ValueError(f"Unknown memory subcommand: {sub}")
             else:
                 raise ValueError(f"Unknown command: {raw}")
             logger.info("Command Executed: %s", clean_raw)

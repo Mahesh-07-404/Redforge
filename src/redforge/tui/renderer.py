@@ -12,7 +12,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Deque, Dict, List, Optional, Tuple
+from typing import Any, Deque, Dict, List, Optional, Tuple, Callable
 
 from rich.markup import escape
 from rich.syntax import Syntax
@@ -276,11 +276,14 @@ class MessageStore:
         self._max = max_messages
         self._scroll_offset: int = 0  # 0 = bottom (newest)
         self._mode: str = "bugbounty"
+        self.on_append: Optional[Callable[[Msg], None]] = None
 
     def append(self, msg: Msg) -> None:
         self._msgs.append(msg)
         if len(self._msgs) > self._max:
             self._msgs = self._msgs[-self._max:]
+        if self.on_append:
+            self.on_append(msg)
 
     def set_mode(self, mode: str) -> None:
         self._mode = mode
@@ -392,6 +395,7 @@ class MessageRenderer:
     def append_assistant_chunk(self, text: str) -> None:
         if self._active_assistant is None:
             self.start_assistant()
+        assert self._active_assistant is not None
         self._active_assistant.content += text
         self._active_assistant.rendered = ""
 

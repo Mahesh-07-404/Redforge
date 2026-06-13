@@ -43,14 +43,19 @@ class CommandRegistry:
         "/autonomy": "Set autonomy (manual/partial/full)",
         "/status": "Show agent status",
         "/findings": "List all findings",
-        "/files": "List CTF files in the active root",
+        "/files": "List files in the active root",
         "/file": "Attach a CTF file for analysis",
         "/unfile": "Detach an attached CTF file",
         "/cwd": "Change the CTF file root directory",
-        "/report": "Generate findings report",
-        "/session": "Manage sessions (list, load, save, etc.)",
-        "/tools": "Manage tools (list, install, etc.)",
-        "/memory": "Manage memory (stats, search, etc.)",
+        "/session": "Manage sessions (list, load, save, delete, current, export)",
+        "/report": "Generate and manage reports (generate, export, list)",
+        "/tools": "Manage tools (list, verify, install, update)",
+        "/memory": "Manage memory (stats, search, clear, rebuild)",
+        "/history": "Display previous interactions with filtering",
+        "/workspace": "Manage workspace (info, files, reset)",
+        "/doctor": "Check system health and dependencies",
+        "/config": "View or update settings",
+        "/exit": "Exit the application",
         "/approved": "Execute the planned action"
     }
     
@@ -62,7 +67,6 @@ class CommandRegistry:
             {"cmd": "delete", "desc": "Delete a session"},
             {"cmd": "current", "desc": "Show current session info"},
             {"cmd": "export", "desc": "Export session data"},
-            {"cmd": "resume", "desc": "Resume a past session"},
         ],
         "/tools": [
             {"cmd": "list", "desc": "List all tools"},
@@ -75,6 +79,16 @@ class CommandRegistry:
             {"cmd": "clear", "desc": "Clear workspace memory"},
             {"cmd": "search", "desc": "Search memory"},
             {"cmd": "rebuild", "desc": "Rebuild memory index"},
+        ],
+        "/report": [
+            {"cmd": "generate", "desc": "Generate a findings report"},
+            {"cmd": "export", "desc": "Export report to specific path"},
+            {"cmd": "list", "desc": "List generated reports"},
+        ],
+        "/workspace": [
+            {"cmd": "info", "desc": "Show workspace details"},
+            {"cmd": "files", "desc": "List workspace files"},
+            {"cmd": "reset", "desc": "Reset workspace state"},
         ]
     }
     
@@ -191,9 +205,17 @@ class CommandPalette(Widget):
         padding: 0 2;
     }}
     #cp-option-list > .option-list--option-highlighted {{
-        background: {ACCENT};
-        color: {BG};
+        background: {FG_DIM} !important;
+        color: {FG} !important;
         text-style: bold;
+    }}
+    #cp-option-list:focus > .option-list--option-highlighted {{
+        background: {FG_DIM} !important;
+        color: {FG} !important;
+        text-style: bold;
+    }}
+    #cp-option-list > .option-list--option-hover {{
+        background: {BORDER} !important;
     }}
     """
 

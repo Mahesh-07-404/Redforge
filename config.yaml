@@ -1,5 +1,5 @@
 autonomy:
-  default_level: manual
+  default_level: partial
   destructive_threshold: 3
   legal_warning: true
   loop_threshold: 10
