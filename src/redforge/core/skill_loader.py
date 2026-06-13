@@ -82,6 +82,12 @@ class SkillLoader:
         parts = relative.parts
         category = parts[0].upper() if len(parts) > 1 else "GENERAL"
         mode = parts[1].upper() if len(parts) > 2 else None
+        
+        # New V4 logic for MODES: if category is MODES and no subfolder is present (len(parts) == 2),
+        # then set mode to the uppercase stem of the filename (e.g. "bugbounty.md" -> mode = "BUGBOUNTY")
+        if category == "MODES" and not mode and len(parts) == 2:
+            mode = file_path.stem.upper()
+
         unique_name = "/".join(list(parts[:-1]) + [file_path.stem]) if len(parts) > 1 else file_path.stem
 
         return Skill(
@@ -96,21 +102,24 @@ class SkillLoader:
     def _create_default_skills(self) -> None:
         """Minimal built-in skills when skills directory is missing"""
         defaults = {
-            "core/persona": (
+            "SYSTEM/persona": (
                 "SYSTEM",
                 """## RedForge Agent\nAutonomous pentesting AI. Always verify scope. Document findings. Non-destructive first.\n"""
             ),
-            "core/bugbounty": (
-                "BUGBOUNTY",
+            "MODES/bugbounty": (
+                "MODES",
                 """## Bug Bounty Recon\npassive: whois, dns, certs\nactive: nmap, ffuf, subfinder\nvulns: sqli, xss, ssrf, idor\n"""
             ),
-            "core/ctf": (
-                "CTF",
+            "MODES/ctf": (
+                "MODES",
                 """## CTF Approach\nWeb: sqli, xss, lfi, idor\nBinary: gdb, pwntools, ropper\nCrypto: padding oracle, xor, rsa\nForensics: binwalk, strings, exiftool\n"""
             ),
         }
         for name, (cat, content) in defaults.items():
-            self._skills[name] = Skill(name=name, path="default", content=content, category=cat, loaded_at=datetime.now())
+            mode = "BUGBOUNTY" if "bugbounty" in name else ("CTF" if "ctf" in name else None)
+            self._skills[name] = Skill(
+                name=name, path="default", content=content, category=cat, mode=mode, loaded_at=datetime.now()
+            )
         self._loaded = True
 
     # ------------------------------------------------------------------
@@ -158,6 +167,112 @@ class SkillLoader:
             results.append(f"### [{skill.category}] {skill.name}\n{snippet}")
 
         return "\n\n".join(results)
+
+    def get_hierarchical_context(
+        self,
+        active_mode: str,
+        intent: str,
+        query: str,
+    ) -> str:
+        """
+        Compile and load skills according to the RedForge Tiered Hierarchy.
+        Strict Order: Tier 0 -> Tier 1 -> Tier 2 -> Tier 3 -> Tier 4.
+        """
+        if not self._loaded:
+            self.load_skills()
+
+        parts = []
+
+        # TIER 0 - CORE SYSTEM
+        parts.append("=== TIER 0: CORE SYSTEM ===")
+        tier0_skills = [s for s in self._skills.values() if s.category.upper() == "SYSTEM"]
+        tier0_skills.sort(key=lambda s: s.name)
+        for s in tier0_skills:
+            parts.append(f"### [CORE] {s.name}\n{s.content}")
+
+        # TIER 1 - SAFETY
+        parts.append("\n=== TIER 1: SAFETY ===")
+        tier1_skills = [s for s in self._skills.values() if s.category.upper() == "SAFETY"]
+        tier1_skills.sort(key=lambda s: s.name)
+        for s in tier1_skills:
+            parts.append(f"### [SAFETY] {s.name}\n{s.content}")
+
+        # TIER 2 - ACTIVE MODE
+        parts.append(f"\n=== TIER 2: ACTIVE MODE ({active_mode.upper()}) ===")
+        norm_mode = _normalise_mode(active_mode).upper()
+        tier4_excl = {"02_planning", "03_execution", "04_verification", "16_reporting"}
+        tier2_skills = [
+            s for s in self._skills.values() 
+            if s.category.upper() == "MODES" and s.mode == norm_mode
+            and not any(excl in s.name for excl in tier4_excl)
+        ]
+        tier2_skills.sort(key=lambda s: s.name)
+        for s in tier2_skills:
+            parts.append(f"### [MODE] {s.name}\n{s.content}")
+
+        # TIER 3 - TOOL SKILLS
+        parts.append("\n=== TIER 3: REQUIRED TOOLS ===")
+        query_lower = query.lower()
+        tool_keywords = {
+            "01_recon_tools": ["recon", "whois", "dns", "subdomain", "enum", "dig", "cert", "subfinder", "dns_enum"],
+            "02_web_tools": ["web", "http", "url", "ffuf", "curl", "whatweb", "http_get", "dirb", "gobuster", "dir"],
+            "03_binary_tools": ["binary", "elf", "gdb", "ropper", "checksec", "pwntools", "exploit", "assembly", "compile", "pwn"],
+            "04_forensics_tools": ["forensic", "binwalk", "exiftool", "strings", "file", "analysis", "wireshark", "pcap"],
+            "05_password_tools": ["password", "hydra", "john", "hashcat", "crack", "brute", "wordlist"],
+            "06_network_tools": ["network", "nmap", "port", "ip", "host", "ping", "scan"],
+            "07_exploitation_tools": ["exploit", "payload", "shell", "reverse", "metasploit", "msf", "reverse_shell"],
+            "08_vulnerability_scanners": ["scanner", "nuclei", "nikto", "vuln", "vulnerability"],
+            "09_container_cloud": ["container", "docker", "kubernetes", "k8s", "cloud", "aws", "azure", "gcp"],
+            "10_wireless_tools": ["wireless", "wifi", "aircrack", "reaver", "wpa", "wep"]
+        }
+        required_tools = []
+        for s in self._skills.values():
+            if s.category.upper() == "TOOLS":
+                matched = False
+                for filename, kw_list in tool_keywords.items():
+                    if filename in s.name:
+                        if any(kw in query_lower for kw in kw_list):
+                            matched = True
+                            break
+                if matched:
+                    required_tools.append(s)
+
+        if not required_tools and intent in ("SCAN", "RECON"):
+            # Load recon_tools, network_tools, and vulnerability_scanners as defaults
+            for s in self._skills.values():
+                if s.category.upper() == "TOOLS":
+                    if any(x in s.name for x in ("01_recon_tools", "06_network_tools", "08_vulnerability_scanners")):
+                        required_tools.append(s)
+
+        required_tools.sort(key=lambda s: s.name)
+        for s in required_tools:
+            parts.append(f"### [TOOL] {s.name}\n{s.content}")
+
+        # TIER 4 - EXECUTION (Only when action requested)
+        action_requested = intent not in ("CHAT", "LEARNING", "CODING")
+        if action_requested:
+            parts.append("\n=== TIER 4: EXECUTION ===")
+            
+            # Load modern V4 EXECUTION category skills
+            v4_exec_skills = [s for s in self._skills.values() if s.category.upper() == "EXECUTION"]
+            v4_exec_skills.sort(key=lambda s: s.name)
+            for s in v4_exec_skills:
+                parts.append(f"### [EXECUTION] {s.name}\n{s.content}")
+
+            # Legacy compatibility for tests & old names
+            tier4_order = ["02_planning", "03_execution", "04_verification", "16_reporting"]
+            tier4_skills = {}
+            for s in self._skills.values():
+                for item in tier4_order:
+                    if item in s.name:
+                        tier4_skills[item] = s
+            
+            for item in tier4_order:
+                if item in tier4_skills:
+                    s = tier4_skills[item]
+                    parts.append(f"### [EXECUTION] {s.name}\n{s.content}")
+
+        return "\n\n".join(parts)
 
     def get_skill(self, name: str) -> Optional["Skill"]:
         return self._skills.get(name)

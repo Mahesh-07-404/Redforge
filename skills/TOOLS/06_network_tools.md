@@ -182,7 +182,7 @@ go install github.com/bettercap/bettercap@latest
 sudo bettercap -iface eth0
 
 # Commands in caplet
-caplet https://example.com.cap
+caplet https://{target}.cap
 ```
 
 ### Modules
@@ -206,17 +206,17 @@ https.proxy  - HTTPS proxy
 from scapy.all import *
 
 # Send packet
-send(IP(dst="target.com")/ICMP())
+send(IP(dst="{target}")/ICMP())
 
 # Sniff
 sniff(filter="tcp port 80", count=10, prn=lambda x: x.show())
 
 # Packet manipulation
-pkt = IP(dst="target.com")/TCP(dport=80)/"GET / HTTP/1.1\r\n\r\n"
+pkt = IP(dst="{target}")/TCP(dport=80)/"GET / HTTP/1.1\r\n\r\n"
 send(pkt)
 
 # Scan
-sr1(IP(dst="target.com")/ICMP())
+sr1(IP(dst="{target}")/ICMP())
 ```
 
 ### Packet Analysis
@@ -314,3 +314,8 @@ tshark -r malware.pcap -Y ip.src == 192.168.1.100
 - Statistics reveal patterns
 - Use tshark for scripting
 ```
+
+## TOOL EXECUTION & ANTI-HALLUCINATION RULES
+- **No Simulation**: You are strictly forbidden from simulating execution, mocking outputs, or pretending tool execution occurred. Only actual console output returned from a `TOOL:` block execution may be interpreted.
+- **Target Binding**: All command arguments, parameters, and targets must be dynamically bound to the active session target `{target}`. Never replace the user target with a dummy placeholder (e.g. `example.com`).
+- **No Evidence, No Finding**: If the tool command does not return output confirming a port, service, or vulnerability, do not report it as discovered.

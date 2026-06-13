@@ -46,7 +46,7 @@ class ResponseValidator:
                 cleaned.append(d_lower)
         return cleaned
 
-    def validate(self, text: str, target_override: Optional[str] = None) -> Tuple[bool, str]:
+    def validate(self, text: str, target_override: Optional[str] = None, intent: Optional[str] = None) -> Tuple[bool, str]:
         """
         Validate LLM output.
         Returns:
@@ -68,6 +68,10 @@ class ResponseValidator:
 
         if "output [" in text_lower and "exit:" in text_lower and "time:" in text_lower:
             return False, "Hallucination detected: LLM response contains simulated tool execution results."
+
+        # Target validation only applies to RECON, SCAN, REPORT (not to CHAT, LEARNING, CODING)
+        if intent in ("CHAT", "LEARNING", "CODING"):
+            return True, ""
 
         # 3. Check for forbidden placeholders
         for ph in self.FORBIDDEN_PLACEHOLDERS:

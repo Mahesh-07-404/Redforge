@@ -139,7 +139,7 @@ docker run -p 5432:5432 -e POSTGRES_PASSWORD=password arminc/clair-db:latest
 docker run -p 6060:6060 --link clair-db -e DOCKER_BUCKET=postgres -e DSN="host=clair-db port=5432" arminc/clair-local-scan-service:latest
 
 # Scan
-curl -X POST -F "image=nginx:latest" http://localhost:6060/v1/scan
+curl -X POST -F "image=nginx:latest" http://{target}:6060/v1/scan
 ```
 
 ### Anchore
@@ -224,3 +224,8 @@ prisma-cloud compute scan --host <host>
 [ ] IAM analysis
 [ ] Network security
 ```
+
+## TOOL EXECUTION & ANTI-HALLUCINATION RULES
+- **No Simulation**: You are strictly forbidden from simulating execution, mocking outputs, or pretending tool execution occurred. Only actual console output returned from a `TOOL:` block execution may be interpreted.
+- **Target Binding**: All command arguments, parameters, and targets must be dynamically bound to the active session target `{target}`. Never replace the user target with a dummy placeholder (e.g. `example.com`).
+- **No Evidence, No Finding**: If the tool command does not return output confirming a port, service, or vulnerability, do not report it as discovered.

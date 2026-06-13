@@ -100,6 +100,8 @@ class AgentState(BaseModel):
     error: Optional[str] = None
     workspace_id: Optional[str] = None
     workspace_name: Optional[str] = None
+    active_mode: Optional[str] = None
+    intent: Optional[str] = None
 
 
 def create_initial_state(
@@ -108,9 +110,13 @@ def create_initial_state(
     workspace_id: Optional[str] = None,
     workspace_name: Optional[str] = None,
     autonomy_level: AutonomyLevel = AutonomyLevel.MANUAL,
-    mode: AgentMode = AgentMode.GOAL_BASED
+    mode: AgentMode = AgentMode.GOAL_BASED,
+    active_mode: Optional[str] = None,
 ) -> AgentState:
     """Create initial agent state from user input"""
+    if active_mode is None:
+        active_mode = "bugbounty" if mode == AgentMode.GOAL_BASED else "learning"
+
     return AgentState(
         messages=[{
             "role": "user",
@@ -122,6 +128,7 @@ def create_initial_state(
         workspace_name=workspace_name,
         autonomy_level=autonomy_level,
         mode=mode,
+        active_mode=active_mode,
         workflow_phase=WorkflowPhase.PLAN,
         context={
             "target": target,

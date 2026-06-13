@@ -306,6 +306,14 @@ class RedForgeTUI(App):
         osc_title(f"RedForge [{self.mode}]")
 
     def load_previous_session(self) -> None:
+        from redforge.memory.workspace import WorkspaceManager
+        from redforge.core.config import get_settings
+        settings = get_settings()
+        wm = WorkspaceManager(settings.memory.persist_dir)
+        ws = wm.get_or_create_workspace(settings.workspace.default_workspace)
+        self.workspace_id = ws.id
+        self.workspace_name = ws.name
+
         latest = self.db.list_sessions()
         if latest:
             last_sess = latest[0]
@@ -326,6 +334,50 @@ class RedForgeTUI(App):
         # Start fresh session
         self.db.create_session(self.session_id, self.session_name, self.mode, self.autonomy, self.model_label, self.target)
         self.renderer.feed_system(f"Starting fresh session: {self.session_name} ({self.session_id[:8]})")
+
+    def _reconstruct_tui_prior_state(self) -> None:
+        from redforge.core.state import AgentState, AgentMode, AutonomyLevel
+        from datetime import datetime
+        
+        messages_db = self.db.get_messages(self.session_id)
+        findings_db = self.db.get_findings(self.session_id)
+        tasks_db = self.db.get_tasks(self.session_id)
+        
+        agent_messages = []
+        for m in messages_db:
+            ts = m["timestamp"]
+            if isinstance(ts, (int, float)):
+                ts_str = datetime.fromtimestamp(ts).isoformat()
+            else:
+                ts_str = str(ts)
+                
+            agent_messages.append({
+                "role": m["role"],
+                "content": m["content"],
+                "timestamp": ts_str
+            })
+        
+        mode_map = {
+            "bugbounty": AgentMode.GOAL_BASED,
+            "ctf": AgentMode.GOAL_BASED,
+            "learning": AgentMode.KNOWLEDGE_BASED,
+            "coding": AgentMode.KNOWLEDGE_BASED,
+            "android": AgentMode.GOAL_BASED,
+        }
+        
+        self._prior_state = AgentState(
+            messages=agent_messages,
+            target=self.target or None,
+            workspace_id=self.workspace_id,
+            workspace_name=self.workspace_name,
+            autonomy_level=AutonomyLevel(self.autonomy),
+            mode=mode_map.get(self.mode, AgentMode.GOAL_BASED),
+            active_mode=self.mode,
+            findings=findings_db,
+            tasks=tasks_db,
+            iteration=0,
+            loop_count=0
+        )
 
     def _load_session_state(self, session_id: str) -> bool:
         session = self.db.load_session(session_id)
@@ -356,6 +408,8 @@ class RedForgeTUI(App):
                 self.store.append(msg)
         finally:
             self.store.on_append = old_on_append
+        
+        self._reconstruct_tui_prior_state()
         return True
 
     def _init_agent(self) -> None:
@@ -1401,11 +1455,12 @@ class RedForgeTUI(App):
             previous_messages = len(self._prior_state.messages) if self._prior_state else 0
             state = await self._agent.run(
                 user_input=message,
-                workspace_id=None,
-                workspace_name=None,
+                workspace_id=getattr(self, "workspace_id", None),
+                workspace_name=getattr(self, "workspace_name", None),
                 autonomy_level=autonomy_map[self.autonomy],
                 mode=mode_map[self.mode],
                 prior_state=self._prior_state,
+                active_mode=self.mode,
             )
             self._prior_state = state
 

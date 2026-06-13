@@ -180,7 +180,7 @@ kismet -i wlan0mon
 
 # Web UI
 kismet -i wlan0mon --use-gpsd-gps -s
-# Open http://localhost:2501
+# Open http://{target}:2501
 ```
 
 ## Tips
@@ -191,3 +191,8 @@ kismet -i wlan0mon --use-gpsd-gps -s
 - Higher gain antennas help
 - Check for WPS before WPA cracking
 ```
+
+## TOOL EXECUTION & ANTI-HALLUCINATION RULES
+- **No Simulation**: You are strictly forbidden from simulating execution, mocking outputs, or pretending tool execution occurred. Only actual console output returned from a `TOOL:` block execution may be interpreted.
+- **Target Binding**: All command arguments, parameters, and targets must be dynamically bound to the active session target `{target}`. Never replace the user target with a dummy placeholder (e.g. `example.com`).
+- **No Evidence, No Finding**: If the tool command does not return output confirming a port, service, or vulnerability, do not report it as discovered.

@@ -142,40 +142,40 @@ sudo apt install hydra
 ### Basic Usage
 ```bash
 # SSH brute force
-hydra -l admin -P passwords.txt ssh://target.com
+hydra -l admin -P passwords.txt ssh://{target}
 
 # Multiple users
-hydra -L users.txt -P passwords.txt ssh://target.com
+hydra -L users.txt -P passwords.txt ssh://{target}
 
 # Form login
-hydra target.com http-post-form "/login:user=^USER^&pass=^PASS^:Invalid" -L users.txt -P passwords.txt
+hydra {target} http-post-form "/login:user=^USER^&pass=^PASS^:Invalid" -L users.txt -P passwords.txt
 
 # FTP
-hydra -l admin -P passwords.txt ftp://target.com
+hydra -l admin -P passwords.txt ftp://{target}
 
 # HTTP Basic Auth
-hydra -l admin -P passwords.txt http-get://target.com/protected
+hydra -l admin -P passwords.txt http-get://{target}/protected
 ```
 
 ### Services
 ```bash
 # SSH
-hydra -l root -P passwords.txt ssh://target.com
+hydra -l root -P passwords.txt ssh://{target}
 
 # FTP
-hydra -l admin -P passwords.txt ftp://target.com
+hydra -l admin -P passwords.txt ftp://{target}
 
 # SMB
-hydra -l admin -P passwords.txt smb://target.com
+hydra -l admin -P passwords.txt smb://{target}
 
 # MySQL
-hydra -l root -P passwords.txt mysql://target.com
+hydra -l root -P passwords.txt mysql://{target}
 
 # PostgreSQL
-hydra -l postgres -P passwords.txt postgres://target.com
+hydra -l postgres -P passwords.txt postgres://{target}
 
 # HTTP forms
-hydra target.com http-post-form "/login:username=^USER^&password=^PASS^:F=Invalid" -L users.txt -P passwords.txt
+hydra {target} http-post-form "/login:username=^USER^&password=^PASS^:F=Invalid" -L users.txt -P passwords.txt
 ```
 
 ## CeWL
@@ -183,16 +183,16 @@ hydra target.com http-post-form "/login:username=^USER^&password=^PASS^:F=Invali
 ### Wordlist Generation
 ```bash
 # Basic
-cewl www.target.com -w wordlist.txt
+cewl www.{target} -w wordlist.txt
 
 # Depth
-cewl www.target.com -d 3 -w wordlist.txt
+cewl www.{target} -d 3 -w wordlist.txt
 
 # With email
-cewl www.target.com -e -n -w wordlist.txt
+cewl www.{target} -e -n -w wordlist.txt
 
 # Minimum word length
-cewl www.target.com -m 6 -w wordlist.txt
+cewl www.{target} -m 6 -w wordlist.txt
 ```
 
 ## Crunch
@@ -229,13 +229,13 @@ hashid hash.txt
 ### Web Password Attacks
 ```bash
 # Basic auth
-wfuzz -z file,passwords.txt -u https://target.com/auth -F "pwd=FUZZ"
+wfuzz -z file,passwords.txt -u https://{target}/auth -F "pwd=FUZZ"
 
 # Form POST
-wfuzz -z file,users.txt -z file,passwords.txt -d "user=FUZZ&pass=FUZ2Z" https://target.com/login
+wfuzz -z file,users.txt -z file,passwords.txt -d "user=FUZZ&pass=FUZ2Z" https://{target}/login
 
 # Filter for valid responses
-wfuzz -z file,passwords.txt -u https://target.com/login --hs "Invalid" -d "pass=FUZZ"
+wfuzz -z file,passwords.txt -u https://{target}/login --hs "Invalid" -d "pass=FUZZ"
 ```
 
 ## Default Passwords
@@ -284,3 +284,8 @@ hashcat -m 0 hash.txt rockyou.txt -r rules/rockyou-3000.rule
 - NTML is fast to crack
 - bcrypt is slow by design
 ```
+
+## TOOL EXECUTION & ANTI-HALLUCINATION RULES
+- **No Simulation**: You are strictly forbidden from simulating execution, mocking outputs, or pretending tool execution occurred. Only actual console output returned from a `TOOL:` block execution may be interpreted.
+- **Target Binding**: All command arguments, parameters, and targets must be dynamically bound to the active session target `{target}`. Never replace the user target with a dummy placeholder (e.g. `example.com`).
+- **No Evidence, No Finding**: If the tool command does not return output confirming a port, service, or vulnerability, do not report it as discovered.

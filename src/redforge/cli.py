@@ -1023,6 +1023,7 @@ async def _chat_loop(agent, autonomy_ctrl, mode, workspace, initial_target=None)
                     autonomy_level=run_autonomy,
                     mode=agent_mode,
                     prior_state=prior_state,
+                    active_mode=current_mode,
                 ))
 
                 while not task.done():
