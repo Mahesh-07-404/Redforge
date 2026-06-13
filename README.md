@@ -19,7 +19,7 @@ An intelligent security testing framework with 5 operational modes, 128+ special
 - **Workspace Memory** - RAG-powered context retention
 - **Tool Auto-Install** - Missing tool detection and installation
 - **Safety Engine** - Scope verification and ethical boundaries
-- **TUI Interface** - Ncurses-based terminal UI
+- **TUI Interface** - Keyboard-first Textual terminal UI with a fuzzy command palette
 
 ### Supported Platforms
 - Kali Linux, Debian, Ubuntu, Arch, Fedora
@@ -56,7 +56,7 @@ redforge --mode bugbounty
 redforge --mode bugbounty --target example.com
 
 # TUI interface
-redforge --tui
+redforge tui
 
 # Check system health
 redforge doctor
@@ -85,6 +85,44 @@ safety:
 ```
 
 ## Usage
+
+### TUI Command Palette
+
+Run `redforge tui`, then type `/` to open the command palette instantly. The
+palette is populated from the command registry, so valid dynamically registered
+commands appear automatically.
+
+Each entry displays its command and description:
+
+```text
+/help       Show all available commands
+/mode       Change active mode
+/target     Set scan target
+/session    Manage sessions
+/report     Generate findings report
+```
+
+Type part of a command to filter it. Matching is fuzzy, so `/mo` finds `/mode`
+and `/mde` can also match `/mode`.
+
+| Key | Action |
+|-----|--------|
+| `Up` / `Down` | Move the highlighted selection |
+| `Tab` / `Shift+Tab` | Move forward or backward |
+| `Enter` | Insert the highlighted command into the input |
+| `Escape` | Close the palette without changing the current input |
+
+Selecting a command does not execute it. For example, selecting `/mode` inserts
+it into the editor. You can extend it to `/mode bugbounty`, then press `Enter`
+to execute.
+
+Command execution failures are shown in the TUI without terminating RedForge:
+
+```text
+Command Failed
+Reason: <error details>
+Suggested Fix: <recovery guidance>
+```
 
 ### CLI Commands
 ```
@@ -195,6 +233,36 @@ Key concepts and approaches.
 ## Examples
 Usage examples and patterns.
 ```
+
+### Registering TUI Commands
+
+Use the command registry instead of adding commands directly to the palette:
+
+```python
+from redforge.tui.palette import CommandRegistry
+
+CommandRegistry.register(
+    "exploit_active",
+    "Trigger the active exploitation workflow",
+)
+```
+
+Command names and descriptions are validated before display. Invalid or
+duplicate entries are excluded from the palette.
+
+### Command Palette Tests
+
+```bash
+# Focused palette tests
+pytest -q tests/test_palette.py
+
+# Complete test suite
+pytest -q
+```
+
+The focused suite covers opening, closing, fuzzy filtering, keyboard navigation,
+selection, input preservation, dynamic registration, and execution only after a
+separate `Enter` press.
 
 ## Autonomy Levels
 
