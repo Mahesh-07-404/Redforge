@@ -157,7 +157,7 @@ class VimInput(Widget):
                         self.app.call_later(opener, "/")
                 
                 cursor = inp.cursor_position
-                if cursor > 0 and val[cursor - 1] == "@":
+                if 0 < cursor <= len(val) and val[cursor - 1] == "@":
                     if cursor == 1 or val[cursor - 2].isspace():
                         opener = getattr(self.app, "open_file_mention_picker", None)
                         if callable(opener):
