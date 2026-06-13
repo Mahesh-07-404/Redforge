@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Callable, Dict, List, Optional
+from collections.abc import Awaitable, Callable
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -524,7 +525,10 @@ class ModelSelectionScreen(ModalScreen[dict | None]):
         current_provider: str,
         current_model: str,
         current_api_key: str,
-        list_models_cb: Callable[[str, str], Awaitable[List[str]]],
+        list_models_cb: Callable[
+            [str, str],
+            Awaitable[List[str]],
+        ],
     ) -> None:
         super().__init__()
         self.current_provider = current_provider
