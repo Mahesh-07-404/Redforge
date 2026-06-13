@@ -70,7 +70,7 @@ class LLMProvider(ABC):
         **kwargs
     ) -> AsyncIterator[str]:
         """Send a chat request and stream the response"""
-        pass
+        yield ""
     
     @abstractmethod
     def is_available(self) -> bool:

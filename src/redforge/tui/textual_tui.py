@@ -1012,7 +1012,7 @@ class RedForgeTUI(App):
                             "methodology": "Automated security review and analysis.",
                             "limitations": "Standard constraints of automated scanning."
                         }
-                        rg.create_report(report_data)
+                        rg.create_report(report_data, session_target=self.target)
                         report_dir = Path("workspaces") / "default" / "reports"
                         report_dir.mkdir(parents=True, exist_ok=True)
                         report_path = report_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
@@ -1035,7 +1035,7 @@ class RedForgeTUI(App):
                         "methodology": "Automated security review and analysis.",
                         "limitations": "Standard constraints of automated scanning."
                     }
-                    rg.create_report(report_data)
+                    rg.create_report(report_data, session_target=self.target)
                     dest = Path(val)
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     rg.save_report(dest, format="md")

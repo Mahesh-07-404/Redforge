@@ -67,6 +67,9 @@ class Finding:
     cvss: Optional[float] = None
     cwe: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
+    tool: Optional[str] = None
+    command: Optional[str] = None
+    status: str = "VERIFIED"
 
 
 @dataclass

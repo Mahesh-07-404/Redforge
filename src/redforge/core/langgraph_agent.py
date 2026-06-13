@@ -10,6 +10,7 @@ import hashlib
 import inspect
 import json
 import re
+from pathlib import Path
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
@@ -128,7 +129,7 @@ class RedForgeAgent:
         total_tokens = 0
         try:
             if self.config.llm.streaming and getattr(self.llm, "supports_streaming", lambda: False)():
-                async for chunk in self.llm.chat_stream(messages=messages, tools=tools):
+                async for chunk in self.llm.chat_stream(messages=messages, tools=tools):  # type: ignore
                     if not chunk:
                         continue
                     response_text += chunk
@@ -154,6 +155,65 @@ class RedForgeAgent:
             total_tokens = max(1, len(response_text.split()))
         await self._emit("assistant_end", node=node, content=response_text, total_tokens=total_tokens)
         return response_text, total_tokens
+
+    async def _generate_validated_response(
+        self,
+        node: str,
+        messages: List[Message],
+        state: AgentState,
+    ) -> tuple[str, int]:
+        from redforge.core.validator import ResponseValidator
+        
+        validator = ResponseValidator(target=state.target)
+        retries = 3
+        current_messages = list(messages)
+        
+        # Determine if user explicitly requested a simulation
+        user_requested_simulation = False
+        if state.messages:
+            for m in reversed(state.messages):
+                if m.get("role") == "user":
+                    content_lower = m.get("content", "").lower()
+                    if any(kw in content_lower for kw in ["simulate", "simulation", "sample", "fictional"]):
+                        user_requested_simulation = True
+                        break
+        
+        last_reason = ""
+        for attempt in range(retries):
+            response_content, used_tokens = await self._llm_chat_with_events(
+                node=node,
+                messages=current_messages,
+            )
+            
+            # Placeholder substitution fallback
+            corrected_content = response_content
+            if state.target:
+                for ph in ResponseValidator.FORBIDDEN_PLACEHOLDERS:
+                    if ph in state.target.lower():
+                        continue
+                    if ph in corrected_content.lower():
+                        corrected_content = re.sub(re.escape(ph), state.target, corrected_content, flags=re.IGNORECASE)
+            
+            is_valid, reason = validator.validate(corrected_content)
+            
+            if not is_valid and user_requested_simulation:
+                is_valid = not any(kw in reason.lower() for kw in ResponseValidator.FAKE_OUTPUT_KEYWORDS)
+            
+            if is_valid:
+                return corrected_content, used_tokens
+            
+            last_reason = reason
+            warning_msg = Message(
+                role="user",
+                content=(
+                    f"Warning: Your response failed validation. Reason: {reason}\n"
+                    f"Please rewrite the response without placeholders, without target mismatches, "
+                    f"and without simulating tool execution outputs. The active target is strictly '{state.target}'."
+                )
+            )
+            current_messages.append(warning_msg)
+            
+        raise ValueError(f"Failed to generate a valid LLM response: {last_reason}")
 
     # ------------------------------------------------------------------
     # Memory helper
@@ -352,9 +412,10 @@ Iteration: {state.iteration}/{self.max_iterations}
                 Message(role=role, content=msg.get("content", ""))
             )
 
-        response_content, used_tokens = await self._llm_chat_with_events(
+        response_content, used_tokens = await self._generate_validated_response(
             node="plan",
             messages=messages_for_llm,
+            state=state,
         )
 
         new_message = {
@@ -387,6 +448,35 @@ Iteration: {state.iteration}/{self.max_iterations}
         tool_calls = parse_tool_calls(response_text)
         if not tool_calls:
             return {}
+
+        # Enforce target propagation at tool executor level - replace placeholders / mismatches
+        for call in tool_calls:
+            for k in ("target", "url"):
+                if k in call:
+                    val = str(call[k])
+                    # Replace placeholders
+                    for ph in ["example.com", "example.org", "test.com", "localhost", "127.0.0.1", "demo.com"]:
+                        if ph in val.lower() and state.target and ph not in state.target.lower():
+                            if k == "url":
+                                val = val.replace(ph, state.target)
+                            else:
+                                val = state.target
+                            call[k] = val
+                    # Replace mismatch targets
+                    if state.target and state.target not in val and val not in state.target:
+                        from urllib.parse import urlparse
+                        if k == "url":
+                            parsed = urlparse(val)
+                            if parsed.netloc:
+                                netloc_clean = parsed.netloc.split("@")[-1].split(":")[0]
+                                if netloc_clean not in ("google.com", "github.com", "python.org", "secwiki.org", "nmap.org"):
+                                    val = val.replace(parsed.netloc, state.target)
+                            else:
+                                val = state.target
+                        else:
+                            if val not in ("google.com", "github.com", "python.org", "secwiki.org", "nmap.org"):
+                                val = state.target
+                        call[k] = val
 
         results_text_parts = []
         new_tools_used = list(state.tools_used)
@@ -426,7 +516,7 @@ Iteration: {state.iteration}/{self.max_iterations}
                     result = await self.tool_executor.whois(target)
 
                 elif tool_name == "whatweb":
-                    url = call.get("url") or call.get("target") or state.target
+                    url = str(call.get("url") or call.get("target") or state.target or "")
                     result = await self.tool_executor.whatweb(url)
 
                 else:
@@ -499,9 +589,10 @@ Iteration: {state.iteration}/{self.max_iterations}
             ),
         ))
 
-        response_content, used_tokens = await self._llm_chat_with_events(
+        response_content, used_tokens = await self._generate_validated_response(
             node="verify",
             messages=messages_for_llm,
+            state=state,
         )
 
         verify_msg = {
@@ -516,6 +607,22 @@ Iteration: {state.iteration}/{self.max_iterations}
             response_content,
             re.IGNORECASE,
         ):
+            # findings validation
+            last_res = self.tool_executor.last_result
+            tool_used = last_res.tool if last_res else "unknown"
+            cmd_executed = last_res.command if last_res else "unknown"
+            
+            # Evidence verification
+            has_evidence = False
+            evidence_data = {}
+            if last_res and (last_res.stdout or last_res.stderr):
+                has_evidence = True
+                evidence_data = {
+                    "stdout": last_res.stdout,
+                    "stderr": last_res.stderr,
+                    "returncode": last_res.returncode
+                }
+
             finding = {
                 "id": f"finding_{len(new_findings)+1}",
                 "type": match.group("type").strip(),
@@ -523,7 +630,11 @@ Iteration: {state.iteration}/{self.max_iterations}
                 "title": match.group("desc").strip()[:120],
                 "description": match.group("desc").strip(),
                 "target": state.target or "",
+                "tool": tool_used,
+                "command": cmd_executed,
                 "timestamp": datetime.now().isoformat(),
+                "evidence": evidence_data if has_evidence else None,
+                "status": "VERIFIED" if has_evidence else "UNVERIFIED"
             }
             new_findings.append(finding)
             await self._emit("finding", finding=finding)
@@ -591,10 +702,14 @@ Iteration: {state.iteration}/{self.max_iterations}
                 "summary": "Automated security assessment generated by RedForge.",
                 "methodology": "Autonomous penetration testing workflow."
             }
+            # Before report generation: Verify report.target == session.target (represented by state.target)
+            if not state.target or report_data["target"] != state.target:
+                raise ValueError(f"Report target mismatch: '{report_data['target']}' does not match session target '{state.target}'")
+            
             rg.create_report(report_data)
             
             import os
-            report_dir = Path("workspaces") / str(state.workspace_id or "default") / "reports"
+            report_dir = Path("workspaces") / (state.workspace_id or "default") / "reports"
             report_dir.mkdir(parents=True, exist_ok=True)
             report_path = report_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
             
@@ -751,7 +866,16 @@ Iteration: {state.iteration}/{self.max_iterations}
     def _merge_state(self, state: AgentState, updates: Dict[str, Any]) -> AgentState:
         if not updates:
             return state
+        
+        # Enforce Target Immutability
+        if state.target and "target" in updates and updates["target"] and updates["target"] != state.target:
+            raise ValueError(f"Target immutability violation: cannot overwrite active target '{state.target}' with '{updates['target']}'.")
+            
         merged = state.model_dump()
+        # Keep original target if it was already set
+        if state.target and not merged.get("target"):
+            merged["target"] = state.target
+            
         merged.update(updates)
         return AgentState(**merged)
 

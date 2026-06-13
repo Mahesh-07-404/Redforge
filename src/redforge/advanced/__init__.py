@@ -200,11 +200,27 @@ class ReportGenerator:
     def __init__(self):
         self.report = None
     
-    def create_report(self, data: Dict[str, Any]) -> Report:
+    def create_report(self, data: Dict[str, Any], session_target: Optional[str] = None) -> Report:
         """Create a new report"""
+        target = data.get("target", "")
+        
+        # If session_target is provided, target must match it
+        if session_target is not None:
+            if target != session_target:
+                raise ValueError(f"Report target '{target}' does not match session target '{session_target}'")
+        
+        # Validate target against placeholders
+        from redforge.core.validator import ResponseValidator
+        for ph in ResponseValidator.FORBIDDEN_PLACEHOLDERS:
+            if ph in target.lower():
+                # If target matches the session target, it is considered explicitly provided
+                if session_target and ph in session_target.lower():
+                    continue
+                raise ValueError(f"Report target contains forbidden placeholder '{ph}'")
+                
         self.report = Report(
             title=data.get("title", "Security Assessment Report"),
-            target=data.get("target", ""),
+            target=target,
             author=data.get("author", "RedForge"),
             scope=data.get("scope", []),
             findings=data.get("findings", []),

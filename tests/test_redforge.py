@@ -234,7 +234,7 @@ class TestReportGenerator:
         
         data = {
             "title": "Test Report",
-            "target": "test.example.com",
+            "target": "mytestdomain.com",
             "author": "RedForge",
             "findings": [
                 {
@@ -257,7 +257,7 @@ class TestReportGenerator:
         
         assert "Test Report" in md
         assert "SQL Injection" in md
-        assert "test.example.com" in md
+        assert "mytestdomain.com" in md
     
     def test_json_report(self):
         """Test JSON report generation"""
@@ -265,7 +265,7 @@ class TestReportGenerator:
         
         data = {
             "title": "Test Report",
-            "target": "test.example.com",
+            "target": "mytestdomain.com",
             "author": "RedForge"
         }
         
