@@ -684,12 +684,14 @@ class RedForgeTUI(App):
     def _execute_palette_cmd(self, command: str) -> None:
         try:
             vim = self.query_one(VimInput)
-            vim.set_value(command + " ")
+            vim.set_value(command)
             vim.focus_input()
         except NoMatches:
             pass
 
     def open_command_palette(self, initial_query: str = "") -> None:
+        if self.query(CommandPalette):
+            return
         palette = CommandPalette(initial_query=initial_query)
         palette.on_select = self._execute_palette_cmd
         self.mount(palette)
@@ -740,8 +742,6 @@ class RedForgeTUI(App):
                 self.renderer.feed_error(error_msg)
                 self._refresh_transcript()
                 return
-
-        logger.info(f"Command Executed: {clean_raw}")
 
         try:
             if cmd == "help":
@@ -937,8 +937,9 @@ class RedForgeTUI(App):
                     self.renderer.feed_system(f"Report successfully generated and saved to {report_path}")
             else:
                 raise ValueError(f"Unknown command: {raw}")
+            logger.info("Command Executed: %s", clean_raw)
         except Exception as exc:
-            logger.error(f"Command Failed: {raw}. Reason: {exc}")
+            logger.exception("Command Failed: %s. Reason: %s", raw, exc)
             
             suggested_fix = "Verify the command syntax or use /help."
             if cmd == "mode":

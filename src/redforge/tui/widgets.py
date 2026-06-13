@@ -154,8 +154,6 @@ class VimInput(Widget):
                 if val == "/":
                     opener = getattr(self.app, "open_command_palette", None)
                     if callable(opener):
-                        # Clear input so it doesn't stay as '/' after palette closes
-                        inp.value = ""
                         self.app.call_later(opener, "/")
                 
                 cursor = inp.cursor_position
@@ -245,9 +243,9 @@ class VimInput(Widget):
                 opener = getattr(self.app, "open_command_palette", None)
                 if callable(opener):
                     val = inp.value
-                    inp.value = ""
                     self.app.call_later(opener, val)
                     event.prevent_default()
+                    event.stop()
                     return
 
             # Tab → accept ghost text

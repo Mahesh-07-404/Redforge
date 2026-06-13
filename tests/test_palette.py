@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from textual.app import App, ComposeResult
 from textual.widgets import Input, OptionList
 from redforge.tui.palette import CommandPalette, CommandRegistry
+from redforge.tui.widgets import VimInput
 
 
 class PaletteTestApp(App[None]):
@@ -22,11 +23,36 @@ class PaletteTestApp(App[None]):
 
     def open_palette(self, initial_query: str = ""):
         palette = CommandPalette(initial_query=initial_query)
-        palette.on_select = self.on_select
+        palette.on_select = self.handle_selection
         self.mount(palette)
 
-    def on_select(self, cmd: str):
+    def handle_selection(self, cmd: str):
         self.selected_cmd = cmd
+
+
+class CommandFlowApp(App[None]):
+    """Exercise the palette against the same editor contract as the TUI."""
+
+    def __init__(self):
+        super().__init__()
+        self.executed_commands = []
+
+    def compose(self) -> ComposeResult:
+        yield VimInput()
+
+    def open_command_palette(self, initial_query: str = ""):
+        if self.query(CommandPalette):
+            return
+        palette = CommandPalette(initial_query=initial_query)
+        palette.on_select = self.insert_command
+        self.mount(palette)
+
+    def insert_command(self, command: str):
+        self.query_one(VimInput).set_value(command)
+        self.query_one(VimInput).focus_input()
+
+    def on_vim_input_submitted(self, event: VimInput.Submitted):
+        self.executed_commands.append(event.value)
 
 
 def test_command_registry():
@@ -44,6 +70,17 @@ def test_command_registry():
     
     commands = CommandRegistry.get_commands()
     assert any(c["cmd"] == "/exploit_active" for c in commands)
+    assert len({c["cmd"] for c in commands}) == len(commands)
+
+
+def test_command_registry_rejects_invalid_entries():
+    """Invalid dynamic commands never enter the display registry."""
+    with pytest.raises(ValueError):
+        CommandRegistry.register("", "Missing name")
+    with pytest.raises(ValueError):
+        CommandRegistry.register("bad command", "Contains spaces")
+    with pytest.raises(ValueError):
+        CommandRegistry.register("valid", "")
 
 
 @pytest.mark.asyncio
@@ -103,7 +140,7 @@ async def test_palette_filtering_and_navigation():
         await pilot.press("up")
         await pilot.pause()
         assert ol.highlighted == highlighted_before
-        
+
         # Highlight navigation with tab
         await pilot.press("tab")
         await pilot.pause()
@@ -113,6 +150,12 @@ async def test_palette_filtering_and_navigation():
         await pilot.press("shift+tab")
         await pilot.pause()
         assert ol.highlighted == highlighted_before
+
+        # A non-contiguous query still fuzzy-matches the command.
+        cp_input = palette.query_one("#cp-input", Input)
+        cp_input.value = "/mde"
+        await pilot.pause()
+        assert "/mode" in str(ol.get_option_at_index(0).prompt)
 
 
 @pytest.mark.asyncio
@@ -134,3 +177,46 @@ async def test_palette_selection():
         # Verify command palette is removed and callback was triggered
         assert len(app.query(CommandPalette)) == 0
         assert app.selected_cmd == "/help"
+
+
+@pytest.mark.asyncio
+async def test_selection_inserts_without_executing_until_enter():
+    """Confirming a palette item edits the input; a later Enter executes it."""
+    app = CommandFlowApp()
+    async with app.run_test() as pilot:
+        vim = app.query_one(VimInput)
+        vim.set_value("/mo")
+        app.open_command_palette("/mo")
+        await pilot.pause()
+
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert len(app.query(CommandPalette)) == 0
+        assert vim.value == "/mode"
+        assert app.executed_commands == []
+
+        vim.set_value("/mode bugbounty")
+        await pilot.press("enter")
+        await pilot.pause()
+        assert app.executed_commands == ["/mode bugbounty"]
+
+
+@pytest.mark.asyncio
+async def test_escape_preserves_editor_query_and_duplicate_open_is_ignored():
+    """Cancel is lossless and repeated open requests keep one stable palette."""
+    app = CommandFlowApp()
+    async with app.run_test() as pilot:
+        vim = app.query_one(VimInput)
+        vim.set_value("/ta")
+        app.open_command_palette("/ta")
+        app.open_command_palette("/ta")
+        await pilot.pause()
+
+        assert len(app.query(CommandPalette)) == 1
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert len(app.query(CommandPalette)) == 0
+        assert vim.value == "/ta"
+        assert app.executed_commands == []

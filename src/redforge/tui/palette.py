@@ -6,9 +6,9 @@ Toast/ToastManager for non-blocking alerts.
 
 from __future__ import annotations
 
-import time
-from typing import Awaitable, Callable, Dict, List, Optional
 import logging
+import time
+from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -78,74 +78,75 @@ class CommandRegistry:
     }
     
     _dynamic_commands: Dict[str, str] = {}
-    _discovered_cli: bool = False
+
+    @staticmethod
+    def _normalize(name: str) -> str:
+        if not isinstance(name, str):
+            return ""
+        normalized = " ".join(name.strip().split())
+        if not normalized:
+            return ""
+        if not normalized.startswith("/"):
+            normalized = f"/{normalized}"
+        return normalized
 
     @classmethod
     def register(cls, name: str, desc: str) -> None:
         """Register a command dynamically."""
-        if not name.startswith("/"):
-            name = f"/{name}"
-        cls._dynamic_commands[name] = desc
-        logger.info(f"Command Registered: {name}")
+        name = cls._normalize(name)
+        if not name or name == "/" or any(char.isspace() for char in name[1:]):
+            raise ValueError("Command names must be a single slash-prefixed token")
+        if not isinstance(desc, str) or not desc.strip():
+            raise ValueError("Command descriptions must be non-empty strings")
+        cls._dynamic_commands[name] = desc.strip()
+        logger.info("Command Registered: %s", name)
 
     @classmethod
     def get_nested_commands(cls, prefix: str) -> List[Dict[str, str]]:
         """Retrieve nested commands for a given prefix command."""
-        return cls._nested_commands.get(prefix, [])
-
-    @classmethod
-    def _discover_cli_commands(cls) -> None:
-        """Dynamically discover CLI commands from the Click main module."""
-        if cls._discovered_cli:
-            return
-        try:
-            from redforge.cli import main
-            if hasattr(main, "commands") and isinstance(main.commands, dict):
-                for name, cmd in main.commands.items():
-                    cmd_str = f"/{name}"
-                    desc = "Run CLI command"
-                    if cmd is not None:
-                        desc = getattr(cmd, "help", desc) or desc
-                    if cmd_str not in cls._builtins and cmd_str not in cls._dynamic_commands:
-                        cls._dynamic_commands[cmd_str] = desc
-                        logger.info(f"Command Registered: {cmd_str}")
-                cls._discovered_cli = True
-        except (ImportError, AttributeError, KeyError, IndexError) as e:
-            logger.error(f"Failed to discover CLI commands: {e}")
+        return list(cls._nested_commands.get(cls._normalize(prefix), ()))
 
     @classmethod
     def get_commands(cls) -> List[Dict[str, str]]:
         """Retrieve all commands from builtins and dynamic commands."""
-        cls._discover_cli_commands()
-        commands = []
-        for name, desc in cls._builtins.items():
-            commands.append({"cmd": name, "desc": desc})
-        for name, desc in cls._dynamic_commands.items():
-            if not any(c["cmd"] == name for c in commands):
-                commands.append({"cmd": name, "desc": desc})
-        return commands
+        merged = {**cls._builtins, **cls._dynamic_commands}
+        return [
+            {"cmd": name, "desc": desc}
+            for name, desc in merged.items()
+            if cls._is_valid_entry(name, desc)
+        ]
+
+    @classmethod
+    def _is_valid_entry(cls, name: object, desc: object) -> bool:
+        return (
+            isinstance(name, str)
+            and cls._normalize(name) == name
+            and name != "/"
+            and not any(char.isspace() for char in name[1:])
+            and isinstance(desc, str)
+            and bool(desc.strip())
+        )
 
     @classmethod
     def exists(cls, name: str) -> bool:
         """Check if a command is valid in the registry (supports nested commands)."""
-        cls._discover_cli_commands()
-        if not name.startswith("/"):
-            name = f"/{name}"
-        
+        name = cls._normalize(name)
+        if not name:
+            return False
         parts = name.split()
-        if not parts:
-            return False
-            
         base = parts[0]
-        all_cmds = [c["cmd"] for c in cls.get_commands()]
-        if base not in all_cmds:
+        if base not in {c["cmd"] for c in cls.get_commands()}:
             return False
-            
+
         if len(parts) > 1 and base in cls._nested_commands:
             sub = parts[1]
-            nested_list = [n["cmd"] for n in cls._nested_commands[base]]
+            nested_list = [
+                nested.get("cmd")
+                for nested in cls._nested_commands[base]
+                if isinstance(nested, dict)
+            ]
             return sub in nested_list
-            
+
         return True
 
 
@@ -201,9 +202,29 @@ class CommandPalette(Widget):
         self.on_select: Callable[[str], None] | None = None
         self._matches: List[Dict[str, str]] = []
         self._idx = 0
+        self._selection_committed = False
 
     def _get_base_commands(self) -> List[Dict[str, str]]:
         return CommandRegistry.get_commands()
+
+    def _valid_commands(self) -> List[Dict[str, str]]:
+        commands: List[Dict[str, str]] = []
+        seen: set[str] = set()
+        for command in self._get_base_commands():
+            try:
+                name = command["cmd"]
+                desc = command["desc"]
+                if (
+                    name not in seen
+                    and CommandRegistry.exists(name)
+                    and isinstance(desc, str)
+                    and desc.strip()
+                ):
+                    commands.append({"cmd": name, "desc": desc.strip()})
+                    seen.add(name)
+            except (KeyError, TypeError, AttributeError, IndexError):
+                logger.warning("Ignoring invalid command registry entry: %r", command)
+        return commands
 
     def compose(self) -> ComposeResult:
         with Vertical(id="cp-box"):
@@ -211,23 +232,7 @@ class CommandPalette(Widget):
             yield OptionList(id="cp-option-list")
 
     def on_mount(self) -> None:
-        base_cmds = self._get_base_commands()
-        
-        # Filter out invalid base commands before initial display
-        valid_cmds = []
-        for c in base_cmds:
-            try:
-                if c.get("cmd") and CommandRegistry.exists(c["cmd"]):
-                    valid_cmds.append(c)
-            except (KeyError, AttributeError, IndexError):
-                pass
-        self._matches = valid_cmds
-        
-        if self.initial_query:
-            self._filter(self.initial_query)
-        else:
-            self._render_list()
-        
+        self._filter(self.initial_query)
         inp = self.query_one("#cp-input", Input)
         inp.focus()
         inp.cursor_position = len(inp.value)
@@ -238,33 +243,28 @@ class CommandPalette(Widget):
 
     def _filter(self, query: str) -> None:
         q = query.strip()
-        
-        base_commands = self._get_base_commands()
-        
-        # Verify commands exist in registry before displaying
-        valid_commands = []
-        for c in base_commands:
-            try:
-                if c.get("cmd") and CommandRegistry.exists(c["cmd"]):
-                    valid_commands.append(c)
-            except (KeyError, AttributeError, IndexError):
-                pass
+        valid_commands = self._valid_commands()
 
-        def is_fuzzy_match(query: str, target: str) -> bool:
-            query = query.lower()
-            target = target.lower()
+        def fuzzy_score(needle: str, target: str) -> Optional[tuple[int, int, int]]:
+            needle = needle.lower().lstrip("/")
+            target = target.lower().lstrip("/")
+            if not needle:
+                return (0, 0, len(target))
             i = 0
-            for char in query:
-                i = target.find(char, i)
-                if i == -1:
-                    return False
-                i += 1
-            return True
+            positions: List[int] = []
+            for char in needle:
+                found = target.find(char, i)
+                if found == -1:
+                    return None
+                positions.append(found)
+                i = found + 1
+            gaps = sum(b - a - 1 for a, b in zip(positions, positions[1:]))
+            return (positions[0], gaps, len(target))
         
         trigger_nested = False
         prefix = ""
         subquery = ""
-        for p in ["/session", "/tools", "/memory"]:
+        for p in CommandRegistry._nested_commands:
             if query.startswith(p + " "):
                 trigger_nested = True
                 prefix = p
@@ -277,27 +277,53 @@ class CommandPalette(Widget):
             for n in nested:
                 try:
                     full_cmd = f"{prefix} {n['cmd']}"
-                    if CommandRegistry.exists(full_cmd):
+                    if (
+                        CommandRegistry.exists(full_cmd)
+                        and isinstance(n["desc"], str)
+                        and n["desc"].strip()
+                    ):
                         valid_nested.append(n)
-                except (KeyError, AttributeError, IndexError):
-                    pass
+                except (KeyError, TypeError, AttributeError, IndexError):
+                    logger.warning("Ignoring invalid nested command entry: %r", n)
             
             if not subquery:
                 self._matches = [{"cmd": f"{prefix} {n['cmd']}", "desc": n["desc"]} for n in valid_nested]
             else:
+                scored = []
+                for nested_command in valid_nested:
+                    score = fuzzy_score(subquery, nested_command["cmd"])
+                    desc_score = fuzzy_score(subquery, nested_command["desc"])
+                    best_score = min(
+                        (candidate for candidate in (score, desc_score) if candidate is not None),
+                        default=None,
+                    )
+                    if best_score is not None:
+                        scored.append((best_score, nested_command))
+                scored.sort(key=lambda item: item[0])
                 self._matches = [
-                    {"cmd": f"{prefix} {n['cmd']}", "desc": n["desc"]} for n in valid_nested
-                    if is_fuzzy_match(subquery, n["cmd"]) or is_fuzzy_match(subquery, n["desc"])
+                    {"cmd": f"{prefix} {item['cmd']}", "desc": item["desc"]}
+                    for _, item in scored
                 ]
         else:
-            q_lower = q.lower()
-            if not q_lower:
+            if not q:
                 self._matches = valid_commands
             else:
-                self._matches = [
-                    c for c in valid_commands
-                    if is_fuzzy_match(q_lower, c["cmd"]) or is_fuzzy_match(q_lower, c["desc"])
-                ]
+                scored = []
+                for command in valid_commands:
+                    command_score = fuzzy_score(q, command["cmd"])
+                    desc_score = fuzzy_score(q, command["desc"])
+                    best_score = min(
+                        (
+                            candidate
+                            for candidate in (command_score, desc_score)
+                            if candidate is not None
+                        ),
+                        default=None,
+                    )
+                    if best_score is not None:
+                        scored.append((best_score, command))
+                scored.sort(key=lambda item: item[0])
+                self._matches = [command for _, command in scored]
                 
         self._idx = 0
         self._render_list()
@@ -315,21 +341,42 @@ class CommandPalette(Widget):
             ol.add_options(options)
             if self._matches:
                 ol.highlighted = self._idx
-        except NoMatches:
-            pass
+        except (NoMatches, KeyError, TypeError, IndexError) as exc:
+            logger.error("Command palette render failed: %s", exc)
 
     @on(OptionList.OptionSelected, "#cp-option-list")
     def _on_option_selected(self, event: OptionList.OptionSelected) -> None:
-        if event.option_id:
-            logger.info(f"Command Selected: {event.option_id}")
-            if self.on_select:
-                self.on_select(event.option_id)
-        self.remove()
+        self._confirm(event.option_id)
 
     @on(OptionList.OptionHighlighted, "#cp-option-list")
     def _on_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
-        if event.option_index is not None:
+        if event.option_index is not None and 0 <= event.option_index < len(self._matches):
             self._idx = event.option_index
+
+    def _confirm(self, command: Optional[str] = None) -> None:
+        if self._selection_committed:
+            return
+        if command is None and self._matches and 0 <= self._idx < len(self._matches):
+            command = self._matches[self._idx]["cmd"]
+        if not command or not CommandRegistry.exists(command):
+            return
+
+        self._selection_committed = True
+        logger.info("Command Selected: %s", command)
+        try:
+            if self.on_select:
+                self.on_select(command)
+        except Exception as exc:
+            logger.exception("Command Failed: %s. Reason: %s", command, exc)
+            try:
+                self.app.notify(
+                    f"Command Failed\nReason: {exc}\nSuggested Fix: Retry or use /help.",
+                    severity="error",
+                )
+            except Exception:
+                pass
+        finally:
+            self.remove()
 
     async def on_key(self, event: events.Key) -> None:
         if event.key == "escape":
@@ -353,12 +400,7 @@ class CommandPalette(Widget):
             event.prevent_default()
             event.stop()
         elif event.key == "enter":
-            if self._matches and 0 <= self._idx < len(self._matches):
-                selected_cmd = self._matches[self._idx]["cmd"]
-                logger.info(f"Command Selected: {selected_cmd}")
-                if self.on_select:
-                    self.on_select(selected_cmd)
-            self.remove()
+            self._confirm()
             event.prevent_default()
             event.stop()
 
