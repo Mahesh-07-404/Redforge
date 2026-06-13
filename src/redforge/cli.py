@@ -10,6 +10,8 @@ from pathlib import Path
 import uuid
 import json
 from redforge.core.database import SessionDatabase
+from redforge.core.state import AgentState
+
 
 import click
 from rich import print as rprint

@@ -150,18 +150,6 @@ class Sidebar(Static):
             
         lines.extend([
             "",
-            f"[{FG_MUTED}]Project Root[/]",
-            f"[dim]{project_root}[/]",
-        ])
-        
-        if project_files:
-            for f in project_files[:6]:
-                lines.append(f"  [dim]{f}[/]")
-        else:
-            lines.append("  [dim]no files found[/]")
-            
-        lines.extend([
-            "",
             f"[{FG_MUTED}]Shortcuts[/]",
             f"[{ACCENT}]Tab[/]     Palette",
             f"[{ACCENT}]Ctrl+B[/]  Sidebar",
