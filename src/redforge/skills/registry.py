@@ -21,7 +21,7 @@ class SkillMetadata:
 class SkillRegistry:
     """Registry that loads, catalogs, and indexes skills with metadata"""
 
-    def __init__(self, skills_dir: Optional[str] = None):
+    def __init__(self, skills_dir: Optional[str | Path] = None):
         if skills_dir:
             self.skills_dir = Path(skills_dir)
         else:
