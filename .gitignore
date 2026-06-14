@@ -41,6 +41,7 @@ config.yaml
 logs/
 workspaces/
 https:/
+scratch/
 
 # IDEs and Editors
 .vscode/
@@ -55,3 +56,9 @@ https:/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Databases & local state
+*.db
+*.sqlite
+*.sqlite3
+redforge.db
