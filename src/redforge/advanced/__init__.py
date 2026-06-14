@@ -210,7 +210,7 @@ class ReportGenerator:
                 raise ValueError(f"Report target '{target}' does not match session target '{session_target}'")
         
         # Validate target against placeholders
-        from redforge.core.validator import ResponseValidator
+        from redforge.core.verifier import ResponseValidator
         for ph in ResponseValidator.FORBIDDEN_PLACEHOLDERS:
             if ph in target.lower():
                 # If target matches the session target, it is considered explicitly provided

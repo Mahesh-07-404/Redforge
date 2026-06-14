@@ -26,7 +26,7 @@ class SkillLoader:
 
     def __init__(self, skills_dir: Optional[str] = None):
         self.skills_dir = Path(skills_dir) if skills_dir else self._DEFAULT_SKILLS_DIR
-        self.registry = SkillRegistry(self.skills_dir)
+        self.registry = SkillRegistry(str(self.skills_dir))
         self.loader = DynamicSkillLoader(self.registry)
         self._loaded = False
 

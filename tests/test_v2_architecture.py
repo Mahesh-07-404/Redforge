@@ -189,3 +189,35 @@ def test_report_generator():
     parsed = json.loads(report_json)
     assert len(parsed["findings"]) == 1
     assert parsed["findings"][0]["title"] == "SQLi discovered"
+
+
+@pytest.mark.asyncio
+async def test_agent_approval_routing():
+    from redforge.core.langgraph_agent import RedForgeAgent
+    from redforge.core.state import AgentState
+    
+    agent = RedForgeAgent()
+    
+    # Mock planning, execution, verification nodes to track routing
+    agent.plan_node = AsyncMock(return_value={"messages": []})
+    agent.execute_node = AsyncMock(return_value={"messages": [], "workflow_phase": "verify"})
+    agent.verify_node = AsyncMock(return_value={"messages": [], "workflow_phase": "store"})
+    agent.store_node = AsyncMock(return_value={"messages": []})
+    agent.report_node = AsyncMock(return_value={"messages": []})
+    
+    prior_state = AgentState(
+        messages=[
+            {"role": "assistant", "content": "TOOL: nmap\nTARGET: target.com\nFLAGS: -F"}
+        ],
+        target="target.com"
+    )
+    
+    await agent.run(
+        user_input="[APPROVED] Execute the planned action.",
+        target="target.com",
+        prior_state=prior_state
+    )
+    
+    # Assert plan_node was NOT called, but execute_node WAS called
+    agent.plan_node.assert_not_called()
+    agent.execute_node.assert_called_once()

@@ -162,7 +162,7 @@ class RedForgeAgent:
         messages: List[Message],
         state: AgentState,
     ) -> tuple[str, int]:
-        from redforge.core.validator import ResponseValidator
+        from redforge.core.verifier import ResponseValidator
         
         validator = ResponseValidator(target=state.target)
         retries = 3
@@ -461,8 +461,13 @@ Iteration: {state.iteration}/{self.max_iterations}
 
     async def execute_node(self, state: AgentState) -> Dict[str, Any]:
         """Execute node - Parse tool calls from the last assistant message and execute them."""
-        last_msg = state.messages[-1] if state.messages else {}
-        response_text = last_msg.get("content", "") if last_msg.get("role") == "assistant" else ""
+        response_text = ""
+        for msg in reversed(state.messages):
+            if msg.get("role") == "assistant":
+                content = msg.get("content", "")
+                if parse_tool_calls(content):
+                    response_text = content
+                    break
 
         if not response_text:
             return {}
@@ -1011,8 +1016,12 @@ Reply with ONLY the category name (e.g. CHAT or SCAN). No other text."""
 
         result = initial_state
         try:
-            result = self._merge_state(result, await self.plan_node(result))
-            next_step = self._route_after_plan(result)
+            is_approved = user_input.strip().startswith("[APPROVED]")
+            if is_approved:
+                next_step = "execute_node"
+            else:
+                result = self._merge_state(result, await self.plan_node(result))
+                next_step = self._route_after_plan(result)
 
             while True:
                 if next_step == "await_confirmation":

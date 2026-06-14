@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from redforge.core.state import AgentState, create_initial_state
 from redforge.core.langgraph_agent import RedForgeAgent
-from redforge.core.validator import ResponseValidator
+from redforge.core.verifier import ResponseValidator
 from redforge.advanced import ReportGenerator
 from redforge.llm.base import Message
 
