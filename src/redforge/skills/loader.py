@@ -22,40 +22,43 @@ class DynamicSkillLoader:
 
         all_skills = self.registry.list_skills()
 
-        # Helper to find skills by name/category
-        def find_by_name(name_sub: str, category: str) -> Optional[SkillMetadata]:
-            for s in all_skills:
-                if s.category == category.upper() and name_sub.lower() in s.name.lower():
-                    return s
-            return None
+        # 1. Tier 0 System skills (Select up to 3 relevant system skills)
+        t0_all = [s for s in all_skills if s.category == "SYSTEM"]
+        t0_all.sort(key=lambda s: s.name)
+        t0_selected = []
+        sys_kws = ["personality", "persona", "conversation", "prompt", "anti_hallucination", "hallucination"]
+        for kw in sys_kws:
+            for s in t0_all:
+                if kw in s.name.lower() and s not in t0_selected:
+                    t0_selected.append(s)
+        if not t0_selected:
+            t0_selected = t0_all[:3]
+        selected.extend(t0_selected[:3])
 
-        # 1. Tier 0 System skills based on intent
-        # For CHAT / any intent, personality and conversation are essential core
-        personality = find_by_name("personality", "SYSTEM")
-        conversation = find_by_name("conversation", "SYSTEM")
-        anti_hallucination = find_by_name("anti_hallucination", "SYSTEM")
-        
-        if personality:
-            selected.append(personality)
-        if conversation:
-            selected.append(conversation)
-        if anti_hallucination:
-            selected.append(anti_hallucination)
-
-        # 2. Tier 1 Safety skills
-        if intent in ("RECON", "SCAN", "REPORT"):
-            scope_skill = find_by_name("scope_and_authorization", "SAFETY")
-            legal_skill = find_by_name("legal_and_compliance", "SAFETY")
-            if scope_skill:
-                selected.append(scope_skill)
-            if legal_skill:
-                selected.append(legal_skill)
+        # 2. Tier 1 Safety skills (Select up to 2 relevant safety skills)
+        t1_all = [s for s in all_skills if s.category == "SAFETY"]
+        t1_all.sort(key=lambda s: s.name)
+        t1_selected = []
+        safe_kws = ["scope", "authorization", "legal", "compliance", "privacy"]
+        for kw in safe_kws:
+            for s in t1_all:
+                if kw in s.name.lower() and s not in t1_selected:
+                    t1_selected.append(s)
+        if not t1_selected:
+            t1_selected = t1_all[:2]
+        selected.extend(t1_selected[:2])
 
         # 3. Tier 2 Mode skills based on active mode
         if active_mode:
-            mode_skill = find_by_name(active_mode.lower(), "MODES")
-            if mode_skill:
-                selected.append(mode_skill)
+            norm_mode = active_mode.upper()
+            t2_excl = {"02_planning", "03_execution", "04_verification", "16_reporting", "execution_workflow", "reporting_standards"}
+            t2_skills = [
+                s for s in all_skills 
+                if s.category == "MODES" and s.mode == norm_mode
+                and not any(excl in s.name for excl in t2_excl)
+            ]
+            t2_skills.sort(key=lambda s: s.name)
+            selected.extend(t2_skills)
 
         # 4. Tier 3 Tool skills matching query keywords
         if intent in ("RECON", "SCAN"):
@@ -91,16 +94,29 @@ class DynamicSkillLoader:
                         if any(x in s.name for x in ("01_recon_tools", "06_network_tools", "08_vulnerability_scanners")):
                             matched_tools.append(s)
             
+            matched_tools.sort(key=lambda s: s.name)
             selected.extend(matched_tools)
 
         # 5. Tier 4 Execution skills
         if intent not in ("CHAT", "LEARNING", "CODING"):
-            exec_workflow = find_by_name("execution_workflow", "EXECUTION")
-            reporting_standards = find_by_name("reporting_standards", "EXECUTION")
-            if exec_workflow:
-                selected.append(exec_workflow)
-            if reporting_standards:
-                selected.append(reporting_standards)
+            t4_order = ["02_planning", "03_execution", "04_verification", "16_reporting", "execution_workflow", "reporting_standards"]
+            t4_skills = []
+            for item in t4_order:
+                for s in all_skills:
+                    if s.category in ("EXECUTION", "AUTONOMY"):
+                        if item in s.name:
+                            t4_skills.append(s)
+                    elif s.category == "MODES" and item in s.name:
+                        t4_skills.append(s)
+            
+            # Deduplicate t4 list
+            unique_t4 = []
+            seen_t4 = set()
+            for s in t4_skills:
+                if s.name not in seen_t4:
+                    seen_t4.add(s.name)
+                    unique_t4.append(s)
+            selected.extend(unique_t4)
 
         # Deduplicate while preserving order
         unique_selected = []
@@ -116,9 +132,54 @@ class DynamicSkillLoader:
 
         return unique_selected
 
-    def build_context(self, selected_skills: List[SkillMetadata]) -> str:
-        """Format selected skills into a clean system context block"""
+    def build_context(self, selected_skills: List[SkillMetadata], active_mode: str = "bugbounty", intent: str = "SCAN") -> str:
+        """Format selected skills into a clean system context block grouped by Tiers"""
         parts = []
-        for s in selected_skills:
-            parts.append(f"### [{s.category}] {s.name}\n{s.content}")
+
+        # Tier 0 - CORE SYSTEM
+        parts.append("=== TIER 0: CORE SYSTEM ===")
+        t0 = [s for s in selected_skills if s.category == "SYSTEM"]
+        for s in t0:
+            parts.append(f"### [CORE] {s.name}\n{s.content}")
+
+        # Tier 1 - SAFETY
+        parts.append("\n=== TIER 1: SAFETY ===")
+        t1 = [s for s in selected_skills if s.category == "SAFETY"]
+        for s in t1:
+            parts.append(f"### [SAFETY] {s.name}\n{s.content}")
+
+        # Tier 2 - ACTIVE MODE
+        parts.append(f"\n=== TIER 2: ACTIVE MODE ({active_mode.upper()}) ===")
+        t2_excl = {"02_planning", "03_execution", "04_verification", "16_reporting", "execution_workflow", "reporting_standards"}
+        t2 = [s for s in selected_skills if s.category == "MODES" and not any(x in s.name for x in t2_excl)]
+        for s in t2:
+            parts.append(f"### [MODE] {s.name}\n{s.content}")
+
+        # Tier 3 - TOOLS
+        parts.append("\n=== TIER 3: REQUIRED TOOLS ===")
+        t3 = [s for s in selected_skills if s.category == "TOOLS"]
+        for s in t3:
+            parts.append(f"### [TOOL] {s.name}\n{s.content}")
+
+        # Tier 4 - EXECUTION
+        if intent not in ("CHAT", "LEARNING", "CODING"):
+            parts.append("\n=== TIER 4: EXECUTION ===")
+            t4 = [s for s in selected_skills if s.category in ("EXECUTION", "AUTONOMY") or any(x in s.name for x in t2_excl)]
+            
+            # Sort according to standard order
+            t4_order = ["02_planning", "03_execution", "04_verification", "16_reporting", "execution_workflow", "reporting_standards"]
+            ordered_t4 = []
+            for item in t4_order:
+                for s in t4:
+                    if item in s.name and s not in ordered_t4:
+                        ordered_t4.append(s)
+            
+            # Append anything that didn't match standard order at the end
+            for s in t4:
+                if s not in ordered_t4:
+                    ordered_t4.append(s)
+                    
+            for s in ordered_t4:
+                parts.append(f"### [EXECUTION] {s.name}\n{s.content}")
+
         return "\n\n".join(parts)

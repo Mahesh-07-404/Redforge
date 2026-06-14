@@ -108,7 +108,14 @@ class Verifier:
         }
 
         for key, kws in keywords.items():
-            if key in desc or key in title:
+            if key in desc or key in title or any(kw in desc or kw in title for kw in kws):
+                # Check negative context
+                if key == "xss" and any(neg in output_lower for neg in ["no script", "no alert", "no xss", "not execute"]):
+                    return False
+                if key == "sqli" and any(neg in output_lower for neg in ["no sqli", "no sql", "no database", "no syntax error"]):
+                    return False
+                if key == "ssrf" and any(neg in output_lower for neg in ["no ssrf", "no curl", "no http"]):
+                    return False
                 if any(kw in output_lower for kw in kws):
                     return True
                 return False
@@ -118,8 +125,14 @@ class Verifier:
 
 class ResponseValidator:
     """Legacy compatibility wrapper for ResponseValidator"""
+    FORBIDDEN_PLACEHOLDERS = Verifier.FORBIDDEN_PLACEHOLDERS
+
     def __init__(self, target: Optional[str] = None):
         self.verifier = Verifier(target)
+        self.FORBIDDEN_PLACEHOLDERS = self.verifier.FORBIDDEN_PLACEHOLDERS
+
+    def extract_domains(self, text: str) -> List[str]:
+        return self.verifier.extract_domains(text)
 
     def validate(self, text: str, target_override: Optional[str] = None, intent: Optional[str] = None) -> Tuple[bool, str]:
         return self.verifier.validate_response(text, target_override, intent)
