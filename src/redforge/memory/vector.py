@@ -178,8 +178,8 @@ class SimpleVectorStore(VectorStore):
         self._save()
 
 
-class ChromaVectorStore(VectorStore):
-    """ChromaDB vector store implementation"""
+class QdrantVectorStore(VectorStore):
+    """Qdrant vector store implementation"""
     
     def __init__(
         self,
@@ -190,33 +190,28 @@ class ChromaVectorStore(VectorStore):
         super().__init__(persist_dir, collection_name)
         
         try:
-            import chromadb
-            from chromadb.config import Settings
+            from qdrant_client import QdrantClient
+            from qdrant_client.http.models import Distance, VectorParams
             
-            self.client = chromadb.PersistentClient(
-                path=str(self.persist_dir / "chromadb"),
-                settings=Settings(anonymized_telemetry=False)
-            )
-            
-            self.collection = self.client.get_or_create_collection(
-                name=collection_name,
-                metadata={"description": "RedForge memory store"}
-            )
-            
-            self._embedding_function = None
+            self.client = QdrantClient(path=str(self.persist_dir / "qdrant"))
             self._embedding_model = embedding_model
+            self._embedding_function = None
+            
+            # Create collection if it doesn't exist
+            collections = [c.name for c in self.client.get_collections().collections]
+            if self.collection_name not in collections:
+                self.client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=VectorParams(size=384, distance=Distance.COSINE),
+                )
+            
             self._available = True
             
         except Exception as e:
-            print(f"ChromaDB initialization failed: {e}")
+            print(f"Qdrant initialization failed: {e}")
             self.client = None
-            self.collection = None
             self._available = False
-    
-    @property
-    def is_available(self) -> bool:
-        return self._available and self.client is not None
-    
+            
     def _get_embedding(self, texts: List[str]) -> List[List[float]]:
         try:
             from sentence_transformers import SentenceTransformer
@@ -228,38 +223,60 @@ class ChromaVectorStore(VectorStore):
             return embeddings.tolist()
         except ImportError:
             import hashlib
-            return [[float(ord(c)) / 255.0 for c in hashlib.md5(t.encode()).digest()[:50]] for t in texts]
+            # Fallback embedding to match Qdrant size 384
+            # We repeat the md5 hash values to fill 384 dimensions
+            base = [float(ord(c)) / 255.0 for c in hashlib.md5(texts[0].encode()).digest()] # 16 floats
+            full = (base * 24) # 16 * 24 = 384
+            return [full for _ in texts]
         except Exception:
-            return [[0.0] * 50 for _ in texts]
+            return [[0.0] * 384 for _ in texts]
+    
+    @property
+    def is_available(self) -> bool:
+        return self._available and self.client is not None
     
     def add(self, entries: List[MemoryEntry]) -> List[str]:
         if not self.is_available:
             return []
         
+        from qdrant_client.http.models import PointStruct
+        import uuid
+        
         ids = []
+        points = []
         documents = []
-        metadatas = []
         
         for entry in entries:
-            entry_id = entry.id or hashlib.md5(entry.content.encode()).hexdigest()
-            ids.append(entry_id)
+            # Qdrant requires UUIDs or integers
+            try:
+                entry_uuid = str(uuid.UUID(entry.id))
+            except (ValueError, TypeError, AttributeError):
+                # If not a valid UUID, generate one based on the ID or content
+                hash_id = hashlib.md5((entry.id or entry.content).encode()).hexdigest()
+                entry_uuid = str(uuid.UUID(hash_id))
+                
+            entry.id = entry_uuid
+            ids.append(entry_uuid)
             documents.append(entry.content)
-            metadatas.append({
-                **entry.metadata,
-                "workspace_id": entry.workspace_id,
-                "entry_type": entry.entry_type,
-                "created_at": entry.created_at.isoformat()
-            })
-        
+            
         if documents:
             embeddings = self._get_embedding(documents)
-            self.collection.add(
-                ids=ids,
-                documents=documents,
-                metadatas=metadatas,
-                embeddings=embeddings
+            
+            for i, entry in enumerate(entries):
+                payload = {
+                    "content": entry.content,
+                    **entry.metadata,
+                    "workspace_id": entry.workspace_id,
+                    "entry_type": entry.entry_type,
+                    "created_at": entry.created_at.isoformat()
+                }
+                points.append(PointStruct(id=ids[i], vector=embeddings[i], payload=payload))
+                
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=points
             )
-        
+            
         return ids
     
     def search(
@@ -270,60 +287,84 @@ class ChromaVectorStore(VectorStore):
     ) -> List[SearchResult]:
         if not self.is_available:
             return []
+            
+        from qdrant_client.http.models import Filter, FieldCondition, MatchValue
         
-        try:
-            query_embedding = self._get_embedding([query])[0]
+        query_filter = None
+        if filter_dict:
+            conditions = [
+                FieldCondition(key=k, match=MatchValue(value=v))
+                for k, v in filter_dict.items()
+            ]
+            query_filter = Filter(must=conditions)
             
-            results = self.collection.query(
-                query_embeddings=[query_embedding],
-                n_results=limit,
-                where=filter_dict
-            )
+        query_vector = self._get_embedding([query])[0]
+        
+        hits = self.client.search(
+            collection_name=self.collection_name,
+            query_vector=query_vector,
+            query_filter=query_filter,
+            limit=limit
+        )
+        
+        results = []
+        for hit in hits:
+            payload = hit.payload or {}
+            content = payload.pop("content", "")
+            results.append(SearchResult(
+                id=str(hit.id),
+                content=content,
+                metadata=payload,
+                score=hit.score
+            ))
             
-            search_results = []
-            if results and results.get("ids"):
-                for i in range(len(results["ids"][0])):
-                    search_results.append(SearchResult(
-                        id=results["ids"][0][i],
-                        content=results["documents"][0][i],
-                        metadata=results["metadatas"][0][i] if results.get("metadatas") else {},
-                        score=float(results.get("distances", [[1.0]])[0][i]) if results.get("distances") else 1.0
-                    ))
-            
-            return search_results
-        except Exception as e:
-            print(f"Search error: {e}")
-            return []
+        return results
     
     def get(self, entry_id: str) -> Optional[MemoryEntry]:
         if not self.is_available:
             return None
-        
+            
+        import uuid
         try:
-            results = self.collection.get(ids=[entry_id])
-            if results and results.get("ids"):
-                return MemoryEntry(
-                    id=results["ids"][0],
-                    content=results["documents"][0],
-                    metadata=results["metadatas"][0] if results.get("metadatas") else {},
-                    created_at=datetime.fromisoformat(
-                        results["metadatas"][0].get("created_at", datetime.now().isoformat())
-                    ) if results.get("metadatas") else datetime.now(),
-                    workspace_id=results["metadatas"][0].get("workspace_id") if results.get("metadatas") else None,
-                    entry_type=results["metadatas"][0].get("entry_type", "memory") if results.get("metadatas") else "memory"
-                )
-        except:
-            pass
-        return None
+            entry_uuid = str(uuid.UUID(entry_id))
+        except ValueError:
+            return None
+            
+        results = self.client.retrieve(
+            collection_name=self.collection_name,
+            ids=[entry_uuid]
+        )
+        
+        if not results:
+            return None
+            
+        payload = results[0].payload or {}
+        content = payload.pop("content", "")
+        
+        return MemoryEntry(
+            id=str(results[0].id),
+            content=content,
+            metadata=payload,
+            created_at=datetime.fromisoformat(payload.get("created_at", datetime.now().isoformat())),
+            workspace_id=payload.get("workspace_id"),
+            entry_type=payload.get("entry_type", "memory")
+        )
     
     def delete(self, entry_id: str) -> bool:
         if not self.is_available:
             return False
+            
+        import uuid
         try:
-            self.collection.delete(ids=[entry_id])
-            return True
-        except:
+            entry_uuid = str(uuid.UUID(entry_id))
+        except ValueError:
             return False
+            
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=[entry_uuid]
+        )
+        return True
     
     def list_entries(
         self,
@@ -332,47 +373,62 @@ class ChromaVectorStore(VectorStore):
     ) -> List[MemoryEntry]:
         if not self.is_available:
             return []
+            
+        from qdrant_client.http.models import Filter, FieldCondition, MatchValue
         
-        try:
-            results = self.collection.get(limit=limit, where=filter_dict)
+        query_filter = None
+        if filter_dict:
+            conditions = [
+                FieldCondition(key=k, match=MatchValue(value=v))
+                for k, v in filter_dict.items()
+            ]
+            query_filter = Filter(must=conditions)
             
-            entries = []
-            if results and results.get("ids"):
-                for i in range(len(results["ids"])):
-                    entries.append(MemoryEntry(
-                        id=results["ids"][i],
-                        content=results["documents"][i],
-                        metadata=results["metadatas"][i] if results.get("metadatas") else {},
-                        created_at=datetime.fromisoformat(
-                            results["metadatas"][i].get("created_at", datetime.now().isoformat())
-                        ) if results.get("metadatas") else datetime.now(),
-                        workspace_id=results["metadatas"][i].get("workspace_id") if results.get("metadatas") else None,
-                        entry_type=results["metadatas"][i].get("entry_type", "memory") if results.get("metadatas") else "memory"
-                    ))
+        records, _ = self.client.scroll(
+            collection_name=self.collection_name,
+            scroll_filter=query_filter,
+            limit=limit,
+            with_payload=True
+        )
+        
+        entries = []
+        for r in records:
+            payload = r.payload or {}
+            content = payload.pop("content", "")
+            entries.append(MemoryEntry(
+                id=str(r.id),
+                content=content,
+                metadata=payload,
+                created_at=datetime.fromisoformat(payload.get("created_at", datetime.now().isoformat())),
+                workspace_id=payload.get("workspace_id"),
+                entry_type=payload.get("entry_type", "memory")
+            ))
             
-            return entries
-        except:
-            return []
+        return entries
     
     def clear(self) -> None:
         if self.is_available:
             try:
-                self.client.delete_collection(self.collection_name)
-                self.collection = self.client.get_or_create_collection(self.collection_name)
+                self.client.delete_collection(collection_name=self.collection_name)
+                from qdrant_client.http.models import Distance, VectorParams
+                self.client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=VectorParams(size=384, distance=Distance.COSINE),
+                )
             except:
                 pass
 
 
 def create_vector_store(
-    vector_db: str = "chroma",
+    vector_db: str = "qdrant",
     persist_dir: str = "./workspaces",
     collection_name: str = "redforge_memory"
 ) -> VectorStore:
     """Factory function to create vector store"""
     
-    if vector_db.lower() == "chroma":
+    if vector_db.lower() == "qdrant":
         try:
-            store = ChromaVectorStore(persist_dir, collection_name)
+            store = QdrantVectorStore(persist_dir, collection_name)
             if store.is_available:
                 return store
         except:

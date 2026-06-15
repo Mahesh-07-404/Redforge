@@ -217,7 +217,7 @@ class WorkspaceMemoryManager:
         self.vector_store = create_vector_store(
             vector_db=vector_db,
             persist_dir=str(self.persist_dir),
-            collection_name=f"workspace_{workspace_id[:8]}"
+            collection_name=f"redforge_memory_{workspace_id}"
         )
 
         self._memory = WorkspaceMemory(workspace_id=workspace_id)

@@ -5,7 +5,6 @@ langchain-community>=0.0.10
 
 # Vector Database
 qdrant-client>=1.7.0
-chromadb>=0.4.22
 
 # Data & Config
 pydantic>=2.5.0
@@ -25,15 +24,12 @@ click>=8.1.0
 typer>=0.9.0
 rich>=13.7.0
 textual>=0.80.0
-npyscreen>=4.10.0
-blessed>=1.20.0
 
 # Web Dashboard
 fastapi>=0.109.0
 uvicorn>=0.27.0
 websockets>=12.0
 jinja2>=3.1.0
-starlette>=0.35.0
 
 # Networking & Utilities
 requests>=2.31.0
