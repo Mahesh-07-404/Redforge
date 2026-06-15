@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from redforge.core.agent import Agent
 from redforge.core.config import Settings
 from redforge.core.langgraph_agent import RedForgeAgent
 from redforge.core.skill_loader import SkillLoader
@@ -139,17 +138,3 @@ async def test_langgraph_agent_emits_tool_and_finding_events(monkeypatch):
     assert state.findings[0]["type"] == "backend"
 
 
-@pytest.mark.asyncio
-async def test_legacy_agent_chat_streaming_updates_tokens(monkeypatch):
-    monkeypatch.setattr(ProviderFactory, "create", lambda *args, **kwargs: LegacyStreamingLLM())
-
-    settings = Settings()
-    settings.llm.streaming = True
-    agent = Agent(config=settings, llm_provider="ollama", model="fake")
-    chunks: list[str] = []
-
-    response = await agent.chat("hello", stream_callback=chunks.append)
-
-    assert response == "legacy backend"
-    assert chunks == ["legacy", " backend"]
-    assert agent.state.total_tokens > 0

@@ -6,7 +6,7 @@ from redforge.memory.vector import (
     SearchResult,
     create_vector_store,
     SimpleVectorStore,
-    ChromaVectorStore,
+    QdrantVectorStore,
 )
 from redforge.memory.workspace import WorkspaceManager, Workspace
 from redforge.memory.memory_manager import (
@@ -21,7 +21,7 @@ __all__ = [
     "SearchResult",
     "create_vector_store",
     "SimpleVectorStore",
-    "ChromaVectorStore",
+    "QdrantVectorStore",
     "WorkspaceManager",
     "Workspace",
     "WorkspaceMemoryManager",
