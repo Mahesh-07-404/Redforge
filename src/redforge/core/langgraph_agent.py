@@ -225,12 +225,11 @@ class RedForgeAgent:
         if self._memory_manager and getattr(self._memory_manager, "workspace_id", None) == workspace_id:
             return self._memory_manager
         try:
-            from redforge.memory.memory_manager import WorkspaceMemoryManager
-            self._memory_manager = WorkspaceMemoryManager(
-                workspace_id=workspace_id,
-                persist_dir=self.config.memory.persist_dir,
-                vector_db=self.config.memory.vector_db,
+            from redforge.memory.manager import MemoryManager
+            self._memory_manager = MemoryManager(
+                persist_dir=self.config.memory.persist_dir
             )
+            self._memory_manager.workspace_id = workspace_id
         except Exception:
             self._memory_manager = None
         return self._memory_manager

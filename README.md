@@ -168,18 +168,22 @@ Modes:
 ```
 RedForge/
 ├── src/redforge/
-│   ├── core/          # Agent engine, LangGraph integration
-│   ├── llm/           # LLM provider integrations
-│   ├── memory/        # Vector storage, RAG
-│   ├── modes/         # Mode implementations
-│   ├── safety/        # Safety engine
-│   ├── tools/         # Tool management
-│   ├── platforms/     # Bug bounty platform integration
-│   ├── tui/           # Terminal UI
-│   └── web/           # Web dashboard API
-├── skills/            # 128+ skill files
-├── workspaces/         # Persistent workspace storage
-└── tests/             # Test suite
+│   ├── contracts/     # Pydantic models shared across all systems
+│   ├── session/       # Session Manager with SQLite backend
+│   ├── memory/        # Memory Manager with Qdrant vector store
+│   ├── skills/        # Dynamic Skill Loader & Registry
+│   ├── intent/        # Intent Engine & Target Watcher
+│   ├── tools/         # Tool Executor & Schemas
+│   ├── verifier/      # Output Validator & Hallucination Guard
+│   ├── report/        # Report Engine & Formatter
+│   ├── core/          # Agent orchestration pipeline
+│   ├── llm/           # Optional LLM provider integrations
+│   ├── modes/         # Mode configs and registry
+│   ├── safety/        # Safety engine boundaries
+│   ├── platforms/     # Bug bounty platform integrations
+│   └── tui/           # Keyboard-first Textual terminal UI
+├── skills/            # Extracted skill registry and domains
+└── tests/             # Comprehensive unit & integration tests
 ```
 
 ## Skills Framework
