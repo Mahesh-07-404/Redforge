@@ -1,10 +1,97 @@
 {
   "skills": [
     {
-      "id": "system_session_awareness",
-      "path": "domain/system/session_awareness.md",
-      "title": "CORE SYSTEM: Session Awareness",
-      "summary": "Ensure strict alignment with the active session state and target immutability rules.",
+      "id": "execution_execution_workflow",
+      "path": "domain/execution/execution_workflow.md",
+      "title": "EXECUTION: Workflow",
+      "summary": "Follow the strict operational workflow for all security testing activities. Do not skip any stages.",
+      "tags": [
+        "execution"
+      ],
+      "mode": [],
+      "embedding_id": null
+    },
+    {
+      "id": "execution_reporting_standards",
+      "path": "domain/execution/reporting_standards.md",
+      "title": "EXECUTION: Reporting Standards",
+      "summary": "All reports and findings must be supported by verified tool output logs.",
+      "tags": [
+        "execution"
+      ],
+      "mode": [],
+      "embedding_id": null
+    },
+    {
+      "id": "modes_android",
+      "path": "domain/modes/android.md",
+      "title": "MODE: Android Security",
+      "summary": "Perform mobile application security testing, dynamic instrumentation, and static reverse engineering.",
+      "tags": [
+        "modes"
+      ],
+      "mode": [
+        "modes"
+      ],
+      "embedding_id": null
+    },
+    {
+      "id": "modes_bugbounty",
+      "path": "domain/modes/bugbounty.md",
+      "title": "MODE: Bug Bounty",
+      "summary": "Follow real-world bug bounty methodologies while respecting program scope policies.",
+      "tags": [
+        "modes"
+      ],
+      "mode": [
+        "modes"
+      ],
+      "embedding_id": null
+    },
+    {
+      "id": "modes_coding",
+      "path": "domain/modes/coding.md",
+      "title": "MODE: Secure Coding",
+      "summary": "Assist in secure application development, code reviews, and pipeline security auditing.",
+      "tags": [
+        "modes"
+      ],
+      "mode": [
+        "modes"
+      ],
+      "embedding_id": null
+    },
+    {
+      "id": "modes_ctf",
+      "path": "domain/modes/ctf.md",
+      "title": "MODE: Capture The Flag (CTF)",
+      "summary": "Focus on challenge-solving and flag extraction within CTF training environments.",
+      "tags": [
+        "modes"
+      ],
+      "mode": [
+        "modes"
+      ],
+      "embedding_id": null
+    },
+    {
+      "id": "modes_learning",
+      "path": "domain/modes/learning.md",
+      "title": "MODE: Security Learning",
+      "summary": "Deliver educational, step-by-step guidance to help users learn cybersecurity concepts and secure configurations.",
+      "tags": [
+        "modes"
+      ],
+      "mode": [
+        "modes"
+      ],
+      "embedding_id": null
+    },
+    {
+      "id": "system_conversation",
+      "path": "domain/system/conversation.md",
+      "title": "CORE SYSTEM: Conversation",
+      "summary": "Allow natural conversation, chat, and casual exchanges without forcing target validation or scanning workflows.",
       "tags": [
         "system"
       ],
@@ -34,10 +121,10 @@
       "embedding_id": null
     },
     {
-      "id": "system_conversation",
-      "path": "domain/system/conversation.md",
-      "title": "CORE SYSTEM: Conversation",
-      "summary": "Allow natural conversation, chat, and casual exchanges without forcing target validation or scanning workflows.",
+      "id": "system_session_awareness",
+      "path": "domain/system/session_awareness.md",
+      "title": "CORE SYSTEM: Session Awareness",
+      "summary": "Ensure strict alignment with the active session state and target immutability rules.",
       "tags": [
         "system"
       ],
@@ -45,74 +132,9 @@
       "embedding_id": null
     },
     {
-      "id": "modes_bugbounty",
-      "path": "domain/modes/bugbounty.md",
-      "title": "MODE: Bug Bounty",
-      "summary": "Follow real-world bug bounty methodologies while respecting program scope policies.",
-      "tags": [
-        "modes"
-      ],
-      "mode": [
-        "modes"
-      ],
-      "embedding_id": null
-    },
-    {
-      "id": "modes_ctf",
-      "path": "domain/modes/ctf.md",
-      "title": "MODE: Capture The Flag (CTF)",
-      "summary": "Focus on challenge-solving and flag extraction within CTF training environments.",
-      "tags": [
-        "modes"
-      ],
-      "mode": [
-        "modes"
-      ],
-      "embedding_id": null
-    },
-    {
-      "id": "modes_coding",
-      "path": "domain/modes/coding.md",
-      "title": "MODE: Secure Coding",
-      "summary": "Assist in secure application development, code reviews, and pipeline security auditing.",
-      "tags": [
-        "modes"
-      ],
-      "mode": [
-        "modes"
-      ],
-      "embedding_id": null
-    },
-    {
-      "id": "modes_learning",
-      "path": "domain/modes/learning.md",
-      "title": "MODE: Security Learning",
-      "summary": "Deliver educational, step-by-step guidance to help users learn cybersecurity concepts and secure configurations.",
-      "tags": [
-        "modes"
-      ],
-      "mode": [
-        "modes"
-      ],
-      "embedding_id": null
-    },
-    {
-      "id": "modes_android",
-      "path": "domain/modes/android.md",
-      "title": "MODE: Android Security",
-      "summary": "Perform mobile application security testing, dynamic instrumentation, and static reverse engineering.",
-      "tags": [
-        "modes"
-      ],
-      "mode": [
-        "modes"
-      ],
-      "embedding_id": null
-    },
-    {
-      "id": "tools_04_forensics_tools",
-      "path": "domain/tools/04_forensics_tools.md",
-      "title": "TOOLS Skill: Forensics Tools",
+      "id": "tools_01_recon_tools",
+      "path": "domain/tools/01_recon_tools.md",
+      "title": "TOOLS Skill: Reconnaissance Tools",
       "summary": "## Purpose",
       "tags": [
         "tools"
@@ -132,42 +154,31 @@
       "embedding_id": null
     },
     {
-      "id": "tools_05_password_tools",
-      "path": "domain/tools/05_password_tools.md",
-      "title": "TOOLS Skill: Password Cracking Tools",
-      "summary": "## Purpose",
-      "tags": [
-        "tools"
-      ],
-      "mode": [],
-      "embedding_id": null
-    },
-    {
-      "id": "tools_09_container_cloud",
-      "path": "domain/tools/09_container_cloud.md",
-      "title": "TOOLS Skill: Container & Cloud Tools",
-      "summary": "## Purpose",
-      "tags": [
-        "tools"
-      ],
-      "mode": [],
-      "embedding_id": null
-    },
-    {
-      "id": "tools_08_vulnerability_scanners",
-      "path": "domain/tools/08_vulnerability_scanners.md",
-      "title": "TOOLS Skill: Vulnerability Scanning",
-      "summary": "## Purpose",
-      "tags": [
-        "tools"
-      ],
-      "mode": [],
-      "embedding_id": null
-    },
-    {
       "id": "tools_03_binary_tools",
       "path": "domain/tools/03_binary_tools.md",
       "title": "TOOLS Skill: Binary Analysis Tools",
+      "summary": "## Purpose",
+      "tags": [
+        "tools"
+      ],
+      "mode": [],
+      "embedding_id": null
+    },
+    {
+      "id": "tools_04_forensics_tools",
+      "path": "domain/tools/04_forensics_tools.md",
+      "title": "TOOLS Skill: Forensics Tools",
+      "summary": "## Purpose",
+      "tags": [
+        "tools"
+      ],
+      "mode": [],
+      "embedding_id": null
+    },
+    {
+      "id": "tools_05_password_tools",
+      "path": "domain/tools/05_password_tools.md",
+      "title": "TOOLS Skill: Password Cracking Tools",
       "summary": "## Purpose",
       "tags": [
         "tools"
@@ -187,9 +198,31 @@
       "embedding_id": null
     },
     {
-      "id": "tools_01_recon_tools",
-      "path": "domain/tools/01_recon_tools.md",
-      "title": "TOOLS Skill: Reconnaissance Tools",
+      "id": "tools_07_exploitation_tools",
+      "path": "domain/tools/07_exploitation_tools.md",
+      "title": "TOOLS Skill: Exploitation Tools",
+      "summary": "## Purpose",
+      "tags": [
+        "tools"
+      ],
+      "mode": [],
+      "embedding_id": null
+    },
+    {
+      "id": "tools_08_vulnerability_scanners",
+      "path": "domain/tools/08_vulnerability_scanners.md",
+      "title": "TOOLS Skill: Vulnerability Scanning",
+      "summary": "## Purpose",
+      "tags": [
+        "tools"
+      ],
+      "mode": [],
+      "embedding_id": null
+    },
+    {
+      "id": "tools_09_container_cloud",
+      "path": "domain/tools/09_container_cloud.md",
+      "title": "TOOLS Skill: Container & Cloud Tools",
       "summary": "## Purpose",
       "tags": [
         "tools"
@@ -201,17 +234,6 @@
       "id": "tools_10_wireless_tools",
       "path": "domain/tools/10_wireless_tools.md",
       "title": "TOOLS Skill: Wireless Security Tools",
-      "summary": "## Purpose",
-      "tags": [
-        "tools"
-      ],
-      "mode": [],
-      "embedding_id": null
-    },
-    {
-      "id": "tools_07_exploitation_tools",
-      "path": "domain/tools/07_exploitation_tools.md",
-      "title": "TOOLS Skill: Exploitation Tools",
       "summary": "## Purpose",
       "tags": [
         "tools"
