@@ -427,7 +427,7 @@ class RedForgeTUI(App):
 
     def _rebuild_agent(self, provider: str, model: str, announce: bool = True) -> None:
         from redforge.core.config import get_settings
-        from redforge.core.langgraph_agent import RedForgeAgent
+        from redforge.core.agent import RedForgeAgent
 
         settings = get_settings()
         settings.llm.provider = provider

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from redforge.core.config import Settings
-from redforge.core.langgraph_agent import RedForgeAgent
+from redforge.core.agent import RedForgeAgent
 from redforge.core.skill_loader import SkillLoader
 from redforge.core.state import AutonomyLevel, AgentMode
 from redforge.llm.base import ChatResponse, ProviderFactory

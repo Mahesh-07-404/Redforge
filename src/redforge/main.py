@@ -2,7 +2,7 @@ import typer
 from rich import print as rprint
 from .session.store import SessionStore
 from .session.manager import SessionManager
-from .core.langgraph_agent import RedForgeAgent
+from .core.agent import RedForgeAgent
 from .core.config import get_settings
 import asyncio
 

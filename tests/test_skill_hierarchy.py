@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 from redforge.core.state import AgentState, AgentMode, AutonomyLevel
 from redforge.core.skill_loader import SkillLoader, Skill
 from redforge.core.verifier import ResponseValidator
-from redforge.core.langgraph_agent import RedForgeAgent
+from redforge.core.agent import RedForgeAgent
 
 @pytest.fixture
 def skill_loader():

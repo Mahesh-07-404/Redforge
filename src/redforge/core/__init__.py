@@ -17,9 +17,8 @@ def __getattr__(name: str):
         return {"Settings": Settings, "get_settings": get_settings}[name]
 
     if name == "RedForgeAgent":
-        from redforge.core.langgraph_agent import RedForgeAgent
-
-        return RedForgeAgent
+        from .factory import create_redforge_agent
+        return create_redforge_agent
 
     if name in {"AgentState", "AutonomyLevel", "AgentMode"}:
         from redforge.core.state import AgentMode, AgentState, AutonomyLevel

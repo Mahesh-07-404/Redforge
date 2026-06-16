@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from redforge.core.config import get_settings
-from redforge.core.langgraph_agent import RedForgeAgent
+from redforge.core.agent import RedForgeAgent
 from redforge.core.state import AgentState, AutonomyLevel, AgentMode, create_initial_state
 from redforge.utils.platform import check_tool_available, detect_platform, get_tool_version
 

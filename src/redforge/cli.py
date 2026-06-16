@@ -141,7 +141,7 @@ def chat(mode, workspace, autonomy, provider, model, target):
     """Start an interactive React-style pentesting chat session"""
     from redforge.core.autonomy_controller import AutonomyController, AutonomyLevel
     from redforge.core.config import get_settings
-    from redforge.core.langgraph_agent import RedForgeAgent
+    from redforge.core.agent import RedForgeAgent
     from redforge.memory.workspace import WorkspaceManager
 
     console.print(BANNER)
@@ -390,7 +390,7 @@ async def _chat_loop(agent, autonomy_ctrl, mode, workspace, initial_target=None)
 
     def rebuild_agent(prov: str, mod: str):
         nonlocal agent
-        from redforge.core.langgraph_agent import RedForgeAgent
+        from redforge.core.agent import RedForgeAgent
         agent = RedForgeAgent(
             config=settings,
             llm_provider=prov,
@@ -1214,7 +1214,7 @@ def status():
 def doctor():
     """Check system health and dependencies"""
     from redforge.core.config import get_settings
-    from redforge.core.langgraph_agent import RedForgeAgent
+    from redforge.core.agent import RedForgeAgent
     from redforge.utils.platform import check_tool_available, detect_platform, get_tool_version
 
     console.print(Panel.fit("[bold]🩺 System Health Check[/bold]"))
