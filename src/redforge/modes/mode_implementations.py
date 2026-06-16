@@ -350,6 +350,8 @@ class CTFMode(BaseMode):
     def _get_hints(self, task: str, context: Dict[str, Any]) -> List[str]:
         """Get hints for a challenge"""
         challenge_id = context.get("challenge_id")
+        if not isinstance(challenge_id, str):
+            return []
         challenge = self.challenges.get(challenge_id)
         
         if not challenge:
