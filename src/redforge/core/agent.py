@@ -39,18 +39,29 @@ class RedForgeAgent:
         for callback in callbacks:
             try:
                 import inspect
+                # Wrap payload in event envelope
                 result = callback({"event": event, **payload})
                 if inspect.isawaitable(result):
                     await result
             except Exception as e:
                 logger.error(f"Error in event handler for {event}: {e}")
 
-    async def run(self, user_input: str, session_id: str) -> Dict[str, Any]:
-        """Runs a single turn of the pipeline and emits events."""
-        await self._emit("run_start", user_input=user_input, session_id=session_id)
+    async def run(
+        self, 
+        user_input: str, 
+        session_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Runs a single turn of the pipeline and emits events.
+        Compatible with legacy signatures by accepting **kwargs.
+        """
+        sid = session_id or workspace_id or "default"
+        await self._emit("run_start", user_input=user_input, session_id=sid)
         
         try:
-            result = await self.pipeline.process_turn(user_input, session_id)
+            result = await self.pipeline.process_turn(user_input, sid)
             
             # Emit results as events for the UI
             if "response" in result:
@@ -59,14 +70,21 @@ class RedForgeAgent:
             if "results" in result:
                 for res in result["results"]:
                     if hasattr(res, "tool_result"):
-                        await self._emit("tool_end", tool=res.tool_result.tool_name, success=res.status.value == "passed")
+                        await self._emit("tool_end", 
+                                         tool=res.tool_result.tool_name, 
+                                         success=res.status.value == "passed",
+                                         result=res.tool_result.to_dict() if hasattr(res.tool_result, "to_dict") else res.tool_result)
+
+            if result.get("status") == "pending_approval":
+                await self._emit("confirmation_required", 
+                                 pending_confirmation={"message": result.get("response"), "tool_calls": []})
 
             await self._emit("run_end", status=result.get("status"))
             return result
         except Exception as e:
             await self._emit("error", message=str(e))
             logger.exception(f"Pipeline execution failed: {e}")
-            return {"status": "error", "message": str(e)}
+            return {"status": "error", "message": str(e), "messages": []} # returning messages list for compatibility
 
     @property
     def llm(self):

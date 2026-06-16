@@ -13,8 +13,11 @@ from redforge.memory.manager import MemoryManager
 from redforge.tools.executor import ToolExecutor
 from redforge.verifier.verifier import Verifier
 from redforge.report.engine import ReportEngine
+from redforge.safety import SafetyEngine
+from redforge.llm import get_llm
 
-def test_full_session_pipeline(tmp_path):
+@pytest.mark.asyncio
+async def test_full_session_pipeline(tmp_path):
     store = SessionStore(str(tmp_path / "test.db"))
     session_manager = SessionManager(store)
     
@@ -34,13 +37,20 @@ def test_full_session_pipeline(tmp_path):
     tool_executor = ToolExecutor()
     verifier = Verifier()
     report_engine = ReportEngine()
+    safety_engine = SafetyEngine()
+    
+    # Mock LLM for test
+    from unittest.mock import AsyncMock
+    llm_provider = AsyncMock()
+    llm_provider.chat.return_value = AsyncMock(content="I will scan the target.")
     
     pipeline = Pipeline(
         session_manager, memory_manager, skill_loader,
-        intent_engine, tool_executor, verifier, report_engine
+        intent_engine, tool_executor, verifier, report_engine,
+        safety_engine, llm_provider
     )
     
-    result = pipeline.process_turn("scan the target", session.id)
+    result = await pipeline.process_turn("scan the target", session.id)
     
     assert result["intent"].intent_type.value == "scan"
-    assert result["context"] is not None
+    assert "response" in result
