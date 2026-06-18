@@ -6,7 +6,7 @@ import subprocess
 import shutil
 import distro
 from enum import Enum
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Any
 from dataclasses import dataclass
 
 
@@ -47,7 +47,7 @@ class PlatformInfo:
     os_version: str
 
 
-TOOL_PACKAGES: Dict[str, Dict[str, any]] = {
+TOOL_PACKAGES: Dict[str, Dict[str, Any]] = {
     "kali": {
         "package_manager": PackageManager.APT,
         "tools": {
@@ -162,7 +162,10 @@ def detect_platform() -> PlatformInfo:
         package_manager = PackageManager.WINGET
         pkg_cmd = "winget"
         os_name = "Windows"
-        os_version = str(sys.getwindowsversion().major)
+        if hasattr(sys, "getwindowsversion"):
+            os_version = str(getattr(sys, "getwindowsversion")().major)
+        else:
+            os_version = ""
     elif system == "linux":
         distro_id = distro.id().lower()
         os_name = distro.name()

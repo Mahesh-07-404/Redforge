@@ -141,7 +141,7 @@ def chat(mode, workspace, autonomy, provider, model, target):
     """Start an interactive React-style pentesting chat session"""
     from redforge.core.autonomy_controller import AutonomyController, AutonomyLevel
     from redforge.core.config import get_settings
-    from redforge.core.agent import RedForgeAgent
+    from redforge.core.factory import create_redforge_agent
     from redforge.memory.workspace import WorkspaceManager
 
     console.print(BANNER)
@@ -152,7 +152,7 @@ def chat(mode, workspace, autonomy, provider, model, target):
     wm = WorkspaceManager(settings.memory.persist_dir)
     ws = wm.get_or_create_workspace(workspace)
 
-    agent = RedForgeAgent(
+    agent = create_redforge_agent(
         config=settings,
         llm_provider=provider or settings.llm.provider,
         model=model or settings.llm.model,

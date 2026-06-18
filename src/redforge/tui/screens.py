@@ -1,6 +1,6 @@
 """TUI screens for RedForge"""
 
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any, Optional
 from blessed import Terminal
 
 
@@ -22,7 +22,7 @@ class Screen:
 class DashboardScreen(Screen):
     """Dashboard overview screen"""
     
-    def __init__(self, term: Terminal, data: dict = None):
+    def __init__(self, term: Terminal, data: Optional[Dict[str, Any]] = None):
         super().__init__(term)
         self.data = data or {}
     
@@ -66,10 +66,11 @@ class DashboardScreen(Screen):
 class ChatScreen(Screen):
     """Chat interface screen"""
     
-    def __init__(self, term: Terminal):
+    def __init__(self, term: Terminal, data: Optional[Dict[str, Any]] = None):
         super().__init__(term)
         self.history: List[Tuple[str, str]] = []
         self.input_buffer = ""
+        self.data = data or {}
     
     def draw(self, height: int, width: int):
         """Draw chat interface"""
@@ -121,7 +122,7 @@ class ChatScreen(Screen):
 class WorkspaceScreen(Screen):
     """Workspace management screen"""
     
-    def __init__(self, term: Terminal, workspaces: List[dict] = None):
+    def __init__(self, term: Terminal, workspaces: Optional[List[Dict[str, Any]]] = None):
         super().__init__(term)
         self.workspaces = workspaces or []
     

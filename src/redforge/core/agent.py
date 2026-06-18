@@ -3,6 +3,7 @@ import logging
 
 from .pipeline import Pipeline
 from ..contracts.session import SessionState
+from .state import AgentState, WorkflowPhase
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,6 @@ class RedForgeAgent:
         for callback in callbacks:
             try:
                 import inspect
-                # Wrap payload in event envelope
                 result = callback({"event": event, **payload})
                 if inspect.isawaitable(result):
                     await result
@@ -52,7 +52,7 @@ class RedForgeAgent:
         session_id: Optional[str] = None,
         workspace_id: Optional[str] = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> AgentState:
         """
         Runs a single turn of the pipeline and emits events.
         Compatible with legacy signatures by accepting **kwargs.
@@ -60,31 +60,47 @@ class RedForgeAgent:
         sid = session_id or workspace_id or "default"
         await self._emit("run_start", user_input=user_input, session_id=sid)
         
+        state_dict = {
+            "messages": [],
+            "findings": [],
+            "tools_used": [],
+            "total_tokens": 0,
+            "error": None,
+            "pending_confirmation": None
+        }
+
         try:
             result = await self.pipeline.process_turn(user_input, sid)
             
-            # Emit results as events for the UI
+            # Populate state_dict from pipeline result for UI compatibility
             if "response" in result:
                 await self._emit("assistant_end", content=result["response"])
+                state_dict["messages"].append({"role": "assistant", "content": result["response"]})
             
             if "results" in result:
                 for res in result["results"]:
                     if hasattr(res, "tool_result"):
+                        tool_res = res.tool_result
+                        state_dict["tools_used"].append(tool_res.tool_name)
+                        state_dict["messages"].append({"role": "tool", "content": tool_res.stdout or tool_res.error})
                         await self._emit("tool_end", 
-                                         tool=res.tool_result.tool_name, 
+                                         tool=tool_res.tool_name, 
                                          success=res.status.value == "passed",
-                                         result=res.tool_result.to_dict() if hasattr(res.tool_result, "to_dict") else res.tool_result)
+                                         result=tool_res.to_dict() if hasattr(tool_res, "to_dict") else tool_res)
 
             if result.get("status") == "pending_approval":
+                state_dict["pending_confirmation"] = {"message": result.get("response"), "tool_calls": []}
                 await self._emit("confirmation_required", 
-                                 pending_confirmation={"message": result.get("response"), "tool_calls": []})
+                                 pending_confirmation=state_dict["pending_confirmation"])
 
             await self._emit("run_end", status=result.get("status"))
-            return result
+            
         except Exception as e:
             await self._emit("error", message=str(e))
             logger.exception(f"Pipeline execution failed: {e}")
-            return {"status": "error", "message": str(e), "messages": []} # returning messages list for compatibility
+            state_dict["error"] = str(e)
+            
+        return AgentState(**state_dict)
 
     @property
     def llm(self):
