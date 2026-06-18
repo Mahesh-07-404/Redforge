@@ -1,2 +1,0 @@
-[console_scripts]
-redforge = redforge.cli:main
