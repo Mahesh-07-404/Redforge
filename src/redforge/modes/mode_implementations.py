@@ -271,7 +271,7 @@ class CTFMode(BaseMode):
     
     def execute(self, task: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Execute CTF task"""
-        results = {
+        results: Dict[str, Any] = {
             "task": task,
             "solve": None,
             "hints": [],
@@ -404,7 +404,7 @@ class LearningMode(BaseMode):
     
     def execute(self, task: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Execute learning task"""
-        results = {
+        results: Dict[str, Any] = {
             "task": task,
             "lesson": None,
             "exercise": None,
@@ -508,7 +508,7 @@ class CodingMode(BaseMode):
     
     def execute(self, task: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Execute coding task"""
-        results = {
+        results: Dict[str, Any] = {
             "task": task,
             "analysis": None,
             "fix": None
@@ -605,7 +605,7 @@ class AndroidMode(BaseMode):
     
     def execute(self, task: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Execute Android security task"""
-        results = {
+        results: Dict[str, Any] = {
             "task": task,
             "analysis": None,
             "finding": None
