@@ -33,7 +33,9 @@ def create_redforge_agent(
     settings = config or get_settings()
     
     # 1. Session Manager
-    db_path = str(Path(settings.memory.persist_dir) / "sessions.db")
+    persist_path = Path(settings.memory.persist_dir)
+    persist_path.mkdir(parents=True, exist_ok=True)
+    db_path = str(persist_path / "sessions.db")
     store = SessionStore(db_path)
     session_manager = SessionManager(store)
     

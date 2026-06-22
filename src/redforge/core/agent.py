@@ -56,7 +56,10 @@ class RedForgeAgent:
             
             settings = config or get_settings()
             
-            db_path = str(Path(settings.memory.persist_dir) / "sessions.db")
+            from pathlib import Path
+            persist_path = Path(settings.memory.persist_dir)
+            persist_path.mkdir(parents=True, exist_ok=True)
+            db_path = str(persist_path / "sessions.db")
             store = SessionStore(db_path)
             session_manager = SessionManager(store)
             
@@ -145,8 +148,11 @@ class RedForgeAgent:
         mode = kwargs.get("mode")
         target = kwargs.get("target")
         autonomy = kwargs.get("autonomy_level") or kwargs.get("autonomy")
+        async def token_cb(token: str):
+            await self._emit("token", token=token)
+
         try:
-            result = await self.pipeline.process_turn(user_input, sid, mode=mode, target=target, autonomy=autonomy)
+            result = await self.pipeline.process_turn(user_input, sid, mode=mode, target=target, autonomy=autonomy, token_callback=token_cb)
             
             # Populate state_dict from pipeline result for UI compatibility
             if "response" in result:

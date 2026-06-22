@@ -91,6 +91,7 @@ class Pipeline:
         history = [Message(role="user", content=raw_input)]
         all_results = []
         max_iterations = 10
+        total_tokens = 0
         
         for i in range(max_iterations):
             # 4. Dynamic Skill Loader
@@ -112,10 +113,17 @@ class Pipeline:
                         await token_callback(chunk)
                 content = "".join(content_chunks)
                 from ..llm.base import ChatResponse
-                response = ChatResponse(content=content, model=getattr(self.llm_provider, "model", "fake"))
+                response = ChatResponse(
+                    content=content, 
+                    model=getattr(self.llm_provider, "model", "fake"),
+                    usage={"total_tokens": len(content.split())}
+                )
             else:
                 response = await self.llm_provider.chat(messages)
                 content = response.content
+            
+            if response.usage and "total_tokens" in response.usage:
+                total_tokens += response.usage["total_tokens"]
             history.append(Message(role="assistant", content=content))
             
             # 6. Hallucination Guard (Cross-check text only)
@@ -151,7 +159,8 @@ class Pipeline:
                         "status": "pending_approval",
                         "response": content,
                         "intent": intent,
-                        "session": session
+                        "session": session,
+                        "total_tokens": total_tokens
                     }
                 
                 # Execute
@@ -182,7 +191,8 @@ class Pipeline:
             "intent": intent,
             "response": history[-1].content,
             "results": all_results,
-            "session": session
+            "session": session,
+            "total_tokens": total_tokens
         }
 
     def _build_system_prompt(self, session: SessionState, intent: ParsedIntent, skills: str, memory: str) -> str:
