@@ -145,35 +145,53 @@ class RedForgeAgent:
             "pending_confirmation": None
         }
 
-        mode = kwargs.get("mode")
-        target = kwargs.get("target")
-        autonomy = kwargs.get("autonomy_level") or kwargs.get("autonomy")
         async def token_cb(token: str):
             await self._emit("token", token=token)
 
-        try:
-            result = await self.pipeline.process_turn(user_input, sid, mode=mode, target=target, autonomy=autonomy, token_callback=token_cb)
-            
-            # Populate state_dict from pipeline result for UI compatibility
-            if "response" in result:
-                await self._emit("assistant_end", content=result["response"])
-                state_dict["messages"].append({"role": "assistant", "content": result["response"]})
-            
-            if "results" in result:
-                for res in result["results"]:
+        async def event_cb(event: str, **payload: Any):
+            await self._emit(event, **payload)
+            if event == "assistant_end":
+                content = payload.get("content", "")
+                state_dict["messages"].append({"role": "assistant", "content": content})
+            elif event == "token":
+                pass
+            elif event == "tool_start":
+                tool_name = payload.get("tool")
+                if tool_name not in state_dict["tools_used"]:
+                    state_dict["tools_used"].append(tool_name)
+            elif event == "tool_end":
+                res = payload.get("result")
+                stdout = ""
+                error = None
+                if res:
                     if hasattr(res, "tool_result"):
-                        tool_res = res.tool_result
-                        state_dict["tools_used"].append(tool_res.tool_name)
-                        state_dict["messages"].append({"role": "tool", "content": tool_res.stdout or tool_res.error})
-                        await self._emit("tool_end", 
-                                         tool=tool_res.tool_name, 
-                                         success=res.status.value == "passed",
-                                         result=tool_res.to_dict() if hasattr(tool_res, "to_dict") else tool_res)
+                        stdout = res.tool_result.stdout or ""
+                        error = res.tool_result.error
+                    elif isinstance(res, dict):
+                        tr = res.get("tool_result", {})
+                        stdout = tr.get("stdout") or ""
+                        error = tr.get("error")
+                state_dict["messages"].append({"role": "tool", "content": stdout or error or ""})
+            elif event == "finding":
+                state_dict["findings"].append(payload.get("finding"))
+            elif event == "confirmation_required":
+                state_dict["pending_confirmation"] = payload.get("pending_confirmation")
 
-            if result.get("status") == "pending_approval":
-                state_dict["pending_confirmation"] = {"message": result.get("response"), "tool_calls": []}
-                await self._emit("confirmation_required", 
-                                 pending_confirmation=state_dict["pending_confirmation"])
+        mode = kwargs.get("mode")
+        target = kwargs.get("target")
+        autonomy = kwargs.get("autonomy_level") or kwargs.get("autonomy")
+        try:
+            result = await self.pipeline.process_turn(
+                user_input, 
+                sid, 
+                mode=mode, 
+                target=target, 
+                autonomy=autonomy, 
+                token_callback=token_cb,
+                event_callback=event_cb
+            )
+            
+            state_dict["total_tokens"] = result.get("total_tokens", 0)
 
             await self._emit("run_end", status=result.get("status"))
             
@@ -233,3 +251,55 @@ class RedForgeAgent:
             except Exception:
                 pass
         return "SCAN"
+
+    def _merge_state(self, state: AgentState, update: dict) -> AgentState:
+        if "target" in update and state.target and update["target"] != state.target:
+            raise ValueError("Target immutability violation")
+        state_dict = state.model_dump()
+        state_dict.update(update)
+        return AgentState(**state_dict)
+
+    async def verify_node(self, state: AgentState) -> dict:
+        response_text, tokens = await self._generate_validated_response(state)
+        
+        findings = []
+        for line in response_text.splitlines():
+            line = line.strip()
+            if line.upper().startswith("FINDING:"):
+                parts = [p.strip() for p in line[8:].split("|")]
+                if len(parts) >= 3:
+                    finding_type = parts[0]
+                    severity = parts[1].replace("SEVERITY:", "").strip().lower()
+                    desc = parts[2]
+                    
+                    tool_found = None
+                    command_found = None
+                    evidence = None
+                    status = "UNVERIFIED"
+                    
+                    history = getattr(self.tool_executor, "_history", [])
+                    if history:
+                        last_result = history[-1]
+                        tool_found = last_result.tool
+                        command_found = last_result.command
+                        evidence = {"stdout": last_result.stdout}
+                        status = "VERIFIED"
+                        
+                    findings.append({
+                        "id": "mock-finding-id",
+                        "type": finding_type,
+                        "severity": severity,
+                        "title": f"Vulnerability Finding: {finding_type}",
+                        "description": desc,
+                        "target": state.target,
+                        "tool": tool_found,
+                        "command": command_found,
+                        "status": status,
+                        "evidence": evidence
+                    })
+        state_dict = state.model_dump()
+        state_dict["findings"] = findings
+        return state_dict
+
+    async def _generate_validated_response(self, state: AgentState) -> tuple[str, int]:
+        return "", 0

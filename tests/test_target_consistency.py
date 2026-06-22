@@ -83,8 +83,11 @@ class TestResponseValidator:
 class TestTargetImmutability:
     """Test target immutability checks in AgentState and LangGraph agent"""
 
-    def test_merge_state_target_immutability(self):
-        agent = RedForgeAgent()
+    def test_merge_state_target_immutability(self, tmp_path):
+        from redforge.core.config import Settings
+        settings = Settings()
+        settings.memory.persist_dir = str(tmp_path / "workspaces")
+        agent = RedForgeAgent(config=settings)
         state = create_initial_state(user_input="test", target="original.com")
         
         # Valid merge updates target with same target
@@ -101,8 +104,11 @@ class TestFindingsVerification:
     """Test that findings are marked correctly with status based on evidence"""
 
     @pytest.mark.asyncio
-    async def test_findings_validation(self):
-        agent = RedForgeAgent()
+    async def test_findings_validation(self, tmp_path):
+        from redforge.core.config import Settings
+        settings = Settings()
+        settings.memory.persist_dir = str(tmp_path / "workspaces")
+        agent = RedForgeAgent(config=settings)
         state = create_initial_state(user_input="test", target="mytarget.com")
         state.messages.append({
             "role": "tool",
@@ -132,8 +138,11 @@ class TestFindingsVerification:
             assert finding["evidence"]["stdout"] == "Port 80 is open"
 
     @pytest.mark.asyncio
-    async def test_findings_without_evidence_unverified(self):
-        agent = RedForgeAgent()
+    async def test_findings_without_evidence_unverified(self, tmp_path):
+        from redforge.core.config import Settings
+        settings = Settings()
+        settings.memory.persist_dir = str(tmp_path / "workspaces")
+        agent = RedForgeAgent(config=settings)
         state = create_initial_state(user_input="test", target="mytarget.com")
         state.messages.append({
             "role": "tool",

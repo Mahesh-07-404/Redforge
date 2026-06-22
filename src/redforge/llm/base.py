@@ -50,6 +50,7 @@ class LLMProvider(ABC):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.extra_kwargs = kwargs
+        self.provider = self.__class__.__name__.lower().replace("provider", "")
     
     @abstractmethod
     async def chat(

@@ -49,7 +49,7 @@ class SessionManager:
             )
             conn.commit()
 
-    def set_target(self, session_id: str, new_target: str) -> None:
+    def set_target(self, session_id: str, new_target: str | None) -> None:
         state = self.load(session_id)
         if state:
             state.target = new_target

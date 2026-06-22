@@ -20,6 +20,37 @@ from ..contracts.session import SessionState
 
 logger = logging.getLogger(__name__)
 
+def parse_findings(content: str) -> List[Dict[str, Any]]:
+    import re
+    import uuid
+    findings = []
+    for line in content.splitlines():
+        line = line.strip()
+        if line.upper().startswith("FINDING:"):
+            parts = [p.strip() for p in line[8:].split("|")]
+            if len(parts) >= 3:
+                finding_type = parts[0]
+                severity = parts[1].replace("SEVERITY:", "").strip().lower()
+                desc = parts[2]
+                findings.append({
+                    "id": str(uuid.uuid4()),
+                    "type": finding_type,
+                    "severity": severity,
+                    "title": f"Vulnerability Finding: {finding_type}",
+                    "description": desc,
+                    "evidence": None
+                })
+            else:
+                findings.append({
+                    "id": str(uuid.uuid4()),
+                    "type": "finding",
+                    "severity": "medium",
+                    "title": "Vulnerability Finding",
+                    "description": line[8:].strip(),
+                    "evidence": None
+                })
+    return findings
+
 class Pipeline:
     """
     Orchestrates the RedForge pipeline according to the Phase 2 Architecture.
@@ -57,15 +88,16 @@ class Pipeline:
         mode: Optional[str] = None,
         target: Optional[str] = None,
         autonomy: Optional[str] = None,
-        token_callback: Optional[Any] = None
+        token_callback: Optional[Any] = None,
+        event_callback: Optional[Any] = None
     ) -> Dict[str, Any]:
         """Process a single turn in the pipeline (potentially multiple iterations)."""
         session = self.session_manager.load(session_id)
         if not session:
             # Auto-create the session if it doesn't exist
-            m = mode.value if hasattr(mode, "value") else (str(mode) if mode else "bugbounty")
-            t = target.value if hasattr(target, "value") else (str(target) if target else None)
-            a = autonomy.value if hasattr(autonomy, "value") else (str(autonomy) if autonomy else "manual")
+            m = mode.value if hasattr(mode, "value") else (mode if mode else "bugbounty")
+            t = target.value if hasattr(target, "value") else (target if target else None)
+            a = autonomy.value if hasattr(autonomy, "value") else (autonomy if autonomy else "manual")
             session = self.session_manager.create(
                 mode=m,
                 target=t,
@@ -105,7 +137,18 @@ class Pipeline:
             system_prompt = self._build_system_prompt(session, intent, skill_context, memory_context)
             messages = [Message(role="system", content=system_prompt)] + history
             
-            if self.llm_provider.supports_streaming():
+            if event_callback:
+                await event_callback("assistant_start", content="")
+
+            use_streaming = False
+            try:
+                supports = self.llm_provider.supports_streaming()
+                if isinstance(supports, bool) and supports:
+                    use_streaming = True
+            except Exception:
+                pass
+
+            if use_streaming:
                 content_chunks = []
                 async for chunk in self.llm_provider.chat_stream(messages):
                     content_chunks.append(chunk)
@@ -124,6 +167,15 @@ class Pipeline:
             
             if response.usage and "total_tokens" in response.usage:
                 total_tokens += response.usage["total_tokens"]
+            
+            if event_callback:
+                await event_callback("assistant_end", content=content)
+
+            findings = parse_findings(content)
+            for f in findings:
+                if event_callback:
+                    await event_callback("finding", finding=f)
+
             history.append(Message(role="assistant", content=content))
             
             # 6. Hallucination Guard (Cross-check text only)
@@ -144,8 +196,8 @@ class Pipeline:
             for t in tool_data:
                 # Build ToolCall contract
                 call = ToolCall(
-                    tool_name=t.get("tool"),
-                    command=t.get("command", "").split() if "command" in t else [],
+                    tool_name=str(t.get("tool") or ""),
+                    command=str(t.get("command") or "").split() if "command" in t else [],
                     target=session.target or "",
                     timeout_seconds=60,
                     risk_level=intent.risk_level,
@@ -155,6 +207,8 @@ class Pipeline:
                 
                 # Autonomy gate logic
                 if intent.requires_approval:
+                    if event_callback:
+                        await event_callback("confirmation_required", pending_confirmation={"message": content, "tool_calls": []})
                     return {
                         "status": "pending_approval",
                         "response": content,
@@ -164,11 +218,20 @@ class Pipeline:
                     }
                 
                 # Execute
+                if event_callback:
+                    await event_callback("tool_start", tool=t.get("tool"), command=t.get("command", "").split() if "command" in t else [])
+                
                 tool_result = await asyncio.to_thread(self.tool_executor.execute, call)
                 
                 # Verify
                 verified = self.verifier.validate(tool_result, session)
                 turn_results.append(verified)
+                
+                if event_callback:
+                    await event_callback("tool_end", 
+                                         tool=tool_result.tool_name, 
+                                         success=verified.status == VerificationStatus.PASSED,
+                                         result=verified)
                 
                 # Report & Store
                 if verified.status == VerificationStatus.PASSED:
