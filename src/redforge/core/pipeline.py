@@ -50,11 +50,28 @@ class Pipeline:
         self.llm_provider = llm_provider
         self.hallucination_guard = HallucinationGuard()
 
-    async def process_turn(self, raw_input: str, session_id: str) -> Dict[str, Any]:
+    async def process_turn(
+        self, 
+        raw_input: str, 
+        session_id: str,
+        mode: Optional[str] = None,
+        target: Optional[str] = None,
+        autonomy: Optional[str] = None,
+        token_callback: Optional[Any] = None
+    ) -> Dict[str, Any]:
         """Process a single turn in the pipeline (potentially multiple iterations)."""
         session = self.session_manager.load(session_id)
         if not session:
-            raise ValueError(f"Invalid session ID: {session_id}")
+            # Auto-create the session if it doesn't exist
+            m = mode.value if hasattr(mode, "value") else (str(mode) if mode else "bugbounty")
+            t = target.value if hasattr(target, "value") else (str(target) if target else None)
+            a = autonomy.value if hasattr(autonomy, "value") else (str(autonomy) if autonomy else "manual")
+            session = self.session_manager.create(
+                mode=m,
+                target=t,
+                autonomy=a,
+                session_id=session_id
+            )
 
         # 1. Intent Engine
         intent = self.intent_engine.process(raw_input, session.mode, session_id, session.autonomy)
@@ -87,8 +104,18 @@ class Pipeline:
             system_prompt = self._build_system_prompt(session, intent, skill_context, memory_context)
             messages = [Message(role="system", content=system_prompt)] + history
             
-            response = await self.llm_provider.chat(messages)
-            content = response.content
+            if self.llm_provider.supports_streaming():
+                content_chunks = []
+                async for chunk in self.llm_provider.chat_stream(messages):
+                    content_chunks.append(chunk)
+                    if token_callback:
+                        await token_callback(chunk)
+                content = "".join(content_chunks)
+                from ..llm.base import ChatResponse
+                response = ChatResponse(content=content, model=getattr(self.llm_provider, "model", "fake"))
+            else:
+                response = await self.llm_provider.chat(messages)
+                content = response.content
             history.append(Message(role="assistant", content=content))
             
             # 6. Hallucination Guard (Cross-check text only)
@@ -128,7 +155,7 @@ class Pipeline:
                     }
                 
                 # Execute
-                tool_result = self.tool_executor.execute(call)
+                tool_result = await asyncio.to_thread(self.tool_executor.execute, call)
                 
                 # Verify
                 verified = self.verifier.validate(tool_result, session)

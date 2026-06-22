@@ -93,10 +93,12 @@ def patch_skill_loader(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_langgraph_agent_emits_streaming_events(monkeypatch):
+async def test_langgraph_agent_emits_streaming_events(monkeypatch, tmp_path):
     monkeypatch.setattr(ProviderFactory, "create", lambda *args, **kwargs: StreamingLLM())
 
-    agent = RedForgeAgent(config=Settings(), llm_provider="ollama", model="fake")
+    settings = Settings()
+    settings.memory.persist_dir = str(tmp_path / "workspaces")
+    agent = RedForgeAgent(config=settings, llm_provider="ollama", model="fake")
     events: list[dict] = []
     agent.on("*", lambda payload: events.append(payload))
 
@@ -115,10 +117,12 @@ async def test_langgraph_agent_emits_streaming_events(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_langgraph_agent_emits_tool_and_finding_events(monkeypatch):
+async def test_langgraph_agent_emits_tool_and_finding_events(monkeypatch, tmp_path):
     monkeypatch.setattr(ProviderFactory, "create", lambda *args, **kwargs: SequencedLLM())
 
-    agent = RedForgeAgent(config=Settings(), llm_provider="ollama", model="fake")
+    settings = Settings()
+    settings.memory.persist_dir = str(tmp_path / "workspaces")
+    agent = RedForgeAgent(config=settings, llm_provider="ollama", model="fake")
     events: list[dict] = []
     agent.on("*", lambda payload: events.append(payload))
 

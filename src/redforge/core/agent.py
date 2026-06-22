@@ -56,7 +56,8 @@ class RedForgeAgent:
             
             settings = config or get_settings()
             
-            store = SessionStore()
+            db_path = str(Path(settings.memory.persist_dir) / "sessions.db")
+            store = SessionStore(db_path)
             session_manager = SessionManager(store)
             
             memory_manager = MemoryManager(settings.memory.persist_dir)
@@ -141,8 +142,11 @@ class RedForgeAgent:
             "pending_confirmation": None
         }
 
+        mode = kwargs.get("mode")
+        target = kwargs.get("target")
+        autonomy = kwargs.get("autonomy_level") or kwargs.get("autonomy")
         try:
-            result = await self.pipeline.process_turn(user_input, sid)
+            result = await self.pipeline.process_turn(user_input, sid, mode=mode, target=target, autonomy=autonomy)
             
             # Populate state_dict from pipeline result for UI compatibility
             if "response" in result:

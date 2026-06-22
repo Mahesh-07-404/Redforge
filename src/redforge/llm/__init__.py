@@ -37,17 +37,10 @@ def get_llm(provider: str = "gemini", model: str = "",
     Returns:
         LLMProvider instance
     """
-    providers = {
-        "ollama": OllamaProvider,
-        "openai": OpenAIProvider,
-        "anthropic": AnthropicProvider,
-        "groq": GroqProvider,
-        "gemini": GeminiProvider,
-    }
-    
-    provider_class = providers.get(provider.lower())
-    if not provider_class:
-        raise ValueError(f"Unknown provider: {provider}")
-    
-    selected_model = model or DEFAULT_MODELS.get(provider.lower(), DEFAULT_MODELS["gemini"])
-    return provider_class(model=selected_model, api_key=api_key or "", **kwargs)
+    from redforge.llm.base import ProviderFactory
+    return ProviderFactory.create(
+        provider=provider,
+        model=model,
+        api_key=api_key or "",
+        **kwargs
+    )

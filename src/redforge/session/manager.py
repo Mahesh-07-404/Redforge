@@ -8,20 +8,20 @@ class SessionManager:
     def __init__(self, store: SessionStore):
         self.store = store
 
-    def create(self, mode: str, target: str | None, autonomy: str) -> SessionState:
-        session_id = str(uuid.uuid4())
+    def create(self, mode: str, target: str | None, autonomy: str, session_id: Optional[str] = None) -> SessionState:
+        sid = session_id or str(uuid.uuid4())
         now = datetime.now()
         status = "active"
         
         with self.store._get_connection() as conn:
             conn.execute(
                 "INSERT INTO sessions (id, mode, target, autonomy, created_at, updated_at, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (session_id, mode, target, autonomy, now.isoformat(), now.isoformat(), status)
+                (sid, mode, target, autonomy, now.isoformat(), now.isoformat(), status)
             )
             conn.commit()
             
         return SessionState(
-            id=session_id, mode=mode, target=target, autonomy=autonomy, 
+            id=sid, mode=mode, target=target, autonomy=autonomy, 
             created_at=now, updated_at=now, status=status
         )
 
