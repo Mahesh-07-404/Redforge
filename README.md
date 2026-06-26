@@ -46,20 +46,14 @@ redforge --help
 ## Quick Start
 
 ```bash
-# Interactive CLI
+# Launch Textual TUI directly (default)
 redforge
-
-# Specific mode
-redforge --mode bugbounty
-
-# With target
-redforge --mode bugbounty --target example.com
-
-# TUI interface
-redforge tui
 
 # Check system health
 redforge doctor
+
+# Run in headless mode for automation
+redforge run --target example.com --mode bugbounty
 ```
 
 ## Configuration
@@ -124,25 +118,20 @@ Reason: <error details>
 Suggested Fix: <recovery guidance>
 ```
 
-### CLI Commands
-```
-redforge> help
+### Keyboard Shortcuts
 
-Commands:
-  mode [mode]     - Set or show current mode
-  target [target] - Set target for testing
-  scan            - Run vulnerability scan
-  recon           - Run reconnaissance
-  report          - Generate findings report
-  exit            - Exit RedForge
-
-Modes:
-  bugbounty - Bug bounty hunting
-  ctf       - CTF competition
-  learning  - Skill development
-  coding    - Secure coding
-  android   - Mobile testing
-```
+| Key | Description |
+|-----|-------------|
+| `Ctrl+P` | Open Command Palette (fuzzy matching slash commands) |
+| `Ctrl+S` | Save active session state to database |
+| `Ctrl+R` | Open Reports Manager modal screen |
+| `Ctrl+F` | Open Findings viewer modal screen |
+| `Ctrl+M` | Open Memory search and stats modal screen |
+| `Ctrl+L` | Clear conversation terminal history |
+| `Ctrl+Q` | Quit TUI Application |
+| `Ctrl+B` | Toggle left sidebar visibility |
+| `Ctrl+K` | Cancel current executing agent task |
+| `Escape` | Focus input box |
 
 ### Mode-Specific Features
 

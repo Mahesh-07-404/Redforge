@@ -36,6 +36,12 @@ from redforge.tui.palette import (
     ModelSelectionScreen,
     OptionSelectionScreen,
     ToastManager,
+    SaveSessionScreen,
+    FindingsScreen,
+    ReportScreen,
+    ToolPanel,
+    MemoryScreen,
+    HelpDialog,
 )
 from redforge.tui.renderer import (
     ACCENT,
@@ -91,6 +97,13 @@ class Sidebar(Static):
         attached_files: list[str],
         tools_used: list[str] | None = None,
         memory_hits: int = 0,
+        total_sessions: int = 1,
+        reports_count: int = 0,
+        installed_tools: int = 0,
+        total_tools: int = 0,
+        memory_entries: int = 0,
+        session_name: str = "",
+        session_id: str = "",
     ) -> None:
         if tools_used is None:
             tools_used = []
@@ -112,51 +125,39 @@ class Sidebar(Static):
         lines = [
             logo,
             "",
-            f"[{FG_MUTED}]Status[/]",
-            f"[bold {mc}]●[/] {MODE_LABEL.get(mode, mode.upper())}",
-            f"[{ACCENT}]●[/] {autonomy.upper()}",
+            f"[bold {ACCENT}]── SESSIONS ──[/bold {ACCENT}]",
+            f"  Active: [bold]{session_name}[/bold]",
+            f"  ID: [dim]{session_id[:8]}[/dim]",
+            f"  Total: {total_sessions} saved",
             "",
-            f"[{FG_MUTED}]Target[/]",
-            f"[bold]{target_text}[/]",
+            f"[bold {ACCENT}]── FINDINGS ──[/bold {ACCENT}]",
+            f"  Findings: [bold]{findings}[/bold]",
             "",
-            f"[{FG_MUTED}]Model[/]",
-            f"{model}",
+            f"[bold {ACCENT}]── REPORTS ──[/bold {ACCENT}]",
+            f"  Generated: {reports_count} files",
             "",
-            f"[{FG_MUTED}]TOOLS[/]",
+            f"[bold {ACCENT}]── TOOLS ──[/bold {ACCENT}]",
+            f"  Installed: {installed_tools}/{total_tools}",
+            "",
+            f"[bold {ACCENT}]── MEMORY ──[/bold {ACCENT}]",
+            f"  Hits: {memory_hits} recent",
+            f"  Entries: {memory_entries} index",
+            "",
+            f"[bold {ACCENT}]── SYSTEM INFO ──[/bold {ACCENT}]",
+            f"  Mode: [bold {mc}]{MODE_LABEL.get(mode, mode.upper())}[/bold {mc}]",
+            f"  Target: [bold]{target_text}[/bold]",
+            f"  Autonomy: {autonomy.upper()}",
+            f"  Model: [dim]{model}[/dim]",
+            "",
+            f"[bold {ACCENT}]── SHORTCUTS ──[/bold {ACCENT}]",
+            f"  [bold]Ctrl+P[/bold]  Palette",
+            f"  [bold]Ctrl+S[/bold]  Save Session",
+            f"  [bold]Ctrl+R[/bold]  Reports Screen",
+            f"  [bold]Ctrl+F[/bold]  Findings Screen",
+            f"  [bold]Ctrl+M[/bold]  Memory Screen",
+            f"  [bold]Ctrl+L[/bold]  Clear Log",
+            f"  [bold]Ctrl+Q[/bold]  Quit App",
         ]
-
-        if tools_used:
-            for t in tools_used[-5:]:
-                lines.append(f"  [{ACCENT}]✓[/] {t}")
-        else:
-            lines.append(f"  [dim]none[/]")
-
-        lines.extend([
-            "",
-            f"[{FG_MUTED}]MEMORY[/]",
-            f"  {memory_hits} recent hits",
-            "",
-            f"[{FG_MUTED}]Session Stats[/]",
-            f"[{ACCENT}]▸[/] {messages} messages",
-            f"[{ACCENT}]▸[/] {findings} findings",
-            "",
-            f"[{FG_MUTED}]Attached Context[/]",
-        ])
-        
-        if attached_files:
-            for f in attached_files[:5]:
-                lines.append(f"  [#00d4ff]@{f}[/]")
-        else:
-            lines.append("  [dim]none[/]")
-            
-        lines.extend([
-            "",
-            f"[{FG_MUTED}]Shortcuts[/]",
-            f"[{ACCENT}]Tab[/]     Palette",
-            f"[{ACCENT}]Ctrl+B[/]  Sidebar",
-            f"[{ACCENT}]Ctrl+K[/]  Cancel",
-            f"[{ACCENT}]Esc[/]     Focus",
-        ])
         self.update("\n".join(lines))
 
 
@@ -217,9 +218,14 @@ class RedForgeTUI(App):
     """
 
     BINDINGS = [
-        Binding("ctrl+b", "toggle_sidebar", "Sidebar"),
+        Binding("ctrl+p", "open_palette", "Palette"),
+        Binding("ctrl+s", "save_session", "Save"),
+        Binding("ctrl+r", "open_reports", "Reports"),
+        Binding("ctrl+f", "open_findings", "Findings"),
+        Binding("ctrl+m", "open_memory", "Memory"),
         Binding("ctrl+l", "clear_output", "Clear"),
-        Binding("f2", "cycle_mode", "Mode"),
+        Binding("ctrl+q", "quit_app", "Quit"),
+        Binding("ctrl+b", "toggle_sidebar", "Sidebar"),
         Binding("ctrl+k", "kill_task", "Cancel"),
         Binding("escape", "focus_input", "Input"),
     ]
@@ -775,6 +781,24 @@ class RedForgeTUI(App):
             footer.tokens = self.tokens
             footer.latency_ms = self.latency
 
+            from redforge.tools import ToolManager
+            from redforge.core.config import get_settings
+            from redforge.memory.memory_manager import WorkspaceMemoryManager
+            
+            tm = ToolManager()
+            installed_tools = len([t for t, s in tm.installed_tools.items() if s.installed])
+            total_tools = len(tm.installed_tools)
+            
+            settings = get_settings()
+            mm = WorkspaceMemoryManager("default", settings.memory.persist_dir, settings.memory.vector_db)
+            mem_stats = mm.get_stats()
+            memory_entries = mem_stats.get('indexed_entries', 0)
+            
+            report_dir = Path("workspaces") / "default" / "reports"
+            reports_count = len(list(report_dir.glob("*.md"))) if report_dir.exists() else 0
+            
+            total_sessions = len(self.db.list_sessions())
+
             self.query_one(Sidebar).update_content(
                 mode=self.mode,
                 autonomy=self.autonomy,
@@ -787,6 +811,13 @@ class RedForgeTUI(App):
                 attached_files=[self._format_relpath(path) for path in self._attached_files],
                 tools_used=[m.tool_name for m in self.store._msgs if m.role == "tool" and m.tool_name],
                 memory_hits=len([m for m in self.store._msgs if "memory" in m.content.lower()]),
+                total_sessions=total_sessions,
+                reports_count=reports_count,
+                installed_tools=installed_tools,
+                total_tools=total_tools,
+                memory_entries=memory_entries,
+                session_name=self.session_name,
+                session_id=self.session_id,
             )
         except NoMatches:
             pass
@@ -891,9 +922,7 @@ class RedForgeTUI(App):
 
         try:
             if cmd == "help":
-                all_cmds = sorted([c["cmd"] for c in CommandRegistry.get_commands()])
-                self.renderer.feed_system(f"Available Commands: {' '.join(all_cmds)}")
-                self.renderer.feed_system("Type @ and start typing to insert project files into any prompt.")
+                self.push_screen(HelpDialog())
             elif cmd == "clear":
                 self.store.clear()
             elif cmd == "approved":
@@ -1517,6 +1546,61 @@ class RedForgeTUI(App):
             self.query_one(VimInput).focus_input()
         except NoMatches:
             pass
+
+    def action_open_palette(self) -> None:
+        self.open_command_palette()
+
+    def action_save_session(self) -> None:
+        self.push_screen(
+            SaveSessionScreen(current_name=self.session_name),
+            self._handle_save_session
+        )
+
+    def action_open_reports(self) -> None:
+        self.push_screen(ReportScreen())
+
+    def action_open_findings(self) -> None:
+        self.push_screen(FindingsScreen())
+
+    def action_open_memory(self) -> None:
+        self.push_screen(MemoryScreen())
+
+    def action_quit_app(self) -> None:
+        self.exit()
+
+    def _handle_save_session(self, name: str | None) -> None:
+        if not name:
+            return
+        self.session_name = name
+        self.db.save_session(self.session_id, name, self.mode, self.autonomy, self.model_label, self.target)
+        self.toast_mgr.show(f"Session saved as '{name}'", "success")
+
+    def _handle_export_report(self, path: str | None) -> None:
+        if not path:
+            return
+        findings = [m for m in self.store._msgs if m.role == "finding"]
+        if not findings:
+            self.toast_mgr.show("No findings to export.", "warning")
+            return
+            
+        from redforge.advanced import ReportGenerator
+        rg = ReportGenerator()
+        report_findings = [{"title": "Vulnerability Finding", "severity": f.severity or "INFO", "cvss_score": 0.0, "cwe_id": "N/A", "description": f.content, "impact": "Potential security compromise.", "remediation": "Review codebase and apply appropriate fix."} for f in findings]
+        report_data = {
+            "title": f"Security Assessment Report for {self.target or 'Unknown Target'}",
+            "target": self.target or "localhost",
+            "author": "RedForge TUI",
+            "scope": [self.target] if self.target else ["In-scope codebase"],
+            "findings": report_findings,
+            "summary": f"A total of {len(findings)} findings were identified during the assessment.",
+            "methodology": "Automated security review and analysis.",
+            "limitations": "Standard constraints of automated scanning."
+        }
+        rg.create_report(report_data, session_target=self.target)
+        dest = Path(path)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        rg.save_report(dest, format="md")
+        self.toast_mgr.show(f"Report exported to {dest}", "success")
 
     def _handle_model_selection(self, result: dict | None) -> None:
         if not result:

@@ -26,7 +26,8 @@ from textual.widgets.option_list import Option
 from rich.markup import escape
 from rich.text import Text
 
-from redforge.tui.renderer import ACCENT, BG, BG_PANEL, BORDER, FG, FG_DIM, FG_MUTED, _e
+from pathlib import Path
+from redforge.tui.renderer import ACCENT, BG, BG_PANEL, BORDER, FG, FG_DIM, FG_MUTED, SEV_COLOR, _e
 
 
 # ─── CommandRegistry ──────────────────────────────────────
@@ -903,3 +904,539 @@ class FileMentionScreen(ModalScreen[str | None]):
                 self.dismiss(selection)
             else:
                 self.dismiss(None)
+
+
+# ─── New Modal Screens ───────────────────────────────────
+
+class SaveSessionScreen(ModalScreen[str | None]):
+    """Modal for entering a session name to save."""
+    DEFAULT_CSS = f"""
+    SaveSessionScreen {{
+        align: center middle;
+        background: #000000aa;
+    }}
+    #save-session-modal {{
+        width: 50;
+        height: auto;
+        padding: 1 2;
+        background: {BG_PANEL};
+        border: tall {FG_DIM};
+        layout: vertical;
+    }}
+    #save-title {{
+        color: {FG};
+        text-style: bold;
+        padding-bottom: 1;
+    }}
+    #save-actions {{
+        height: auto;
+        padding-top: 1;
+    }}
+    """
+    def __init__(self, current_name: str) -> None:
+        super().__init__()
+        self.current_name = current_name
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="save-session-modal"):
+            yield Static("Save Session", id="save-title")
+            yield Input(value=self.current_name, placeholder="Enter session name", id="save-input")
+            with Horizontal(id="save-actions"):
+                yield Button("Save", id="confirm-save", variant="primary")
+                yield Button("Cancel", id="cancel-save")
+
+    @on(Button.Pressed, "#cancel-save")
+    def _cancel(self) -> None:
+        self.dismiss(None)
+
+    @on(Button.Pressed, "#confirm-save")
+    def _save(self) -> None:
+        name = self.query_one("#save-input", Input).value.strip()
+        self.dismiss(name if name else None)
+
+    async def on_key(self, event: events.Key) -> None:
+        if event.key == "escape":
+            self.dismiss(None)
+        elif event.key == "enter":
+            name = self.query_one("#save-input", Input).value.strip()
+            self.dismiss(name if name else None)
+
+
+class FindingsScreen(ModalScreen[None]):
+    """Modal for viewing all session security findings."""
+    DEFAULT_CSS = f"""
+    FindingsScreen {{
+        align: center middle;
+        background: #000000aa;
+    }}
+    #findings-modal {{
+        width: 90;
+        height: 28;
+        padding: 1 2;
+        background: {BG_PANEL};
+        border: tall {FG_DIM};
+        layout: vertical;
+    }}
+    #findings-title {{
+        color: {FG};
+        text-style: bold;
+        padding-bottom: 1;
+    }}
+    #findings-list {{
+        height: 1fr;
+        overflow-y: auto;
+        border: solid {FG_DIM};
+        padding: 1 1;
+    }}
+    #findings-actions {{
+        height: auto;
+        padding-top: 1;
+    }}
+    """
+    def compose(self) -> ComposeResult:
+        with Vertical(id="findings-modal"):
+            yield Static("Session Findings", id="findings-title")
+            yield OptionList(id="findings-list")
+            with Horizontal(id="findings-actions"):
+                yield Button("Close", id="close-findings")
+
+    def on_mount(self) -> None:
+        self._refresh()
+
+    def _refresh(self) -> None:
+        ol = self.query_one("#findings-list", OptionList)
+        ol.clear_options()
+        findings = self.app.db.get_findings(self.app.session_id)
+        if not findings:
+            ol.add_option(Option("No findings recorded in this session yet.", disabled=True))
+            return
+        
+        for idx, f in enumerate(findings, 1):
+            severity = f.get("severity", "medium").upper()
+            sev_color = SEV_COLOR.get(f.get("severity", "medium").lower(), "#ffffff")
+            title = f.get("title", "Finding")
+            desc = f.get("description", "")
+            prompt = f"[{sev_color}][{severity}][/{sev_color}] {idx}. {title} - {desc}"
+            ol.add_option(Option(prompt))
+
+    @on(Button.Pressed, "#close-findings")
+    def _close(self) -> None:
+        self.dismiss()
+
+    async def on_key(self, event: events.Key) -> None:
+        if event.key in ("escape", "enter"):
+            self.dismiss()
+
+
+class ReportScreen(ModalScreen[None]):
+    """Modal for generating, viewing, and exporting reports."""
+    DEFAULT_CSS = f"""
+    ReportScreen {{
+        align: center middle;
+        background: #000000aa;
+    }}
+    #report-modal {{
+        width: 88;
+        height: 26;
+        padding: 1 2;
+        background: {BG_PANEL};
+        border: tall {FG_DIM};
+        layout: vertical;
+    }}
+    #report-title {{
+        color: {FG};
+        text-style: bold;
+        padding-bottom: 1;
+    }}
+    #report-options {{
+        height: auto;
+        layout: horizontal;
+        padding-bottom: 1;
+    }}
+    #report-list {{
+        height: 1fr;
+        border: solid {FG_DIM};
+        background: {BG};
+        overflow-y: auto;
+        padding: 0 1;
+    }}
+    #report-actions {{
+        height: auto;
+        padding-top: 1;
+    }}
+    """
+    def compose(self) -> ComposeResult:
+        with Vertical(id="report-modal"):
+            yield Static("Security Assessment Reports", id="report-title")
+            with Horizontal(id="report-options"):
+                yield Button("Generate Report", id="generate-report-btn", variant="primary")
+                yield Button("Export to Markdown", id="export-report-btn")
+            yield Static("Generated Report Files under workspaces/default/reports/:", classes="model-label")
+            yield OptionList(id="report-list")
+            with Horizontal(id="report-actions"):
+                yield Button("Close", id="close-reports")
+
+    def on_mount(self) -> None:
+        self._refresh()
+
+    def _refresh(self) -> None:
+        ol = self.query_one("#report-list", OptionList)
+        ol.clear_options()
+        
+        report_dir = Path("workspaces") / "default" / "reports"
+        if report_dir.exists():
+            reports = list(report_dir.glob("*.md"))
+            if reports:
+                for r in reports:
+                    ol.add_option(Option(f"📄 {r.name} ({r.stat().st_size} bytes)"))
+            else:
+                ol.add_option(Option("No report files found.", disabled=True))
+        else:
+            ol.add_option(Option("No reports directory exists yet.", disabled=True))
+
+    @on(Button.Pressed, "#generate-report-btn")
+    def _generate(self) -> None:
+        findings = [m for m in self.app.store._msgs if m.role == "finding"]
+        if not findings:
+            self.app.toast_mgr.show("No findings in this session to report.", "warning")
+            return
+        
+        from redforge.advanced import ReportGenerator
+        from datetime import datetime
+        rg = ReportGenerator()
+        report_findings = [{"title": "Vulnerability Finding", "severity": f.severity or "INFO", "cvss_score": 0.0, "cwe_id": "N/A", "description": f.content, "impact": "Potential security compromise.", "remediation": "Review codebase and apply appropriate fix."} for f in findings]
+        report_data = {
+            "title": f"Security Assessment Report for {self.app.target or 'Unknown Target'}",
+            "target": self.app.target or "localhost",
+            "author": "RedForge TUI",
+            "scope": [self.app.target] if self.app.target else ["In-scope codebase"],
+            "findings": report_findings,
+            "summary": f"A total of {len(findings)} findings were identified during the assessment.",
+            "methodology": "Automated security review and analysis.",
+            "limitations": "Standard constraints of automated scanning."
+        }
+        rg.create_report(report_data, session_target=self.app.target)
+        report_dir = Path("workspaces") / "default" / "reports"
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        rg.save_report(report_path, format="md")
+        self.app.toast_mgr.show(f"Report generated: {report_path.name}", "success")
+        self.app.renderer.feed_system(f"Report successfully generated and saved to {report_path}")
+        self._refresh()
+
+    @on(Button.Pressed, "#export-report-btn")
+    def _export(self) -> None:
+        self.dismiss()
+        self.app.push_screen(
+            SaveSessionScreen(current_name="./exported_report.md"),
+            self.app._handle_export_report
+        )
+
+    @on(Button.Pressed, "#close-reports")
+    def _close(self) -> None:
+        self.dismiss()
+
+    async def on_key(self, event: events.Key) -> None:
+        if event.key == "escape":
+            self.dismiss()
+
+
+class ToolPanel(ModalScreen[None]):
+    """Modal for managing and verifying pentesting tools."""
+    DEFAULT_CSS = f"""
+    ToolPanel {{
+        align: center middle;
+        background: #000000aa;
+    }}
+    #tool-modal {{
+        width: 90;
+        height: 26;
+        padding: 1 2;
+        background: {BG_PANEL};
+        border: tall {FG_DIM};
+        layout: vertical;
+    }}
+    #tool-title {{
+        color: {FG};
+        text-style: bold;
+        padding-bottom: 1;
+    }}
+    #tool-options {{
+        height: auto;
+        layout: horizontal;
+        padding-bottom: 1;
+    }}
+    #tool-list {{
+        height: 1fr;
+        border: solid {FG_DIM};
+        background: {BG};
+        overflow-y: auto;
+        padding: 0 1;
+    }}
+    #tool-actions {{
+        height: auto;
+        padding-top: 1;
+    }}
+    """
+    def compose(self) -> ComposeResult:
+        with Vertical(id="tool-modal"):
+            yield Static("Pentesting Tools Registry", id="tool-title")
+            with Horizontal(id="tool-options"):
+                yield Button("Verify All Tools", id="verify-tools-btn", variant="primary")
+                yield Button("Update All Tools", id="update-tools-btn")
+            yield OptionList(id="tool-list")
+            with Horizontal(id="tool-actions"):
+                yield Button("Close", id="close-tools")
+
+    def on_mount(self) -> None:
+        self._refresh()
+
+    def _refresh(self) -> None:
+        ol = self.query_one("#tool-list", OptionList)
+        ol.clear_options()
+        
+        from redforge.tools import ToolRegistry, ToolManager
+        tm = ToolManager()
+        for name, tool in ToolRegistry.get_all_tools().items():
+            status = tm.check_tool(name)
+            status_str = f"[green]Installed ({status.version})[/green]" if status.installed else "[red]Not Installed[/red]"
+            ol.add_option(Option(f"🛠️  {name:<12} | {status_str:<25} | {tool.description}"))
+
+    @on(Button.Pressed, "#verify-tools-btn")
+    def _verify(self) -> None:
+        from redforge.tools import ToolManager
+        tm = ToolManager()
+        report = tm.get_status_report()
+        self.app.toast_mgr.show(f"Verified: {report['installed']}/{report['total_tools']} tools installed.", "info")
+        self._refresh()
+
+    @on(Button.Pressed, "#update-tools-btn")
+    def _update(self) -> None:
+        from redforge.tools import ToolManager
+        tm = ToolManager()
+        updated = 0
+        for name in tm.installed_tools:
+            status = tm.check_tool(name)
+            if status.installed:
+                tm.update_tool(name)
+                updated += 1
+        self.app.toast_mgr.show(f"Updated {updated} tools.", "success")
+        self._refresh()
+
+    @on(Button.Pressed, "#close-tools")
+    def _close(self) -> None:
+        self.dismiss()
+
+    async def on_key(self, event: events.Key) -> None:
+        if event.key == "escape":
+            self.dismiss()
+
+
+class MemoryScreen(ModalScreen[None]):
+    """Modal for managing and searching Agent memory."""
+    DEFAULT_CSS = f"""
+    MemoryScreen {{
+        align: center middle;
+        background: #000000aa;
+    }}
+    #memory-modal {{
+        width: 88;
+        height: 28;
+        padding: 1 2;
+        background: {BG_PANEL};
+        border: tall {FG_DIM};
+        layout: vertical;
+    }}
+    #memory-title {{
+        color: {FG};
+        text-style: bold;
+        padding-bottom: 1;
+    }}
+    #memory-stats {{
+        padding-bottom: 1;
+        color: {FG};
+    }}
+    #memory-options {{
+        height: auto;
+        layout: horizontal;
+        padding-bottom: 1;
+    }}
+    #memory-search {{
+        border: none;
+        border-bottom: solid {FG_DIM};
+        background: {BG_PANEL};
+        color: {FG};
+        padding: 0 1;
+        margin-bottom: 1;
+    }}
+    #memory-results {{
+        height: 1fr;
+        border: solid {FG_DIM};
+        background: {BG};
+        overflow-y: auto;
+        padding: 0 1;
+    }}
+    #memory-actions {{
+        height: auto;
+        padding-top: 1;
+    }}
+    """
+    def compose(self) -> ComposeResult:
+        with Vertical(id="memory-modal"):
+            yield Static("Memory Manager", id="memory-title")
+            yield Static("Loading stats…", id="memory-stats")
+            with Horizontal(id="memory-options"):
+                yield Button("Rebuild Index", id="rebuild-mem-btn", variant="primary")
+                yield Button("Clear Memory", id="clear-mem-btn")
+            yield Input(placeholder="Search memory…", id="memory-search")
+            yield OptionList(id="memory-results")
+            with Horizontal(id="memory-actions"):
+                yield Button("Close", id="close-memory")
+
+    def on_mount(self) -> None:
+        self._refresh_stats()
+        self.query_one("#memory-search", Input).focus()
+
+    def _refresh_stats(self) -> None:
+        from redforge.core.config import get_settings
+        from redforge.memory.memory_manager import WorkspaceMemoryManager
+        settings = get_settings()
+        mm = WorkspaceMemoryManager("default", settings.memory.persist_dir, settings.memory.vector_db)
+        stats = mm.get_stats()
+        self.query_one("#memory-stats", Static).update(
+            f"Vector Store: {'Available' if stats.get('vector_store_available') else 'Unavailable'}  |  "
+            f"Total Sessions: {stats.get('total_sessions', 0)}  |  "
+            f"Findings: {stats.get('total_findings', 0)}  |  "
+            f"Notes: {stats.get('total_notes', 0)}"
+        )
+
+    @on(Button.Pressed, "#rebuild-mem-btn")
+    def _rebuild(self) -> None:
+        from redforge.core.config import get_settings
+        from redforge.memory.memory_manager import WorkspaceMemoryManager
+        settings = get_settings()
+        mm = WorkspaceMemoryManager("default", settings.memory.persist_dir, settings.memory.vector_db)
+        mm.clear()
+        
+        # Add current messages and findings
+        messages = self.app.db.get_messages(self.app.session_id)
+        findings = self.app.db.get_findings(self.app.session_id)
+        for m in messages:
+            mm.add_session(m["role"], m["content"], {"timestamp": m.get("timestamp")})
+        for f in findings:
+            mm.add_finding(f["type"], f["title"], f["description"], f["severity"], f["target"], f.get("evidence"))
+            
+        self.app.toast_mgr.show("Memory index rebuilt successfully", "success")
+        self._refresh_stats()
+
+    @on(Button.Pressed, "#clear-mem-btn")
+    def _clear(self) -> None:
+        from redforge.core.config import get_settings
+        from redforge.memory.memory_manager import WorkspaceMemoryManager
+        settings = get_settings()
+        mm = WorkspaceMemoryManager("default", settings.memory.persist_dir, settings.memory.vector_db)
+        mm.clear()
+        self.app.toast_mgr.show("Memory cleared successfully", "info")
+        self._refresh_stats()
+
+    @on(Input.Changed, "#memory-search")
+    def _search(self, event: Input.Changed) -> None:
+        val = event.value.strip()
+        ol = self.query_one("#memory-results", OptionList)
+        ol.clear_options()
+        if not val:
+            return
+            
+        from redforge.core.config import get_settings
+        from redforge.memory.memory_manager import WorkspaceMemoryManager
+        settings = get_settings()
+        mm = WorkspaceMemoryManager("default", settings.memory.persist_dir, settings.memory.vector_db)
+        results = mm.search(val, limit=5)
+        if not results:
+            ol.add_option(Option("No results found.", disabled=True))
+        else:
+            for r in results:
+                ol.add_option(Option(f"🔍 [score: {r.score:.2f}] {r.content}"))
+
+    @on(Button.Pressed, "#close-memory")
+    def _close(self) -> None:
+        self.dismiss()
+
+    async def on_key(self, event: events.Key) -> None:
+        if event.key == "escape":
+            self.dismiss()
+
+
+class HelpDialog(ModalScreen[None]):
+    """Modal showing help, modes, and keyboard shortcuts."""
+    DEFAULT_CSS = f"""
+    HelpDialog {{
+        align: center middle;
+        background: #000000aa;
+    }}
+    #help-modal {{
+        width: 80;
+        height: auto;
+        padding: 1 2;
+        background: {BG_PANEL};
+        border: tall {FG_DIM};
+        layout: vertical;
+    }}
+    #help-title {{
+        color: {FG};
+        text-style: bold;
+        padding-bottom: 1;
+    }}
+    .help-section {{
+        color: {FG};
+        text-style: bold;
+        padding-top: 1;
+        padding-bottom: 0;
+    }}
+    .help-row {{
+        color: {FG_MUTED};
+        padding-left: 2;
+    }}
+    #help-actions {{
+        height: auto;
+        padding-top: 1;
+        align: right middle;
+    }}
+    """
+    def compose(self) -> ComposeResult:
+        with Vertical(id="help-modal"):
+            yield Static("RedForge TUI Help & Shortcuts", id="help-title")
+            
+            yield Static("Keyboard Shortcuts:", classes="help-section")
+            yield Static("[bold]Ctrl+P[/bold]  → Open Command Palette", classes="help-row")
+            yield Static("[bold]Ctrl+S[/bold]  → Save Current Session", classes="help-row")
+            yield Static("[bold]Ctrl+R[/bold]  → Open Reports Screen", classes="help-row")
+            yield Static("[bold]Ctrl+F[/bold]  → Open Findings Screen", classes="help-row")
+            yield Static("[bold]Ctrl+M[/bold]  → Open Memory Screen", classes="help-row")
+            yield Static("[bold]Ctrl+L[/bold]  → Clear Conversation", classes="help-row")
+            yield Static("[bold]Ctrl+Q[/bold]  → Quit TUI Application", classes="help-row")
+            yield Static("[bold]Ctrl+B[/bold]  → Toggle Left Sidebar", classes="help-row")
+            yield Static("[bold]Ctrl+K[/bold]  → Cancel Current Running Task", classes="help-row")
+            yield Static("[bold]Escape[/bold]  → Refocus Input Box", classes="help-row")
+            
+            yield Static("Available Slash Commands (in Input Box):", classes="help-section")
+            yield Static("[bold]/mode[/bold]      → Change operational mode (bugbounty, ctf, etc.)", classes="help-row")
+            yield Static("[bold]/target[/bold]    → Set scan target IP/domain", classes="help-row")
+            yield Static("[bold]/autonomy[/bold]  → Set autonomy (manual, partial, full)", classes="help-row")
+            yield Static("[bold]/approved[/bold]  → Approve the planned tool execution", classes="help-row")
+            
+            yield Static("Input Formats:", classes="help-section")
+            yield Static("[bold]@filename[/bold] → Insert/attach a workspace file's content", classes="help-row")
+            yield Static("[bold]!command[/bold]  → Execute a local bash shell command", classes="help-row")
+            
+            with Horizontal(id="help-actions"):
+                yield Button("OK", id="close-help-btn", variant="primary")
+
+    @on(Button.Pressed, "#close-help-btn")
+    def _close(self) -> None:
+        self.dismiss()
+
+    async def on_key(self, event: events.Key) -> None:
+        if event.key in ("escape", "enter"):
+            self.dismiss()
+
