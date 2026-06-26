@@ -183,3 +183,7 @@ class DynamicSkillLoader:
                 parts.append(f"### [EXECUTION] {s.name}\n{s.content}")
 
         return "\n\n".join(parts)
+
+
+SkillService = DynamicSkillLoader
+

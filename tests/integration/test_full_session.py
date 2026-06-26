@@ -1,20 +1,16 @@
 import pytest
 import os
 from redforge.core.pipeline import Pipeline
-from redforge.session.store import SessionStore
-from redforge.session.manager import SessionManager
-from redforge.session.target import TargetStateMachine
-from redforge.session.events import EventBus
-from redforge.intent.engine import IntentEngine
-from redforge.intent.target_watcher import TargetWatcher
+from redforge.core.session import SessionStore, SessionManager, TargetStateMachine, EventBus
+from redforge.core.intent import IntentService as IntentEngine, TargetWatcher
 from redforge.skills.loader import DynamicSkillLoader
 from redforge.skills.registry import SkillRegistry
 from redforge.memory.manager import MemoryManager
 from redforge.tools.executor import ToolExecutor
-from redforge.verifier.verifier import Verifier
-from redforge.report.engine import ReportEngine
-from redforge.safety import SafetyEngine
-from redforge.llm import get_llm
+from redforge.core.verifier import Verifier
+from redforge.reports.engine import ReportEngine
+from redforge.core.safety import SafetyEngine
+from redforge.providers import get_llm
 
 @pytest.mark.asyncio
 async def test_full_session_pipeline(tmp_path):

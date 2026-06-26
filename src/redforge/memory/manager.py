@@ -49,7 +49,10 @@ class MemoryManager:
         import uuid
         entry = MemoryEntry(
             id=str(uuid.uuid4()),
-            content=f"User: {user_input}\\nAssistant: {response}",
+            content=f"User: {user_input}\nAssistant: {response}",
             metadata={"type": "session"}
         )
         self.store(self.workspace_id, entry)
+
+
+MemoryService = MemoryManager

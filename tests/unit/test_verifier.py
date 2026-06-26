@@ -1,5 +1,5 @@
 import pytest
-from redforge.verifier.verifier import Verifier
+from redforge.core.verifier import Verifier
 from redforge.contracts.tool import ToolResult
 from redforge.contracts.session import SessionState
 from datetime import datetime

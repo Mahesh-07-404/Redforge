@@ -1,8 +1,6 @@
 import pytest
-from redforge.intent.engine import IntentEngine
-from redforge.intent.target_watcher import TargetWatcher
-from redforge.session.target import TargetStateMachine
-from redforge.session.events import EventBus
+from redforge.core.intent import IntentService as IntentEngine, TargetWatcher
+from redforge.core.session import TargetStateMachine, EventBus
 
 def test_intent_engine():
     tm = TargetStateMachine()

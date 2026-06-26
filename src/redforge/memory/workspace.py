@@ -248,3 +248,7 @@ class WorkspaceManager:
         (ws_dir / "sessions").mkdir(exist_ok=True)
         (ws_dir / "findings").mkdir(exist_ok=True)
         (ws_dir / "artifacts").mkdir(exist_ok=True)
+
+
+WorkspaceService = WorkspaceManager
+

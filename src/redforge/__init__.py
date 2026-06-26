@@ -12,14 +12,14 @@ __version__ = "0.1.0"
 __author__ = "RedForge Team"
 
 # Core exports
-from redforge.safety import SafetyEngine, SafetyLevel, Scope
+from redforge.core.safety import SafetyEngine, SafetyLevel, Scope
 from redforge.tools import ToolManager, ToolRegistry, Platform
 from redforge.modes.mode_implementations import (
     BugBountyMode, CTFMode, LearningMode, CodingMode, AndroidMode,
     ModeFactory, Mode, Finding, CTFChallenge
 )
-from redforge.advanced import CVEGenerator, ReportGenerator
-from redforge.platforms import PlatformManager
+from redforge.reports import CVEGenerator, ReportGenerator
+from redforge.plugins import PlatformManager
 
 __all__ = [
     # Version

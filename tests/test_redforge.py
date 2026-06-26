@@ -10,13 +10,13 @@ from unittest.mock import Mock, patch, MagicMock
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from redforge.safety import SafetyEngine, SafetyLevel, Scope, ScopeEntry
+from redforge.core.safety import SafetyEngine, SafetyLevel, Scope, ScopeEntry
 from redforge.tools import ToolManager, ToolRegistry, Platform
 from redforge.modes.mode_implementations import (
     BugBountyMode, CTFMode, LearningMode, ModeFactory, Mode, ModeConfig
 )
-from redforge.advanced import CVEGenerator, ReportGenerator
-from redforge.platforms import PlatformManager, Platform, Submission, create_submission
+from redforge.reports import CVEGenerator, ReportGenerator
+from redforge.plugins import PlatformManager, Platform, Submission, create_submission
 
 
 # Safety Engine Tests

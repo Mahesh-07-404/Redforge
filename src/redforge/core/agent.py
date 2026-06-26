@@ -38,21 +38,21 @@ class RedForgeAgent:
             api_key = kwargs.get("api_key")
             base_url = kwargs.get("base_url")
             
-            from .config import get_settings
-            from ..session.store import SessionStore
-            from ..session.manager import SessionManager
+            from ..config.config import get_settings
+            from .session import SessionStore
+            from .session import SessionManager
             from ..memory.manager import MemoryManager
-            from ..session.target import TargetStateMachine
-            from ..session.events import EventBus
-            from ..intent.target_watcher import TargetWatcher
-            from ..intent.engine import IntentEngine
+            from .session import TargetStateMachine
+            from .session import EventBus
+            from .intent import TargetWatcher
+            from .intent import IntentService as IntentEngine
             from ..skills.registry import SkillRegistry
             from ..skills.loader import DynamicSkillLoader
             from ..tools.executor import ToolExecutor
-            from ..verifier.verifier import Verifier
-            from ..report.engine import ReportEngine
-            from ..safety import SafetyEngine
-            from ..llm import get_llm
+            from .verifier import Verifier
+            from ..reports.engine import ReportEngine
+            from .safety import SafetyEngine
+            from ..providers import get_llm
             
             settings = config or get_settings()
             
@@ -243,7 +243,7 @@ class RedForgeAgent:
         
         if hasattr(self, "llm") and self.llm:
             try:
-                from ..llm import Message
+                from ..providers import Message
                 resp = await self.llm.chat([Message(role="user", content=text)])
                 if isinstance(resp, str):
                     return resp

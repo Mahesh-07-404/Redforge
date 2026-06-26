@@ -3,21 +3,21 @@ from typing import Optional, Dict
 
 from .agent import RedForgeAgent
 from .pipeline import Pipeline
-from .config import Settings, get_settings
-from ..session.manager import SessionManager
-from ..session.store import SessionStore
+from ..config.config import Settings, get_settings
+from .session import SessionManager
+from .session import SessionStore
 from ..memory.manager import MemoryManager
 from ..skills.loader import DynamicSkillLoader
 from ..skills.registry import SkillRegistry
-from ..intent.engine import IntentEngine
-from ..intent.target_watcher import TargetWatcher
-from ..session.target import TargetStateMachine
-from ..session.events import EventBus
+from .intent import IntentService as IntentEngine
+from .intent import TargetWatcher
+from .session import TargetStateMachine
+from .session import EventBus
 from ..tools.executor import ToolExecutor
-from ..verifier.verifier import Verifier
-from ..report.engine import ReportEngine
-from ..safety import SafetyEngine
-from ..llm import get_llm
+from .verifier import Verifier
+from ..reports.engine import ReportEngine
+from .safety import SafetyEngine
+from ..providers import get_llm
 
 def create_redforge_agent(
     config: Optional[Settings] = None,

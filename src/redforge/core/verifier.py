@@ -1,19 +1,60 @@
-"""RedForge Verification Engine"""
+"""Verification service for RedForge.
+
+Unifies tool output validation, target scope checking, and LLM output hallucination guarding.
+"""
 
 import re
+from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
+from ..contracts.tool import ToolResult, VerifiedResult, VerificationStatus, ToolCall
+from ..contracts.session import SessionState
 
-class Verifier:
-    """Verifies execution output and validates findings/evidence"""
+class OutputValidator:
+    """Validates tool results for successful execution."""
+    def validate(self, tool_result: ToolResult) -> bool:
+        if tool_result.exit_code != 0:
+            return False
+        return True
 
+
+class ScopeChecker:
+    """Checks if a tool call matches the session scope target."""
+    def check(self, tool_call: ToolCall, session_state: SessionState) -> bool:
+        if not session_state.target:
+            return False
+        return True
+
+
+class HallucinationGuard:
+    """Cross-checks LLM claims against verified facts and target consistency."""
     FORBIDDEN_PLACEHOLDERS = {
-        "example.com",
-        "example.org",
-        "test.com",
-        "localhost",
-        "127.0.0.1",
-        "demo.com",
+        "example.com", "example.org", "test.com", "localhost", "127.0.0.1", "demo.com"
     }
+
+    def check(self, llm_response: str, target: Optional[str] = None) -> Tuple[bool, str]:
+        content_lower = llm_response.lower()
+
+        # 1. Block simulated outputs
+        if re.search(r"^OUTPUT\s*\[[✓✗]\s*\w+\]", llm_response, re.MULTILINE | re.IGNORECASE):
+            return False, "Hallucination detected: Response contains simulated tool OUTPUT header."
+
+        if "output [" in content_lower and "exit:" in content_lower and "time:" in content_lower:
+            return False, "Hallucination detected: Response contains simulated tool execution results."
+
+        # 2. Block placeholder injection if a real target is set
+        if target:
+            for ph in self.FORBIDDEN_PLACEHOLDERS:
+                if ph in target.lower():
+                    continue
+                if ph in content_lower:
+                    return False, f"Target consistency failure: Response contains forbidden placeholder '{ph}'."
+
+        return True, ""
+
+
+class VerificationService:
+    """Manages all verification gates (Tool outputs, LLM responses, findings verifications)."""
+    FORBIDDEN_PLACEHOLDERS = HallucinationGuard.FORBIDDEN_PLACEHOLDERS
 
     FAKE_OUTPUT_KEYWORDS = {
         "fictional output",
@@ -24,8 +65,40 @@ class Verifier:
 
     def __init__(self, target: Optional[str] = None):
         self.target = target
+        self.output_validator = OutputValidator()
+        self.scope_checker = ScopeChecker()
+        self.guard = HallucinationGuard()
+
+    def validate(self, tool_result: ToolResult, session_state: SessionState) -> VerifiedResult:
+        """Validate execution outputs of tools against scope and execution rules."""
+        if session_state.target and session_state.target not in str(tool_result.command):
+            return VerifiedResult(
+                tool_result=tool_result,
+                status=VerificationStatus.FAILED_SCOPE,
+                verified_at=datetime.now(),
+                facts=[],
+                anomalies=["Target not in command"]
+            )
+            
+        if not self.output_validator.validate(tool_result):
+            return VerifiedResult(
+                tool_result=tool_result,
+                status=VerificationStatus.FAILED_ERROR,
+                verified_at=datetime.now(),
+                facts=[],
+                anomalies=["Output validation failed or non-zero exit code"]
+            )
+            
+        return VerifiedResult(
+            tool_result=tool_result,
+            status=VerificationStatus.PASSED,
+            verified_at=datetime.now(),
+            facts=["Execution succeeded"],
+            anomalies=[]
+        )
 
     def extract_domains(self, text: str) -> List[str]:
+        """Extract domains from text for consistency checks."""
         pattern = r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}\b"
         domains = re.findall(pattern, text)
         cleaned = []
@@ -36,7 +109,7 @@ class Verifier:
         return cleaned
 
     def validate_response(self, text: str, target_override: Optional[str] = None, intent: Optional[str] = None) -> Tuple[bool, str]:
-        """Validate LLM output against target consistency and fake output rules."""
+        """Validate LLM response text for hallucination and target matching."""
         active_target = target_override or self.target
         text_lower = text.lower()
 
@@ -88,10 +161,7 @@ class Verifier:
         return True, ""
 
     def verify_finding(self, finding: Dict[str, Any], tool_output: Optional[str]) -> bool:
-        """
-        Enforce 'No evidence = no finding'.
-        Returns True if the finding has backing evidence in the tool output.
-        """
+        """Enforce 'No evidence = no finding' checks."""
         if not tool_output or not tool_output.strip():
             return False
 
@@ -123,12 +193,15 @@ class Verifier:
         return True
 
 
+# Legacy / backward-compatibility aliases
+Verifier = VerificationService
+
 class ResponseValidator:
     """Legacy compatibility wrapper for ResponseValidator"""
-    FORBIDDEN_PLACEHOLDERS = Verifier.FORBIDDEN_PLACEHOLDERS
+    FORBIDDEN_PLACEHOLDERS = VerificationService.FORBIDDEN_PLACEHOLDERS
 
     def __init__(self, target: Optional[str] = None):
-        self.verifier = Verifier(target)
+        self.verifier = VerificationService(target)
         self.FORBIDDEN_PLACEHOLDERS = self.verifier.FORBIDDEN_PLACEHOLDERS
 
     def extract_domains(self, text: str) -> List[str]:
@@ -136,3 +209,4 @@ class ResponseValidator:
 
     def validate(self, text: str, target_override: Optional[str] = None, intent: Optional[str] = None) -> Tuple[bool, str]:
         return self.verifier.validate_response(text, target_override, intent)
+

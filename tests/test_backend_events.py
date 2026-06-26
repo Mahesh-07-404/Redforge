@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from redforge.core.config import Settings
+from redforge.config.config import Settings
 from redforge.core.agent import RedForgeAgent
 from redforge.core.skill_loader import SkillLoader
 from redforge.core.state import AutonomyLevel, AgentMode
-from redforge.llm.base import ChatResponse, ProviderFactory
+from redforge.providers.base import ChatResponse, ProviderFactory
 
 
 class StreamingLLM:

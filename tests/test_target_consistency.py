@@ -11,8 +11,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from redforge.core.state import AgentState, create_initial_state
 from redforge.core.agent import RedForgeAgent
 from redforge.core.verifier import ResponseValidator
-from redforge.advanced import ReportGenerator
-from redforge.llm.base import Message
+from redforge.reports import ReportGenerator
+from redforge.providers.base import Message
 
 
 class TestResponseValidator:
@@ -84,7 +84,7 @@ class TestTargetImmutability:
     """Test target immutability checks in AgentState and LangGraph agent"""
 
     def test_merge_state_target_immutability(self, tmp_path):
-        from redforge.core.config import Settings
+        from redforge.config.config import Settings
         settings = Settings()
         settings.memory.persist_dir = str(tmp_path / "workspaces")
         agent = RedForgeAgent(config=settings)
@@ -105,7 +105,7 @@ class TestFindingsVerification:
 
     @pytest.mark.asyncio
     async def test_findings_validation(self, tmp_path):
-        from redforge.core.config import Settings
+        from redforge.config.config import Settings
         settings = Settings()
         settings.memory.persist_dir = str(tmp_path / "workspaces")
         agent = RedForgeAgent(config=settings)
@@ -139,7 +139,7 @@ class TestFindingsVerification:
 
     @pytest.mark.asyncio
     async def test_findings_without_evidence_unverified(self, tmp_path):
-        from redforge.core.config import Settings
+        from redforge.config.config import Settings
         settings = Settings()
         settings.memory.persist_dir = str(tmp_path / "workspaces")
         agent = RedForgeAgent(config=settings)

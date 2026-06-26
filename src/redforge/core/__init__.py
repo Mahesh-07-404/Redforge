@@ -12,7 +12,7 @@ warnings.filterwarnings(
 
 def __getattr__(name: str):
     if name in {"Settings", "get_settings"}:
-        from redforge.core.config import Settings, get_settings
+        from redforge.config.config import Settings, get_settings
 
         return {"Settings": Settings, "get_settings": get_settings}[name]
 

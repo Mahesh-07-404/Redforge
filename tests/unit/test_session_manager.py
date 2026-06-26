@@ -1,6 +1,6 @@
 import pytest
-from redforge.session.store import SessionStore
-from redforge.session.manager import SessionManager
+from redforge.core.session import SessionStore
+from redforge.core.session import SessionManager
 
 def test_session_manager_create_and_load(tmp_path):
     db_path = str(tmp_path / "sessions.db")

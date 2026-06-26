@@ -3,53 +3,24 @@ from datetime import datetime
 import logging
 import asyncio
 
-from ..session.manager import SessionManager
-from ..memory.manager import MemoryManager
-from ..skills.loader import DynamicSkillLoader
-from ..intent.engine import IntentEngine
-from ..tools.executor import ToolExecutor
+from .session import SessionService as SessionManager
+from ..memory.manager import MemoryService as MemoryManager
+from ..skills.loader import SkillService as DynamicSkillLoader
+from .intent import IntentService as IntentEngine
+from ..tools.manager import ToolService as ToolExecutor
 from ..tools.parser import parse_tool_calls
-from ..verifier.verifier import Verifier
-from ..verifier.hallucination_guard import HallucinationGuard
-from ..report.engine import ReportEngine
-from ..safety import SafetyEngine
-from ..llm import LLMProvider, Message
+from .verifier import VerificationService as Verifier
+from .verifier import HallucinationGuard
+from ..reports.engine import ReportService as ReportEngine
+from .safety import SafetyService as SafetyEngine
+from ..providers import LLMProvider, Message
 from ..contracts.intent import ParsedIntent, IntentType
 from ..contracts.tool import ToolCall, ToolResult, VerifiedResult, VerificationStatus
 from ..contracts.session import SessionState
 
 logger = logging.getLogger(__name__)
 
-def parse_findings(content: str) -> List[Dict[str, Any]]:
-    import re
-    import uuid
-    findings = []
-    for line in content.splitlines():
-        line = line.strip()
-        if line.upper().startswith("FINDING:"):
-            parts = [p.strip() for p in line[8:].split("|")]
-            if len(parts) >= 3:
-                finding_type = parts[0]
-                severity = parts[1].replace("SEVERITY:", "").strip().lower()
-                desc = parts[2]
-                findings.append({
-                    "id": str(uuid.uuid4()),
-                    "type": finding_type,
-                    "severity": severity,
-                    "title": f"Vulnerability Finding: {finding_type}",
-                    "description": desc,
-                    "evidence": None
-                })
-            else:
-                findings.append({
-                    "id": str(uuid.uuid4()),
-                    "type": "finding",
-                    "severity": "medium",
-                    "title": "Vulnerability Finding",
-                    "description": line[8:].strip(),
-                    "evidence": None
-                })
-    return findings
+# Moved to FindingsService
 
 class Pipeline:
     """
@@ -80,6 +51,11 @@ class Pipeline:
         self.safety_engine = safety_engine
         self.llm_provider = llm_provider
         self.hallucination_guard = HallucinationGuard()
+        
+        from .planner import PlannerService
+        self.planner = PlannerService()
+        from ..findings.engine import FindingsService
+        self.findings_service = FindingsService()
 
     async def process_turn(
         self, 
@@ -134,7 +110,7 @@ class Pipeline:
             memory_context = self.memory_manager.get_context_for_llm(raw_input)
             
             # 5. LLM Call
-            system_prompt = self._build_system_prompt(session, intent, skill_context, memory_context)
+            system_prompt = self.planner.build_system_prompt(session, intent, skill_context, memory_context)
             messages = [Message(role="system", content=system_prompt)] + history
             
             if event_callback:
@@ -155,7 +131,7 @@ class Pipeline:
                     if token_callback:
                         await token_callback(chunk)
                 content = "".join(content_chunks)
-                from ..llm.base import ChatResponse
+                from ..providers.base import ChatResponse
                 response = ChatResponse(
                     content=content, 
                     model=getattr(self.llm_provider, "model", "fake"),
@@ -171,7 +147,7 @@ class Pipeline:
             if event_callback:
                 await event_callback("assistant_end", content=content)
 
-            findings = parse_findings(content)
+            findings = self.findings_service.parse_findings(content)
             for f in findings:
                 if event_callback:
                     await event_callback("finding", finding=f)
@@ -258,24 +234,5 @@ class Pipeline:
             "total_tokens": total_tokens
         }
 
-    def _build_system_prompt(self, session: SessionState, intent: ParsedIntent, skills: str, memory: str) -> str:
-        return f"""You are RedForge, an elite autonomous penetration testing agent.
-Active Mode: {session.mode}
-Autonomy Level: {session.autonomy}
-Target: {session.target or 'NONE'}
-
-## SKILLS & GUIDELINES
-{skills}
-
-## DISCOVERED CONTEXT
-{memory}
-
-## INSTRUCTIONS
-1. Analyze the objective.
-2. Maintain target consistency: ONLY interact with {session.target or 'nothing'}.
-3. To run a tool, use the format:
-TOOL: <name>
-COMMAND: <cmd>
-4. If you find vulnerabilities, record them as FINDING: blocks.
-5. Provide a final summary when the task is done.
-"""
+    # Build prompt logic moved to PlannerService
+    pass
