@@ -151,18 +151,31 @@ class Pipeline:
                 try:
                     plan = planner.create_plan(planner_ctx)
                     
+                    from ..policy.policy_engine import PolicyEngine
+                    policy_eng = PolicyEngine()
+                    decision = policy_eng.evaluate_plan(plan, session.target or "")
+                    
                     response_text = f"### Execution Plan\n\n**Goal:** {plan.goal}\n"
                     response_text += f"**Estimated Duration:** {plan.estimated_duration} seconds\n"
                     response_text += f"**Confidence:** {plan.confidence}\n\n"
+                    response_text += f"### Policy Decision\n"
+                    response_text += f"**Status:** {decision.status.value}\n"
+                    response_text += f"**Risk Level:** {decision.risk_level.value}\n"
+                    response_text += f"**Reason:** {decision.reason}\n\n"
+                    
                     response_text += "**Tasks:**\n"
                     for idx, t in enumerate(plan.ordered_tasks, 1):
                         deps_str = f" (Depends on: {', '.join(t.dependencies)})" if t.dependencies else ""
                         tool_str = f" [Tool: {t.tool_hint}]" if t.tool_hint else ""
                         response_text += f"{idx}. **{t.title}** - {t.description}{tool_str}{deps_str}\n"
                         
-                    if plan.warnings:
+                    all_warnings = list(plan.warnings)
+                    if decision.warnings:
+                        all_warnings.extend(decision.warnings)
+                        
+                    if all_warnings:
                         response_text += "\n**Warnings:**\n"
-                        for w in plan.warnings:
+                        for w in all_warnings:
                             response_text += f"- {w}\n"
                 except Exception as e:
                     response_text = f"Planner Error: {str(e)}"

@@ -41,3 +41,14 @@ Implements security tool metadata definition, capability discovery, platform det
 * **`validator.py`**: Validates binary path existence and platform compatibility for specified tools.
 * **`installer.py`**: Outputs installation dry-run blueprints detailing packages and shell installation strings.
 * **`exceptions.py`**: Defines custom domain exceptions like `ToolNotFoundError` and `UnsupportedPlatformError`.
+
+### 6. Policy & Approval Layer (`src/redforge/policy/`)
+Sits between the Planner and Execution steps to validate scopes and calculate risk ratings before any execution.
+* **`policy_decision.py`**: Declares `PolicyDecision` data model containing status enum (ALLOW/DENY/REQUIRES_APPROVAL), risk level enum (LOW/MEDIUM/HIGH/CRITICAL), reason text, warnings list, and permission listings.
+* **`policy_rules.py`**: Dictates rules such as prohibited target lists (e.g. localhost, loopbacks) and tool risk mapping associations.
+* **`scope_validator.py`**: Checks if the active target is formatted correctly and doesn't violate loopback constraints.
+* **`risk_engine.py`**: Rates active plan risk according to the most invasive requested tool.
+* **`permission_validator.py`**: Lists warning advisories for tools that require explicit admin/testing authorization (like sqlmap).
+* **`approval_engine.py`**: Applies risk-level policy gates to yield auto-approvals, confirmation triggers, or deny actions.
+* **`policy_engine.py`**: Main orchestrator evaluating the `Plan` target and tools to compute the `PolicyDecision`.
+

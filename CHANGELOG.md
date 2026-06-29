@@ -2,6 +2,19 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-5] - 2026-06-29
+
+### Added
+* New **Policy & Approval Engine** layer in `src/redforge/policy/` sitting between Planner and Executor.
+* **PolicyDecision** model indicating ALLOW / REQUIRES_APPROVAL / DENY and risk rating.
+* **ScopeValidator** checking target constraints against localhost, loopbacks, and structure.
+* **RiskEngine** evaluating overall plan risk levels (LOW/MEDIUM/HIGH/CRITICAL) based on requested tools.
+* **PermissionValidator** returning warning advisories for invasive scanner authorizations.
+* **ApprovalEngine** routing LOW risk scans to auto-approval and higher risks to confirmation/approval gates.
+* **PolicyEngine** main orchestrator assessing plan tools and targets.
+* Integration inside `Pipeline.process_turn` appending formatted policy decisions and risk ratings to the execution plan response.
+* Unit tests in `tests/unit/test_policy.py` verifying scopes, risk rankings, approvals, denials, and bypass integrations.
+
 ## [2.0.0-phase-4] - 2026-06-29
 
 ### Added
