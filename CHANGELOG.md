@@ -2,6 +2,19 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-13] - 2026-06-29
+
+### Added
+* Modular **Knowledge Synthesis & Reporting Engine** in `src/redforge/reporting/` transforming raw evidence, entities, memory, and RAG outputs into security reports.
+* **KnowledgeSynthesizer** to compile evidence, host details, and CVE entries into structured Findings.
+* **RiskEngine** calculating business risks, technical risks, exploitability rates, impact parameters, and overall risk levels.
+* **Severity** classifications mapping findings into Critical, High, Medium, Low, and Info levels.
+* **CorrelationEngine** and **Deduplicator** grouping vulnerability assets and removing duplicate entries.
+* **ReportRenderer** and **ReportExporter** generating reports in Markdown, JSON, and standard SARIF formats.
+* Chronological **ReportTimelineGenerator** mapping milestone execution steps.
+* Pluggable **RemediationEngine** providing risk explanations, remediations, fixes, and verification procedures.
+* Unit tests in `tests/unit/test_reporting.py` verifying synthesizers, risk scoring, correlations, deduplications, timelines, rendering layouts, and exporters.
+
 ## [2.0.0-phase-12] - 2026-06-29
 
 ### Added

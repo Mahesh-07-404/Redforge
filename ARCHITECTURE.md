@@ -217,6 +217,41 @@ graph TD
 * **`contracts.py`**: Declares Pydantic data schemas representing `Goal` and `ReasoningDecision`.
 * **`exceptions.py`**: Custom reasoning exceptions.
 
+### 13. Knowledge Synthesis & Reporting Engine (`src/redforge/reporting/`)
+Transforms raw evidence, normalized entities, memory, and RAG results into human-readable findings and professional security reports (Markdown, JSON, SARIF).
+
+```mermaid
+graph TD
+    ReportingEngine["Reporting Engine"] --> KnowledgeSynthesizer["Knowledge Synthesizer"]
+    ReportingEngine --> CorrelationEngine["Correlation Engine"]
+    ReportingEngine --> Deduplicator["Deduplicator"]
+    
+    KnowledgeSynthesizer --> RiskEngine["Risk Engine"]
+    KnowledgeSynthesizer --> RemediationEngine["Remediation Engine"]
+    KnowledgeSynthesizer --> ReportTimelineGenerator["Report Timeline Generator"]
+    
+    ReportingEngine --> ReportRenderer["Report Renderer"]
+    ReportingEngine --> ReportExporter["Report Exporter (JSON, Markdown, SARIF)"]
+```
+
+#### Module Descriptions
+* **`engine.py`** (`ReportingEngine`): Entry point coordinating synthesizers, correlation logic, and deduplication filters.
+* **`synthesizer.py`** (`KnowledgeSynthesizer`): Fuses evidence and normalized entities into structured findings and executive summaries.
+* **`findings.py`**: Exports Finding builders and data schemas.
+* **`severity.py`** (`Severity`): Defines rating classes (Critical, High, Medium, Low, Info).
+* **`risk.py`** (`RiskEngine`): Computes overall, technical, and business risk values.
+* **`correlation.py`** (`CorrelationEngine`): Groups related asset vulnerabilities by CVE or service ports.
+* **`deduplicator.py`** (`Deduplicator`): Filters identical finding records.
+* **`timeline.py`** (`ReportTimelineGenerator`): Builds chronological milestone charts.
+* **`templates.py`** (`ReportTemplates`): Markdown template layouts.
+* **`renderer.py`** (`ReportRenderer`): Binds findings and summaries to report layouts.
+* **`exporter.py`** (`ReportExporter`): Compiles report outputs to Markdown, JSON, and SARIF formats.
+* **`remediation.py`** (`RemediationEngine`): Supplies vulnerability risk details, fix scripts, and verification rules.
+* **`references.py`** (`ReferenceMapper`): Resolves external references (NVD, CVE database links).
+* **`contracts.py`**: Pydantic schemas representing `Finding`, `ExecutiveSummary`, `RiskScore`, and `SynthesisReport`.
+* **`exceptions.py`**: Custom reporting exceptions.
+
+
 
 
 
