@@ -61,3 +61,15 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 redforge.db
+
+# Runtime data
+data/qdrant/
+data/sessions.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+.pytest_cache/
+*.pyc
