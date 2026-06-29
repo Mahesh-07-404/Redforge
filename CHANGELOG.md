@@ -2,6 +2,21 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-10] - 2026-06-29
+
+### Added
+* Modular **Hybrid RAG & Knowledge Engine** in `src/redforge/rag/` providing context injection between memory storage and LLMs.
+* Pluggable **EmbeddingProvider** adapters for OpenAI, Gemini, Ollama, Sentence Transformers, and FastEmbed.
+* **VectorStore** adapters supporting SQLite, Qdrant, FAISS, Chroma, Pinecone, and Weaviate, featuring memory fallbacks.
+* Pluggable **SourceProvider** interface to ingest Session Memory, Entity Memory, Timeline, Evidence Store, and Skills.
+* **ChunkEngine** providing sliding-word chunking algorithms for text/markdown inputs and session logs.
+* **HybridSearch** combining keyword searches and vector queries.
+* **Reranker** sorting results by query overlaps, active session matches, and recency multipliers.
+* **ContextBuilder** compiling compressed deduplicated results into token-bounded context blocks.
+* **KnowledgeBase** organizing libraries for CVEs, OWASP, Pentest notes, and local files.
+* **RAGCache** providing TTL key-value caching for search runs.
+* Unit tests in `tests/unit/test_rag.py` verifying chunking, hybrid search, embedding adapters, vector stores, knowledge bases, reranking, caching, and pipeline runs.
+
 ## [2.0.0-phase-8] - 2026-06-29
 
 ### Added

@@ -103,6 +103,52 @@ This layer translates raw tool logs and evidence bundles into a universal schema
 * **Entity Relationship Model**: Mappers and resolvers automatically map links between entities (e.g. connecting a host to its scanned port, a port to its service, or a finding to its CVE reference) without relying on a full graph database.
 * **Future Memory Integration**: The next phase (Memory Engine, Phase 9) will ingest the structured `NormalizedBundle` to populate the vector and relational state stores, updating context memory and establishing cross-session search capability.
 
+### 10. Hybrid RAG & Knowledge Engine (`src/redforge/rag/`)
+Implements the Retrieval-Augmented Generation layer mediating between LLMs and structured/unstructured memory sources.
+
+```mermaid
+graph TD
+    UserQuery["User Query"] --> HybridSearch["Hybrid Search Engine"]
+    HybridSearch --> KeywordSearch["Keyword / Metadata Search"]
+    HybridSearch --> VectorSearch["Vector DB Search"]
+    
+    SourceManager["RAG Manager"] --> MemoryProvider["Memory Provider"]
+    SourceManager --> SkillProvider["Skill Provider"]
+    SourceManager --> DocProvider["Documentation Provider"]
+    
+    MemoryProvider --> Chunker["Chunk Engine"]
+    SkillProvider --> Chunker
+    DocProvider --> Chunker
+    
+    Chunker --> Ingestion["Ingestion Pipeline"]
+    Ingestion --> VectorStore["Vector Store Adapter"]
+    
+    KeywordSearch --> Merge["Merge & Deduplicate"]
+    VectorSearch --> Merge
+    
+    Merge --> Reranker["Relevance Reranker"]
+    Reranker --> ContextBuilder["Context Builder & Token Compressor"]
+    ContextBuilder --> LLMContext["Optimized LLM Prompt Context"]
+```
+
+#### Module Descriptions
+* **`engine.py`** (`RAGEngine`): Main entry point orchestrating cache lookups, search coordination, reranking, and context serialization.
+* **`manager.py`** (`RAGManager`): Discovers and triggers provider fetching routines, running chunks ingestion.
+* **`retriever.py`** (`Retriever`): Accesses the RAGEngine using simplified single-method lookups.
+* **`hybrid_search.py`** (`HybridSearch`): Executes side-by-side keyword matching and vector matching.
+* **`query.py`**: Model schema for queries.
+* **`chunker.py`** (`ChunkEngine`): Implements word-sliding chunking for text/markdown files and logs, generating standard chunk hashes.
+* **`embedder.py`** (`EmbeddingProvider`): Pluggable adapters supporting Mock, OpenAI, Gemini, Ollama, Sentence Transformers, and FastEmbed.
+* **`reranker.py`** (`Reranker`): Scores hits based on query-word overlap, recency weightings, and active session matching.
+* **`vector_store.py`** (`VectorStore`): Abstract vector adapters supporting memory, SQLite, Qdrant, FAISS, Chroma, Pinecone, and Weaviate.
+* **`knowledge_base.py`** (`KnowledgeBase`): Organizes static knowledge libraries (CVEs, OWASP guides, Pentesting references).
+* **`context_builder.py`** (`ContextBuilder`): Compresses results, deduplicates content blocks, references sources, and formats final context boundaries respecting token limits.
+* **`sources.py`** (`SourceProvider`): Pluggable abstract providers pulling from Memory Engine, Session Memory, Entity Memory, Evidence Store, and Skills.
+* **`pipeline.py`** (`RAGPipeline`): Runs RAGEngine queries in pipeline steps.
+* **`cache.py`** (`RAGCache`): Key-value TTL caching mechanism for retrieval outputs and queries.
+* **`exceptions.py`**: Custom RAG exceptions.
+
+
 
 
 
