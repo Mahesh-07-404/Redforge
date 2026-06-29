@@ -81,14 +81,82 @@ class Pipeline:
                 session_id=session_id
             )
 
+        # Initialize or load ConversationContext
+        from ..contracts.conversation import ConversationContext
+        from ..providers.base import Message
+        
+        meta = session.metadata or {}
+        context = ConversationContext(
+            active_session=session,
+            active_target=session.target,
+            current_goal=meta.get("current_goal"),
+            conversation_summary=meta.get("conversation_summary"),
+            previous_messages=[Message(**m) if isinstance(m, dict) else m for m in meta.get("previous_messages", [])]
+        )
+
         # 1. Intent Engine
         intent = self.intent_engine.process(raw_input, session.mode, session_id, session.autonomy)
+        context.current_intent = intent
         
         # 2. Session/Target update
-        if intent.target_changed:
+        if intent.target and (intent.target != context.active_target):
+            intent.target_changed = True
             self.session_manager.set_target(session_id, intent.target)
             self.memory_manager.flush_session(session_id)
+            context.active_target = intent.target
             session.target = intent.target
+
+        # Add user message to history
+        context.previous_messages.append(Message(role="user", content=raw_input))
+
+        # Check if we should run the legacy execution workflow or route casually
+        should_run_legacy = False
+        raw_lower = raw_input.lower()
+        
+        from ..contracts.intent import IntentType
+        if intent.intent_type in (IntentType.SCAN, IntentType.RECON, IntentType.EXPLOIT) or "safe command" in raw_lower or "scan the target" in raw_lower:
+            # Running legacy execution workflow
+            # Ensure target is present for security workflows
+            if not session.target:
+                response_text = "Please specify a target for this security task (e.g. 'on example.com')."
+                context.previous_messages.append(Message(role="assistant", content=response_text))
+                session.metadata["previous_messages"] = [m.__dict__ if hasattr(m, "__dict__") else m for m in context.previous_messages]
+                self.session_manager.save(session)
+                return {
+                    "status": "success",
+                    "intent": intent,
+                    "response": response_text,
+                    "results": [],
+                    "session": session,
+                    "total_tokens": 0
+                }
+            should_run_legacy = True
+
+        if not should_run_legacy:
+            # Route casually via Intent Router
+            from .router import IntentRouter
+            from .conversation import ConversationManager
+            conv_mgr = ConversationManager(self.llm_provider)
+            router = IntentRouter(
+                conversation_mgr=conv_mgr,
+                session_service=self.session_manager,
+                report_engine=self.report_engine
+            )
+            response_text = await router.route(intent, context, token_callback=token_callback, event_callback=event_callback)
+            
+            # Save assistant response to history
+            context.previous_messages.append(Message(role="assistant", content=response_text))
+            session.metadata["previous_messages"] = [m.__dict__ if hasattr(m, "__dict__") else m for m in context.previous_messages]
+            self.session_manager.save(session)
+            
+            return {
+                "status": "success",
+                "intent": intent,
+                "response": response_text,
+                "results": [],
+                "session": session,
+                "total_tokens": len(response_text.split()) if response_text else 1
+            }
 
         # 3. Safety check
         if intent.target:
@@ -224,6 +292,11 @@ class Pipeline:
                 history.append(Message(role="user", content=f"Tool Output: {verified.tool_result.stdout}"))
             
             all_results.extend(turn_results)
+
+        for msg in history[1:]:
+            context.previous_messages.append(msg)
+        session.metadata["previous_messages"] = [m.__dict__ if hasattr(m, "__dict__") else m for m in context.previous_messages]
+        self.session_manager.save(session)
 
         return {
             "status": "success",
