@@ -114,7 +114,7 @@ class Pipeline:
         raw_lower = raw_input.lower()
         
         from ..contracts.intent import IntentType
-        if intent.intent_type in (IntentType.SCAN, IntentType.RECON, IntentType.EXPLOIT) or "safe command" in raw_lower or "scan the target" in raw_lower:
+        if "safe command" in raw_lower or "scan the target" in raw_lower:
             # Running legacy execution workflow
             # Ensure target is present for security workflows
             if not session.target:
@@ -133,6 +133,60 @@ class Pipeline:
             should_run_legacy = True
 
         if not should_run_legacy:
+            planning_intents = {
+                IntentType.BUG_BOUNTY, IntentType.PENTEST, IntentType.CTF,
+                IntentType.LEARNING, IntentType.REPORT, IntentType.RECON, IntentType.SCAN
+            }
+            if intent.intent_type in planning_intents:
+                from ..planner import Planner, PlannerContext
+                
+                planner_ctx = PlannerContext(
+                    active_session=session,
+                    target=session.target,
+                    current_goal=intent.raw_input,
+                    intent=intent,
+                    active_mode=session.mode
+                )
+                planner = Planner()
+                try:
+                    plan = planner.create_plan(planner_ctx)
+                    
+                    response_text = f"### Execution Plan\n\n**Goal:** {plan.goal}\n"
+                    response_text += f"**Estimated Duration:** {plan.estimated_duration} seconds\n"
+                    response_text += f"**Confidence:** {plan.confidence}\n\n"
+                    response_text += "**Tasks:**\n"
+                    for idx, t in enumerate(plan.ordered_tasks, 1):
+                        deps_str = f" (Depends on: {', '.join(t.dependencies)})" if t.dependencies else ""
+                        tool_str = f" [Tool: {t.tool_hint}]" if t.tool_hint else ""
+                        response_text += f"{idx}. **{t.title}** - {t.description}{tool_str}{deps_str}\n"
+                        
+                    if plan.warnings:
+                        response_text += "\n**Warnings:**\n"
+                        for w in plan.warnings:
+                            response_text += f"- {w}\n"
+                except Exception as e:
+                    response_text = f"Planner Error: {str(e)}"
+                    
+                if event_callback:
+                    await event_callback("assistant_start", content="")
+                if token_callback:
+                    await token_callback(response_text)
+                if event_callback:
+                    await event_callback("assistant_end", content=response_text)
+                    
+                context.previous_messages.append(Message(role="assistant", content=response_text))
+                session.metadata["previous_messages"] = [m.__dict__ if hasattr(m, "__dict__") else m for m in context.previous_messages]
+                self.session_manager.save(session)
+                
+                return {
+                    "status": "success",
+                    "intent": intent,
+                    "response": response_text,
+                    "results": [],
+                    "session": session,
+                    "total_tokens": len(response_text.split()) if response_text else 1
+                }
+
             # Route casually via Intent Router
             from .router import IntentRouter
             from .conversation import ConversationManager

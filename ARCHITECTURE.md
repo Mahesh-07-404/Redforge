@@ -20,3 +20,13 @@ Implements the core logic and workflow execution.
 ### 3. Memory & Persistence Layer
 * **`src/redforge/memory/`**: RAG context retrieval and session-isolated vector database management.
 * **`src/redforge/core/session.py`**: SQLite session persistence with auto-migration columns for metadata and namespace.
+
+### 4. Planner Layer (`src/redforge/planner/`)
+Encapsulates the Planner and Task Graph engine responsible for generating dry-run plans without executing tools.
+* **`planner_context.py`**: Definess `PlannerContext` containing active session, target, goal, intent, active mode, and user preferences.
+* **`task.py`**: Data structure representing an individual unit of work (`Task`) detailing id, description, dependencies, estimated duration, risk level, status, and required confirmations.
+* **`task_graph.py`**: Implements topological sorting to resolve task execution order and perform cycle detection.
+* **`plan.py`**: Holds the compiled `Plan` consisting of the target goal, ordered tasks, dependencies, confidence score, and warnings.
+* **`strategy.py`**: Implement modular planning strategies (`PassiveReconStrategy`, `WebEnumerationStrategy`, `BugBountyStrategy`, `CTFStrategy`, `LearningStrategy`, `ReportStrategy`) mapping specific user requests to workflows.
+* **`validators.py`**: Verifies prerequisites like session existence, target constraints, and intent validity prior to planning.
+

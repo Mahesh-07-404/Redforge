@@ -2,6 +2,16 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-3] - 2026-06-29
+
+### Added
+* Modular dry-run **Planner Engine** in `src/redforge/planner/` that creates execution plans but never executes tools.
+* **PlanningStrategy** classes implementing `PassiveReconStrategy`, `WebEnumerationStrategy`, `BugBountyStrategy`, `CTFStrategy`, `LearningStrategy`, and `ReportStrategy`.
+* **TaskGraph** dependency engine resolving task order using topological sort and performing cycle detection.
+* **PlannerValidator** verifying session, target, and intent compatibility.
+* Integration within `Pipeline.process_turn` to output formatted planning lists for planning intents.
+* Comprehensive unit tests in `tests/unit/test_planner.py` covering graph ordering, strategy selection, validation, and bypass paths.
+
 ## [2.0.0-phase-2] - 2026-06-29
 
 ### Added
