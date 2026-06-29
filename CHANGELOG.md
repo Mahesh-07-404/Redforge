@@ -2,6 +2,20 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-11] - 2026-06-29
+
+### Added
+* Modular **Multi-Agent Orchestrator** in `src/redforge/orchestrator/` coordinates specialized agent tasks.
+* Pluggable **BaseAgent** interface under `src/redforge/agents/` modeling agent id, tools, capability requirements, and execution.
+* Implemented **10 specialized agents** (Recon, Web, Network, Android, CTF, Learning, Report, Research, BugBounty, and Coordinator).
+* **AgentRegistry** automatically registering agents and finding them based on required capability metrics.
+* **AgentCoordinator** selecting and mapping plan tasks to compatible agents.
+* **AgentScheduler** running assignments sequentially and collecting outputs.
+* **CommunicationBus** routing messages (TaskAssigned, NeedInformation, ShareEvidence) between agents.
+* **ResultMerger** aggregating and deduplicating distinct agent outcomes.
+* **AgentRetryStrategy** providing retry loops for task operations.
+* Unit tests in `tests/unit/test_orchestrator.py` verifying coordinators, schedulers, registries, communication, retries, and result merges.
+
 ## [2.0.0-phase-10] - 2026-06-29
 
 ### Added

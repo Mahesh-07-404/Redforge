@@ -148,6 +148,41 @@ graph TD
 * **`cache.py`** (`RAGCache`): Key-value TTL caching mechanism for retrieval outputs and queries.
 * **`exceptions.py`**: Custom RAG exceptions.
 
+### 11. Multi-Agent Orchestrator (`src/redforge/orchestrator/` & `src/redforge/agents/`)
+Orchestrates multiple specialized cybersecurity agents, mapping execution plans to agents, scheduling their runs, managing message bus communication, and merging task outcomes.
+
+```mermaid
+graph TD
+    OrchestratorEngine["Orchestrator Engine"] --> AgentCoordinator["Agent Coordinator"]
+    OrchestratorEngine --> AgentScheduler["Agent Scheduler"]
+    
+    AgentCoordinator --> AgentRegistry["Agent Registry"]
+    AgentRegistry --> LoadAgents["Recon, Web, Network, Android, CTF, Learning, Report, Research, BugBounty, Coordinator Agents"]
+    
+    AgentScheduler --> AgentDispatcher["Agent Dispatcher"]
+    AgentDispatcher --> Exec["Agent base.execute(plan)"]
+    
+    Exec --> CommBus["Communication Bus (internal message bus)"]
+    CommBus --> PubSub["Publish TaskAssigned, TaskStarted, TaskCompleted, NeedInformation, ShareEvidence"]
+    
+    AgentScheduler --> ResultMerger["Result Merger (Deduplicate & Merge)"]
+```
+
+#### Module Descriptions
+* **`engine.py`** (`OrchestratorEngine`): Main entry point mapping plan files to tasks, invoking coordinators, scheduling tasks, and merging results.
+* **`coordinator.py`** (`AgentCoordinator`): Selects the best agent for each plan task based on tool and capability support.
+* **`scheduler.py`** (`AgentScheduler`): Coordinates execution order, retries, and task runs.
+* **`dispatcher.py`** (`AgentDispatcher`): Directs plans to base execution routines.
+* **`agent_registry.py`** (`AgentRegistry`): Stores available agents, supporting capability-based lookup.
+* **`agent_loader.py`** (`AgentLoader`): Loads all 10 core agents (Recon, Web, Network, Android, CTF, Learning, Report, Research, BugBounty, Coordinator) into the registry.
+* **`communication.py`** (`CommunicationBus`): Internal message bus routing task assignment, completion, evidence sharing, and informational requests.
+* **`result_merger.py`** (`ResultMerger`): Cleanly merges distinct agent outputs, removing duplicates and formatting audit logs.
+* **`retry.py`** (`AgentRetryStrategy`): Simple retry loop for failed task operations.
+* **`context.py`** (`OrchestratorContext`): Stores shared memory values accessible across agents.
+* **`contracts.py`**: Declares Pydantic data schemas representing `AgentAssignment`, `AgentTaskResult`, and `OrchestrationResult`.
+* **`exceptions.py`**: Custom orchestrator exceptions.
+
+
 
 
 
