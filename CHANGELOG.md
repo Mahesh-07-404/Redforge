@@ -2,6 +2,28 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-15] - 2026-06-29
+
+### Added
+* **Plugin SDK** in `src/redforge/plugins/` — pluggable architecture for Tool, Workflow, Agent, Report, Memory Provider, RAG Provider, and Authentication Provider plugin types.
+* **PluginManager** coordinating full plugin lifecycle (install, uninstall, enable, disable, version, dependency resolution).
+* **PluginLoader** with dependency graph resolution — fails fast on missing transitive dependencies.
+* **PluginRegistry** tracking installed plugins and their enabled/disabled states.
+* **PluginHooks** with six lifecycle hook points (`before_plan`, `after_plan`, `before_execution`, `after_execution`, `before_report`, `after_report`).
+* **PluginSandbox** preventing plugins from directly modifying core architecture.
+* **PluginPermissionManager** validating requested plugin permissions against user-granted scopes.
+* **PluginEvents** emitting install, uninstall, enable, disable lifecycle notifications.
+* **MCP (Model Context Protocol) Framework** in `src/redforge/mcp/` — JSON-RPC compliant tool and resource discovery.
+* **MCPServer** exposing tool and resource registries to connected agents.
+* **MCPClient** querying server endpoints for available tools and resources.
+* **MCPRegistry** cataloging discoverable tools and local resource URIs.
+* **MCPTransport** formatting JSON-RPC 2.0 compliant payloads.
+* **MCPManager** coordinating server/client lifecycles.
+* Backward-compatible re-export of legacy `PlatformManager`, `HackerOneAPI`, `BugcrowdAPI`, `Submission`, `Report`, `Program`, and `create_submission` from `redforge.plugins`.
+* Plugin Developer Guide in `docs/plugin_developer_guide.md`.
+* MCP Integration Guide in `docs/mcp_integration_guide.md`.
+* Unit tests in `tests/unit/test_plugins_mcp.py` verifying plugin installation, dependency resolution, sandbox execution, permission checks, hook triggers, MCP tool/resource discovery, and transport message formatting.
+
 ## [2.0.0-phase-14] - 2026-06-29
 
 ### Added

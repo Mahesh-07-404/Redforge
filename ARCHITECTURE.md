@@ -280,6 +280,42 @@ graph TD
 * **`contracts.py`**: Pydantic schemas representing `WorkflowStage` and `WorkflowDefinition`.
 * **`exceptions.py`**: Custom workflow engine exceptions.
 
+### 15. Plugin SDK & MCP Framework (`src/redforge/plugins/` & `src/redforge/mcp/`)
+Exposes a pluggable SDK and Model Context Protocol (MCP) framework allowing third-party tools, agents, and workflows to be integrated dynamically and securely.
+
+```mermaid
+graph TD
+    PluginManager["Plugin Manager"] --> PluginLoader["Plugin Loader"]
+    PluginManager --> PluginRegistry["Plugin Registry"]
+    PluginLoader --> PluginSandbox["Plugin Sandbox"]
+    PluginSandbox --> PluginPermissionManager["Plugin Permission Manager"]
+    PluginManager --> PluginHooks["Plugin Hooks"]
+    
+    MCPServer["MCP Server"] --> MCPRegistry["MCP Registry"]
+    MCPRegistry --> MCPTools["MCP Tools Registry"]
+    MCPRegistry --> MCPResources["MCP Resources Registry"]
+    
+    MCPClient["MCP Client"] --> MCPServer
+```
+
+#### Module Descriptions
+* **`plugins/manager.py`** (`PluginManager`): Entry point installing, uninstalling, enabling, or disabling plugins.
+* **`plugins/loader.py`** (`PluginLoader`): Loads plugins dynamically, validating their dependencies.
+* **`plugins/registry.py`** (`PluginRegistry`): Registers plugins and maintains active states.
+* **`plugins/hooks.py`** (`PluginHooks`): Triggers lifecycle hook points (`before_plan`, `after_plan`, `before_execution`, `after_execution`, `before_report`, `after_report`).
+* **`plugins/sandbox.py`** (`PluginSandbox`): Isolates execution contexts of custom plugin scripts.
+* **`plugins/permissions.py`** (`PluginPermissionManager`): Validates requested plugin permissions against user-granted scopes.
+* **`plugins/events.py`** (`PluginEvents`): Emits lifecycle event notifications.
+* **`plugins/contracts.py`**: Metadata schemas for plugins.
+* **`plugins/exceptions.py`**: Custom plugin SDK exceptions.
+* **`mcp/server.py`** (`MCPServer`): Exposes standard JSON-RPC tools and file resource registries.
+* **`mcp/client.py`** (`MCPClient`): Queries server endpoints to discover tools and resources.
+* **`mcp/registry.py`** (`MCPRegistry`): Registry cataloging discoverable tools and local resource URIs.
+* **`mcp/transport.py`** (`MCPTransport`): Standard transport adapter formatting payloads as JSON-RPC messages.
+* **`mcp/contracts.py`**: Pydantic schemas representing `MCPTool` and `MCPResource`.
+* **`mcp/manager.py`** (`MCPManager`): Coordinates MCP server/client lifecycles.
+
+
 
 
 
