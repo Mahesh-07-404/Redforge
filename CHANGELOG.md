@@ -2,6 +2,18 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-8] - 2026-06-29
+
+### Added
+* Modular **Result Normalization** layer in `src/redforge/normalize/` translating raw tool logs to standard entities.
+* **NormalizedEntity** base schema representing universal metadata (IDs, values, tools, session & execution links, and hash references).
+* Universal entity classes (Host, IPAddress, Port, Service, URLResource, Technology, Directory, Finding, CVE, etc.).
+* Built-in mappers for **14 tools** (Subfinder, Assetfinder, Amass, Httpx, Katana, Nmap, Naabu, Nuclei, DNSX, FFUF, Feroxbuster, Gobuster, Waybackurls, GAU) to map log formats to normalized models.
+* **MapperRegistry** automatically registering tool-specific normalization maps.
+* **RelationshipResolver** extracting relations (Host->Port, Port->Service, Finding->CVE, etc.) without graph databases.
+* **NormalizationValidator** verifying duplicates, structural validity, and broken references.
+* Unit tests in `tests/unit/test_normalize.py` verifying registry lookups, entity matching, relationship resolver, and pipeline validation.
+
 ## [2.0.0-phase-7] - 2026-06-29
 
 ### Added

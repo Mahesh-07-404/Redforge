@@ -77,5 +77,32 @@ Converts task execution outputs into structured evidence, creating a timeline au
 * **`serializer.py`**: Serializes evidence bundles to JSON, Markdown, and plain text formats.
 * **`exceptions.py`**: Defines evidence-related exceptions like `StoreError`.
 
+### 9. Result Normalization Layer (`src/redforge/normalize/`)
+This layer translates raw tool logs and evidence bundles into a universal schema of normalized entities, preparing it for downstream ingestion by Memory, RAG, and Reports.
+
+* **`schema.py`**: Declares base `NormalizedEntity` and `EvidenceReference` properties.
+* **`entities.py`**: Defines individual normalized entities (HostEntity, IPAddressEntity, PortEntity, ServiceEntity, URLResource, TechnologyEntity, DirectoryEntity, FindingEntity, CVEEntity, etc.).
+* **`mapper.py`**: Contains tool mappers (Subfinder, Amass, Httpx, Nmap, FFUF, Nuclei, DNSX, etc.) translating tool outcomes into entity schemas.
+* **`registry.py`**: Automatic registration registry for tool mappers.
+* **`resolver.py`**: Resolves relationships between entities (Host->Port, Port->Service, Host->Finding, etc.).
+* **`validator.py`**: Validates entities for duplicates, missing fields, or broken references.
+* **`normalizer.py`**: Central orchestrator processing `EvidenceBundle` files to compile `NormalizationResult` outputs.
+* **`contracts.py`**: Defines normalized output schemas (`NormalizedBundle`, `EntityRelation`, `NormalizationResult`).
+* **`exceptions.py`**: Custom normalization exceptions.
+
+#### Normalization Architecture Details
+* **Why Normalization Exists**: Instead of letting memory, RAG, or reporting layers parse dozens of raw tool-specific text outputs (e.g. nmap vs. subfinder), the Normalizer converts them into a single, uniform model. This decouples intelligence layers from execution tools.
+* **Universal Entity Schema**: Every entity contains:
+  * `id`: Unique identifier (e.g., `host_example.com`).
+  * `entity_type`: Entity class name (e.g., `Host`, `Port`, `Finding`).
+  * `value`: Principal value (e.g., domain string or port number).
+  * `source_tool`: Binary that discovered it.
+  * `session_id` & `execution_id`: Context links.
+  * `evidence_reference`: Original task ID and artifact hash to guarantee auditability.
+* **Tool Mapper Architecture**: Extensible mappers register themselves in the registry, consuming raw or parsed artifact logs and yielding a flat list of entity objects.
+* **Entity Relationship Model**: Mappers and resolvers automatically map links between entities (e.g. connecting a host to its scanned port, a port to its service, or a finding to its CVE reference) without relying on a full graph database.
+* **Future Memory Integration**: The next phase (Memory Engine, Phase 9) will ingest the structured `NormalizedBundle` to populate the vector and relational state stores, updating context memory and establishing cross-session search capability.
+
+
 
 
