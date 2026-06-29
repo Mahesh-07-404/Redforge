@@ -2,6 +2,20 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-12] - 2026-06-29
+
+### Added
+* Modular **Autonomous Reasoning Engine** in `src/redforge/reasoning/` responsible for thinking, evaluating progress, and self-reflecting on plan goals.
+* **GoalManager** to model, track, and update goal completion states.
+* **TaskDecomposer** breaking high-level target goals down into individual Task steps.
+* Pluggable **StrategySelector** mapping objectives to core workflows (Passive, Active, Bug Bounty, CTF, Learning, Research, Android, Network, Cloud, API).
+* **WorldState** tracking live host, port, service, CVE, url, and credentials metadata.
+* **SelfReflection** and **Replanner** to dynamically update planning lists based on execution outcomes.
+* **SelfEvaluator** assessing confidence levels, coverage percentages, and task completions.
+* **FailureHandler** managing tool crash retries and fallback switches.
+* **ReasoningStateMachine** managing states (IDLE, PLANNING, EXECUTING, REASONING, Reflecting, etc.).
+* Unit tests in `tests/unit/test_reasoning.py` verifying goal decomposition, strategy mappings, world state updates, self evaluation, reflection replanning, failure handlers, and state machine transitions.
+
 ## [2.0.0-phase-11] - 2026-06-29
 
 ### Added

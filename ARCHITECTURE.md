@@ -182,6 +182,42 @@ graph TD
 * **`contracts.py`**: Declares Pydantic data schemas representing `AgentAssignment`, `AgentTaskResult`, and `OrchestrationResult`.
 * **`exceptions.py`**: Custom orchestrator exceptions.
 
+### 12. Autonomous Reasoning Engine (`src/redforge/reasoning/`)
+Implements the autonomous thinking layer, managing goals, decomposing plans, analyzing outcomes, updating states, handling tool failures, and replanning dynamically.
+
+```mermaid
+graph TD
+    GoalManager["Goal Manager"] --> ReasoningEngine["Reasoning Engine"]
+    ReasoningEngine --> StrategySelector["Strategy Selector"]
+    ReasoningEngine --> TaskDecomposer["Task Decomposer"]
+    
+    ReasoningEngine --> Reasoner["Reasoner"]
+    Reasoner --> SelfEvaluator["Self Evaluator"]
+    SelfEvaluator --> WorldState["World State (live model)"]
+    
+    ReasoningEngine --> SelfReflection["Self Reflection"]
+    SelfReflection --> Replanner["Replanner"]
+    Replanner --> FailureHandler["Failure Handler"]
+    
+    ReasoningEngine --> StateMachine["State Machine (planning,executing,reflecting...)"]
+```
+
+#### Module Descriptions
+* **`engine.py`** (`ReasoningEngine`): Principal coordinator processing goals, running decomposers, and managing state transitions.
+* **`goal_manager.py`** (`GoalManager`): Tracks active goals and goal completion states.
+* **`task_decomposer.py`** (`TaskDecomposer`): Breaks user goals down into fine-grained tasks.
+* **`reasoner.py`** (`Reasoner`): Formulates strategic reasoning decisions (execute, replan, stop).
+* **`strategy_selector.py`** (`StrategySelector`): Maps targets and goals to pluggable workflows (Passive Recon, Active Recon, Bug Bounty, CTF, Learning, Research, Android, Network, Cloud, API).
+* **`reflection.py`** (`SelfReflection`): Reviews completed task outcomes and decides whether to trigger path modifications.
+* **`self_evaluator.py`** (`SelfEvaluator`): Estimates task coverage, confidence scores, and overall goal completion.
+* **`replanner.py`** (`Replanner`): Alters execution steps dynamically if the world state changes.
+* **`failure_handler.py`** (`FailureHandler`): Decides whether to retry a task, switch tool hints, or fail when tools crash.
+* **`world_state.py`** (`WorldState`): Tracks discovered hosts, ports, services, CVEs, credentials, and evidence artifacts.
+* **`state_machine.py`** (`ReasoningStateMachine`): Manages engine states (IDLE, PLANNING, WAITING_APPROVAL, EXECUTING, COLLECTING, REASONING, REFLECTING, REPLANNING, FINISHED, FAILED).
+* **`contracts.py`**: Declares Pydantic data schemas representing `Goal` and `ReasoningDecision`.
+* **`exceptions.py`**: Custom reasoning exceptions.
+
+
 
 
 
