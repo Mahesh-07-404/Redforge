@@ -2,6 +2,18 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-7] - 2026-06-29
+
+### Added
+* Modular **Evidence & Artifact Management** layer in `src/redforge/evidence/` converting execution logs to unified auditable evidence.
+* **EvidenceCollector** organizing execution parameters, timing details, exit statuses, and artifacts.
+* **ArtifactManager** building individual artifacts, generating associated metadata tags, and resolving tool risk.
+* **TimelineGenerator** compiling a chronological event trail of the planning, validation, and execution processes.
+* **EvidenceStore** persisting session evidence directories containing `evidence.json`, `timeline.json`, and distinct JSON files for each tool artifact.
+* **EvidenceSerializer** translating data into JSON, Markdown, and plain text representations.
+* **hashing** library implementing SHA256 validation for outputs.
+* Unit tests in `tests/unit/test_evidence.py` verifying collector, timeline, hash checks, serialization, and storage operations.
+
 ## [2.0.0-phase-6] - 2026-06-29
 
 ### Added

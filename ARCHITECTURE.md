@@ -65,4 +65,17 @@ Executes task workflows dynamically for approved plan structures.
 * **`exceptions.py`**: Defines execution error classes.
 * **`contracts.py`**: Encapsulates `ApprovedPlan`, `TaskResult`, and `ExecutionResult` schemas.
 
+### 8. Evidence & Artifact Management Layer (`src/redforge/evidence/`)
+Converts task execution outputs into structured evidence, creating a timeline audit trail and storing output artifacts under sessions.
+* **`contracts.py`**: Declares Pydantic data schemas representing `Evidence`, `Artifact`, `EvidenceBundle`, `TimelineEvent`, and `ExecutionTimeline`.
+* **`metadata.py`**: Defines `ArtifactMetadata` schema containing target, duration, exit code, hash, platform, and tool details.
+* **`collector.py`**: Main orchestrator converting `ExecutionResult` inputs into a unified `EvidenceBundle`.
+* **`artifacts.py`**: Manages artifact assembly and metadata binding.
+* **`timeline.py`**: Compiles chronological execution timeline events.
+* **`hashing.py`**: Computes SHA256 integrity hashes for all evidence artifact strings and bytes.
+* **`store.py`**: Persists session evidence structures (`evidence.json`, `timeline.json`, and individual artifact JSON files under `data/evidence/{session_id}/`).
+* **`serializer.py`**: Serializes evidence bundles to JSON, Markdown, and plain text formats.
+* **`exceptions.py`**: Defines evidence-related exceptions like `StoreError`.
+
+
 
