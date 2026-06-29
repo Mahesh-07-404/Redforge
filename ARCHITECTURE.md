@@ -30,3 +30,14 @@ Encapsulates the Planner and Task Graph engine responsible for generating dry-ru
 * **`strategy.py`**: Implement modular planning strategies (`PassiveReconStrategy`, `WebEnumerationStrategy`, `BugBountyStrategy`, `CTFStrategy`, `LearningStrategy`, `ReportStrategy`) mapping specific user requests to workflows.
 * **`validators.py`**: Verifies prerequisites like session existence, target constraints, and intent validity prior to planning.
 
+### 5. Tool Registry Layer (`src/redforge/tools/`)
+Implements security tool metadata definition, capability discovery, platform detection, and dry-run installation mapping.
+* **`tool.py`**: Pydantic `Tool` model containing ID, name, binary name, platforms, session mode compatibility, categories, description, capability links, required permissions, install methods, documentation, health, and availability. Features backward compatibility properties matching legacy tools format.
+* **`registry.py`**: Central registry providing tool registration, lookup by capability (with ranking), lookup by name/ID, and metadata caching. Exposes classmethods to support old tool suite test flows.
+* **`resolver.py`**: Resolves execution plan capabilities dynamically against registered tools.
+* **`capabilities.py`**: Declares security capability enums (Subdomain Enumeration, Port Scanning, Directory Brute Force, Web Crawling, Fuzzing, etc.).
+* **`platform.py`**: Performs detection for platforms (Arch, Kali, Ubuntu, Debian, Fedora, macOS, Windows, WSL) and exposes package managers, install command templates, and default bin search paths.
+* **`discovery.py`**: Conducts path check resolution for tools without executing executable files.
+* **`validator.py`**: Validates binary path existence and platform compatibility for specified tools.
+* **`installer.py`**: Outputs installation dry-run blueprints detailing packages and shell installation strings.
+* **`exceptions.py`**: Defines custom domain exceptions like `ToolNotFoundError` and `UnsupportedPlatformError`.

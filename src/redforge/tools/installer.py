@@ -1,47 +1,36 @@
-"""Verification and installation logic for security tools in RedForge."""
-
-import shutil
-import logging
-import subprocess
-from typing import List, Dict, Any, Optional
-
-logger = logging.getLogger(__name__)
+from .tool import Tool
+from .platform import detect_platform
 
 class ToolInstaller:
-    """Checks and handles installation of external system tools."""
-
-    def is_installed(self, cmd: str) -> bool:
-        """Check if command is available on PATH."""
-        return shutil.which(cmd) is not None
-
-    def install(self, tool_name: str) -> bool:
-        """Simulate or attempt automated installation of a tool."""
-        if self.is_installed(tool_name):
-            logger.info(f"Tool {tool_name} is already installed.")
-            return True
-
-        # Clean automated installer for common security tools (requires root or fails gracefully)
-        logger.info(f"Attempting to install {tool_name}...")
-        try:
-            # Check for apt (Debian/Ubuntu)
-            if shutil.which("apt-get"):
-                res = subprocess.run(
-                    ["sudo", "apt-get", "update", "-y"], 
-                    capture_output=True, 
-                    text=True, 
-                    timeout=60
-                )
-                res = subprocess.run(
-                    ["sudo", "apt-get", "install", "-y", tool_name], 
-                    capture_output=True, 
-                    text=True, 
-                    timeout=180
-                )
-                if res.returncode == 0:
-                    logger.info(f"Successfully installed {tool_name} via apt.")
-                    return True
-            logger.warning(f"No compatible package manager found or sudo authorization failed for {tool_name}.")
-        except Exception as e:
-            logger.error(f"Failed to install tool {tool_name}: {e}")
-
-        return False
+    """Only generates installation plans. Never executes them."""
+    def generate_install_plan(self, tool: Tool) -> dict:
+        plat = detect_platform()
+        pkg = tool.package or tool.binary
+        
+        # Determine install command based on package manager
+        if plat.package_manager == "pacman":
+            cmd = f"sudo pacman -S --noconfirm {pkg}"
+        elif plat.package_manager == "dnf":
+            cmd = f"sudo dnf install -y {pkg}"
+        elif plat.package_manager == "brew":
+            cmd = f"brew install {pkg}"
+        elif plat.package_manager == "choco":
+            cmd = f"choco install -y {pkg}"
+        else:
+            cmd = f"sudo apt install -y {pkg}"
+            
+        if tool.install_command:
+            cmd = tool.install_command
+            
+        return {
+            "tool_id": tool.id,
+            "tool_name": tool.name,
+            "platform": plat.name,
+            "package_manager": plat.package_manager,
+            "install_command": cmd,
+            "steps": [
+                f"Identify package manager: {plat.package_manager}",
+                f"Verify platform requirements for {plat.name}",
+                f"Execute command: {cmd}"
+            ]
+        }

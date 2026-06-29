@@ -2,6 +2,18 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-4] - 2026-06-29
+
+### Added
+* Modular **Tool Registry** in `src/redforge/tools/` responsible for discovering, describing, validating, and resolving security tools without executing them.
+* Pydantic **Tool** model in `src/redforge/tools/tool.py` containing ID, name, binary name, platform lists, categories, capabilities, and required permissions. Supports backward compatibility with old tools attributes.
+* **Capabilities** ranking mapping for subdomain discovery, port scanning, HTTP enumeration, directory brute force, technology detection, web crawling, fuzzing, screenshot, and DNS.
+* **PlatformDetector** supporting platform detection for Kali, Arch, Ubuntu, Debian, Fedora, macOS, Windows, and WSL.
+* **ToolDiscovery** class implementing PATH checks without running tool processes.
+* **ToolValidator** checking binary presence and platform compatibility.
+* **ToolInstaller** generating dry-run install command mappings.
+* Unit tests in `tests/unit/test_tools_v2.py` verifying registry caching, lookups, ranking, discovery, platform detection, validator, installer, and resolver.
+
 ## [2.0.0-phase-3] - 2026-06-29
 
 ### Added

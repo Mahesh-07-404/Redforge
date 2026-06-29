@@ -1,0 +1,11 @@
+class Capability:
+    SUBDOMAIN_ENUMERATION = "Subdomain Enumeration"
+    HTTP_ENUMERATION = "HTTP Enumeration"
+    PORT_SCANNING = "Port Scanning"
+    DIRECTORY_BRUTE_FORCE = "Directory Brute Force"
+    TECHNOLOGY_DETECTION = "Technology Detection"
+    WEB_CRAWLING = "Web Crawling"
+    FUZZING = "Fuzzing"
+    SCREENSHOT = "Screenshot"
+    DNS_ENUMERATION = "DNS Enumeration"
+    REPORTING = "Reporting"
