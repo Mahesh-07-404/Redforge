@@ -3,9 +3,10 @@
 import uuid
 import sqlite3
 import logging
+import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from ..contracts.session import SessionState, TargetState
+from ..contracts.session import Session, SessionState, TargetState
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,9 @@ class SessionStore:
                     autonomy TEXT,
                     created_at TEXT,
                     updated_at TEXT,
-                    status TEXT
+                    status TEXT DEFAULT 'active',
+                    metadata TEXT DEFAULT '{}',
+                    memory_namespace TEXT
                 )
             """)
             conn.execute("""
@@ -54,6 +57,17 @@ class SessionStore:
                     FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
                 )
             """)
+            
+            # Migration check to add columns if they do not exist
+            cursor = conn.execute("PRAGMA table_info(sessions)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if "status" not in columns:
+                conn.execute("ALTER TABLE sessions ADD COLUMN status TEXT DEFAULT 'active'")
+            if "metadata" not in columns:
+                conn.execute("ALTER TABLE sessions ADD COLUMN metadata TEXT DEFAULT '{}'")
+            if "memory_namespace" not in columns:
+                conn.execute("ALTER TABLE sessions ADD COLUMN memory_namespace TEXT")
+            conn.commit()
 
 
 class SessionService:
@@ -61,57 +75,117 @@ class SessionService:
     def __init__(self, store: SessionStore):
         self.store = store
 
-    def create(self, mode: str, target: str | None, autonomy: str, session_id: Optional[str] = None) -> SessionState:
+    def create(self, mode: str, target: str | None, autonomy: str, session_id: Optional[str] = None, name: str = "") -> Session:
         sid = session_id or str(uuid.uuid4())
+        memory_namespace = f"session_{sid[:8]}"
         now = datetime.now()
         status = "active"
         
+        # Serialize target if complex
+        target_str = None
+        meta = {"name": name}
+        if target:
+            from ..contracts.session import Target
+            if isinstance(target, Target):
+                target_str = target.value
+                meta["target"] = target.model_dump()
+            elif isinstance(target, dict) and "value" in target:
+                target_str = target["value"]
+                meta["target"] = target
+            else:
+                target_str = str(target)
+                
+        meta_str = json.dumps(meta)
+        
         with self.store._get_connection() as conn:
             conn.execute(
-                "INSERT INTO sessions (id, mode, target, autonomy, created_at, updated_at, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (sid, mode, target, autonomy, now.isoformat(), now.isoformat(), status)
+                "INSERT INTO sessions (id, mode, target, autonomy, created_at, updated_at, status, metadata, memory_namespace) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (sid, mode, target_str, autonomy, now.isoformat(), now.isoformat(), status, meta_str, memory_namespace)
             )
             conn.commit()
             
-        return SessionState(
-            id=sid, mode=mode, target=target, autonomy=autonomy, 
-            created_at=now, updated_at=now, status=status
+        return Session(
+            id=sid, mode=mode, target=target_str, autonomy=autonomy, 
+            created_at=now, updated_at=now, status=status,
+            metadata=meta, memory_namespace=memory_namespace
         )
 
-    def load(self, session_id: str) -> SessionState | None:
+    def load(self, session_id: str) -> Session | None:
         with self.store._get_connection() as conn:
             row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
             if row:
                 now = datetime.now()
                 conn.execute("UPDATE sessions SET updated_at = ? WHERE id = ?", (now.isoformat(), session_id))
                 conn.commit()
-                return SessionState(
+                
+                try:
+                    meta = json.loads(row["metadata"]) if row["metadata"] else {}
+                except Exception:
+                    meta = {}
+                    
+                return Session(
                     id=row["id"], mode=row["mode"], target=row["target"], autonomy=row["autonomy"],
                     created_at=datetime.fromisoformat(row["created_at"]),
-                    updated_at=now, status=row["status"]
+                    updated_at=now, status=row["status"],
+                    metadata=meta, memory_namespace=row["memory_namespace"]
                 )
         return None
 
-    def save(self, session_state: SessionState) -> None:
+    def save(self, session: Session) -> None:
         now = datetime.now()
-        session_state.updated_at = now
+        session.updated_at = now
+        meta_str = json.dumps(session.metadata)
         with self.store._get_connection() as conn:
             conn.execute(
-                "UPDATE sessions SET mode = ?, target = ?, autonomy = ?, updated_at = ?, status = ? WHERE id = ?",
-                (session_state.mode, session_state.target, session_state.autonomy, now.isoformat(), session_state.status, session_state.id)
+                "UPDATE sessions SET mode = ?, target = ?, autonomy = ?, updated_at = ?, status = ?, metadata = ?, memory_namespace = ? WHERE id = ?",
+                (session.mode, session.target, session.autonomy, now.isoformat(), session.status, meta_str, session.memory_namespace, session.id)
             )
             conn.commit()
 
     def set_target(self, session_id: str, new_target: str | None) -> None:
-        state = self.load(session_id)
-        if state:
-            state.target = new_target
-            self.save(state)
+        session = self.load(session_id)
+        if session:
+            from ..contracts.session import Target
+            if isinstance(new_target, Target):
+                session.target = new_target.value
+                session.metadata["target"] = new_target.model_dump()
+            elif isinstance(new_target, dict) and "value" in new_target:
+                session.target = new_target["value"]
+                session.metadata["target"] = new_target
+            else:
+                session.target = str(new_target) if new_target is not None else None
+            self.save(session)
+
+    def archive(self, session_id: str) -> None:
+        session = self.load(session_id)
+        if session:
+            session.status = "archived"
+            self.save(session)
+
+    def list(self, status: str | None = None) -> List[Dict[str, Any]]:
+        with self.store._get_connection() as conn:
+            if status:
+                rows = conn.execute(
+                    "SELECT * FROM sessions WHERE status = ? ORDER BY updated_at DESC", 
+                    (status,)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM sessions ORDER BY updated_at DESC"
+                ).fetchall()
+            
+            results = []
+            for r in rows:
+                d = dict(r)
+                try:
+                    d["metadata"] = json.loads(d["metadata"]) if d["metadata"] else {}
+                except Exception:
+                    d["metadata"] = {}
+                results.append(d)
+            return results
 
     def list_sessions(self) -> List[Dict[str, Any]]:
-        with self.store._get_connection() as conn:
-            rows = conn.execute("SELECT * FROM sessions ORDER BY updated_at DESC").fetchall()
-            return [dict(r) for r in rows]
+        return self.list()
 
     def delete(self, session_id: str) -> None:
         with self.store._get_connection() as conn:

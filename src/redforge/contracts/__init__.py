@@ -3,7 +3,7 @@ from .tool import ToolCall, ToolResult, VerifiedResult, VerificationStatus
 from .report import Finding, Evidence, ReportRequest, Report, Severity
 from .skill import SkillRecord, SkillQuery, SkillBundle
 from .memory import MemoryEntry, ContextBundle, ContextBudget
-from .session import SessionState, TargetState, ModeState
+from .session import Session, SessionState, TargetState, ModeState, Target, ScopePolicy, TargetType, SessionMode, SessionStatus
 
 __all__ = [
     "ParsedIntent", "IntentType", "RiskLevel",
@@ -11,5 +11,6 @@ __all__ = [
     "Finding", "Evidence", "ReportRequest", "Report", "Severity",
     "SkillRecord", "SkillQuery", "SkillBundle",
     "MemoryEntry", "ContextBundle", "ContextBudget",
-    "SessionState", "TargetState", "ModeState"
+    "Session", "SessionState", "TargetState", "ModeState",
+    "Target", "ScopePolicy", "TargetType", "SessionMode", "SessionStatus"
 ]

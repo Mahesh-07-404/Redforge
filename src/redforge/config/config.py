@@ -66,16 +66,15 @@ class AutonomyConfig(BaseModel):
 
 class MemoryConfig(BaseModel):
     vector_db: str = "qdrant"
-    persist_dir: str = "./workspaces"
+    persist_dir: str = "./data"
     skill_index: str = "./skills/skills_index.json"
     collection_name: str = "redforge_memory"
 
 
-class WorkspaceConfig(BaseModel):
-    auto_save: bool = True
-    backup_enabled: bool = True
+class SessionConfig(BaseModel):
+    data_dir: str = "./data"
+    max_active_sessions: int = 10
     retention_days: int = 90
-    default_workspace: str = "default"
 
 
 class ToolsConfig(BaseModel):
@@ -112,7 +111,7 @@ class Settings(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     autonomy: AutonomyConfig = Field(default_factory=AutonomyConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
-    workspace: WorkspaceConfig = Field(default_factory=WorkspaceConfig)
+    session: SessionConfig = Field(default_factory=SessionConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     integrations: IntegrationsConfig = Field(default_factory=IntegrationsConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)

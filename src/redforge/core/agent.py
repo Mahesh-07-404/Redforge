@@ -126,14 +126,13 @@ class RedForgeAgent:
         self, 
         user_input: str, 
         session_id: Optional[str] = None,
-        workspace_id: Optional[str] = None,
         **kwargs
     ) -> AgentState:
         """
         Runs a single turn of the pipeline and emits events.
         Compatible with legacy signatures by accepting **kwargs.
         """
-        sid = session_id or workspace_id or "default"
+        sid = session_id or "default"
         await self._emit("run_start", user_input=user_input, session_id=sid)
         
         state_dict = {

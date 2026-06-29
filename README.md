@@ -16,7 +16,7 @@ An intelligent security testing framework with 5 operational modes, 128+ special
 ### Core Capabilities
 - **128+ Skill Files** - Dynamic skill-based guidance
 - **LangGraph Agent** - Hybrid goal/knowledge-based reasoning
-- **Workspace Memory** - RAG-powered context retention
+- **Session Memory** - RAG-powered context retention
 - **Tool Auto-Install** - Missing tool detection and installation
 - **Safety Engine** - Scope verification and ethical boundaries
 - **TUI Interface** - Keyboard-first Textual terminal UI with a fuzzy command palette

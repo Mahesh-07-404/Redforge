@@ -20,7 +20,6 @@ async def test_full_session_pipeline(tmp_path):
     session = session_manager.create("bugbounty", "test.com", "full")
     
     memory_manager = MemoryManager(str(tmp_path))
-    memory_manager.workspace_id = session.id
     
     registry = SkillRegistry()
     skill_loader = DynamicSkillLoader(registry)

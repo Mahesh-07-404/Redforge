@@ -107,7 +107,7 @@ class Pipeline:
             skill_context = self.skill_loader.build_context(skills, session.mode, intent.intent_type.value)
             
             # Get RAG memory context
-            memory_context = self.memory_manager.get_context_for_llm(raw_input)
+            memory_context = self.memory_manager.get_context_for_llm(raw_input, session_id)
             
             # 5. LLM Call
             system_prompt = self.planner.build_system_prompt(session, intent, skill_context, memory_context)
