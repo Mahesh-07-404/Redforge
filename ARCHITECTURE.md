@@ -251,6 +251,36 @@ graph TD
 * **`contracts.py`**: Pydantic schemas representing `Finding`, `ExecutiveSummary`, `RiskScore`, and `SynthesisReport`.
 * **`exceptions.py`**: Custom reporting exceptions.
 
+### 14. Workflow Engine (`src/redforge/workflow/`)
+Orchestrates complete configurable security workflows (Passive Recon, Active Recon, Web Pentest, Bug Bounty, CTF, Learning, Report Generation, Research) with a built-in stage model and state transitions.
+
+```mermaid
+graph TD
+    WorkflowEngine["Workflow Engine"] --> WorkflowLoader["Workflow Loader"]
+    WorkflowEngine --> WorkflowValidator["Workflow Validator"]
+    WorkflowEngine --> ConditionValidator["Condition Validator"]
+    
+    WorkflowEngine --> WorkflowScheduler["Workflow Scheduler"]
+    WorkflowEngine --> StageExecutor["Stage Executor"]
+    
+    WorkflowEngine --> WorkflowStateMachine["State Machine (CREATED, READY, RUNNING, COMPLETED...)"]
+    WorkflowEngine --> WorkflowEvents["Workflow Events (Started, Failed, Completed)"]
+```
+
+#### Module Descriptions
+* **`engine.py`** (`WorkflowEngine`): Primary entry point coordinating loaders, validators, schedulers, and execution.
+* **`workflow.py`** (`BuiltInWorkflows`): Supplies default definitions for all 8 standard workflows.
+* **`loader.py`** (`WorkflowLoader`): Resolves and registers custom and default workflows.
+* **`validator.py`** (`WorkflowValidator`): Checks workflow rules and flags duplicate stage IDs.
+* **`conditions.py`** (`ConditionValidator`): Validates runtime preconditions like target reachability.
+* **`scheduler.py`** (`WorkflowScheduler`): Resolves execution sequences based on stage dependencies.
+* **`executor.py`** (`StageExecutor`): Runs tasks for individual stages.
+* **`state_machine.py`** (`WorkflowStateMachine`): Tracks run states (CREATED, READY, WAITING_APPROVAL, RUNNING, PAUSED, FAILED, COMPLETED, CANCELLED).
+* **`events.py`** (`WorkflowEvents`): Dispatches workflow progress notifications.
+* **`contracts.py`**: Pydantic schemas representing `WorkflowStage` and `WorkflowDefinition`.
+* **`exceptions.py`**: Custom workflow engine exceptions.
+
+
 
 
 

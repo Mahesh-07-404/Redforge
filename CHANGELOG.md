@@ -2,6 +2,19 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-14] - 2026-06-29
+
+### Added
+* Modular **Workflow Engine** in `src/redforge/workflow/` orchestrating configurable target tasks.
+* Created **BuiltInWorkflows** defining 8 standard workflows (Passive Recon, Active Recon, Web Pentest, Bug Bounty, CTF, Learning, Report Generation, and Research).
+* **WorkflowLoader** supporting custom and built-in workflow registrations.
+* **WorkflowValidator** and **ConditionValidator** assessing stage configurations and target conditions.
+* **WorkflowScheduler** sorting execution sequences according to stage dependencies.
+* **WorkflowStateMachine** tracking CREATED, READY, WAITING_APPROVAL, RUNNING, PAUSED, FAILED, COMPLETED, and CANCELLED states.
+* **WorkflowEvents** mapping event hooks (started, failed, completed).
+* **StageExecutor** executing individual stages.
+* Unit tests in `tests/unit/test_workflow.py` verifying loaders, validations, scheduling sequences, state machines, and fail/pass outcomes.
+
 ## [2.0.0-phase-13] - 2026-06-29
 
 ### Added
