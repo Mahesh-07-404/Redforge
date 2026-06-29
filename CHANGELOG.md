@@ -2,6 +2,18 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-6] - 2026-06-29
+
+### Added
+* Modular **Execution Engine** in `src/redforge/executor/` executing approved security plan workflows.
+* **TaskScheduler** resolving sequential topological sorted execution order, processing task dependencies, handling timeouts, retries, and cancellation requests.
+* **Runner** executing individual tasks by spawning processes, tracking durations, and capturing exit codes.
+* **ProcessManager** providing cross-platform process lifecycle controls (spawn, wait, terminate, kill, timeout) for Linux, macOS, Windows, and WSL.
+* **StreamManager** emitting callback-driven execution events (ExecutionStarted, TaskStarted, OutputReceived, ExecutionFinished, TaskFailed).
+* **OutputParser** parsing outputs of `nmap`, `subfinder`, and `httpx` into structured JSON while retaining original raw outputs.
+* Execution contracts (`ApprovedPlan`, `TaskResult`, `ExecutionResult`, `ExecutionStatus`, `ExecutionEvent`).
+* Unit tests in `tests/unit/test_executor.py` verifying process spawning, scheduling dependencies, cancellation, timeouts, streaming events, output parsing, and tool errors.
+
 ## [2.0.0-phase-5] - 2026-06-29
 
 ### Added

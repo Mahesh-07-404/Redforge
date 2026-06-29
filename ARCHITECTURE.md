@@ -52,3 +52,17 @@ Sits between the Planner and Execution steps to validate scopes and calculate ri
 * **`approval_engine.py`**: Applies risk-level policy gates to yield auto-approvals, confirmation triggers, or deny actions.
 * **`policy_engine.py`**: Main orchestrator evaluating the `Plan` target and tools to compute the `PolicyDecision`.
 
+### 7. Execution Engine (`src/redforge/executor/`)
+Executes task workflows dynamically for approved plan structures.
+* **`executor.py`**: Principal coordinator receiving the `ApprovedPlan` structure and triggering task scheduler execution before yielding `ExecutionResult`. Emits lifecycle start/finish execution events.
+* **`scheduler.py`**: Directs sequential task runs, handles task dependency tracking, and performs timeouts, retries, and cancellation gates.
+* **`runner.py`**: Orchestrates individual task runs by invoking cross-platform subprocess spawning and output parser structures.
+* **`process.py`**: Spawns, monitors, terminates, and kills subprocess actions across Linux, macOS, Windows, and WSL.
+* **`stream.py`**: Callback-based stream subscriber manager emitting event structures.
+* **`parser.py`**: Parses tool stdout (e.g. subfinder, nmap, httpx) into structured formats while retaining raw stdout.
+* **`events.py`**: Declares standard data event formats (ExecutionStarted, TaskStarted, OutputReceived, ExecutionFinished, TaskFailed).
+* **`state.py`**: Enumerates execution states (PENDING, RUNNING, COMPLETED, FAILED, CANCELLED, TIMED_OUT, SKIPPED).
+* **`exceptions.py`**: Defines execution error classes.
+* **`contracts.py`**: Encapsulates `ApprovedPlan`, `TaskResult`, and `ExecutionResult` schemas.
+
+
