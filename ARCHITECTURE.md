@@ -4,6 +4,42 @@ This document describes the architectural layout of RedForge.
 
 ## Architectural Layers
 
+### 16. Unified API Gateway (`src/redforge/api/`) — Phase 16
+The **only public entry point** into RedForge. Every external client (CLI, React Dashboard, VS Code Extension, MCP Clients, Mobile App) communicates exclusively through this gateway. Zero business logic lives here — it delegates to internal engines.
+
+**Sub-components:**
+* **`app.py`**: FastAPI application factory (`create_app()`). Registers all middleware, exception handlers, REST routers, and WebSocket routes.
+* **`server.py`**: uvicorn entry point with startup banner.
+* **`config.py`**: `APIConfig` — JWT, CORS, rate limiting, WebSocket, and observability settings. Env-var overridable via `REDFORGE_API_*`.
+* **`middleware.py`**: Full request pipeline — CORS, security headers, request timing, structured logging, rate limiting, payload size guard, authentication.
+* **`auth.py`**: JWT (HMAC-SHA256), API key lifecycle, RBAC (admin/operator/analyst/viewer).
+* **`security.py`**: Input sanitization (XSS/SQLi patterns), bearer/API key extraction.
+* **`rate_limit.py`**: Token-bucket per-IP per-endpoint limiter. Swap `_buckets` dict for Redis for horizontal scaling.
+* **`dependencies.py`**: FastAPI `Depends()` callables — auth extraction, scope/role enforcement, pagination, request timing.
+* **`response.py`**: Standard envelope builder — every response contains `request_id`, `timestamp`, `status`, `version`, `duration_ms`, `payload`, `errors`.
+* **`contracts.py`**: All Pydantic request/response models for every API domain.
+* **`exceptions.py`**: Typed exception hierarchy (400→422→429→500 with `error_code`, `trace_id`).
+* **`websocket.py`**: Six WebSocket streaming endpoints — `/ws/chat`, `/ws/workflow`, `/ws/execution`, `/ws/events`, `/ws/reasoning`, `/ws/report`.
+* **`metrics.py`**: In-memory metric counters exposed via `/metrics`.
+* **`routes/`**: 12 route modules: `health`, `sessions`, `conversation`, `workflow`, `planner`, `reasoning`, `execution`, `report`, `memory`, `plugins`, `mcp`, `system`.
+
+**Request Pipeline:**
+```
+Request → CORS → Security Headers → Timing → Logging → Rate Limit → Payload Guard → Auth → Request ID → Route Handler → Standard Envelope
+```
+
+**WebSocket Endpoints:**
+```
+/ws/chat         — live token streaming
+/ws/workflow     — stage progress events
+/ws/execution    — stdout/stderr line streaming
+/ws/events       — generic session event bus (subscribe/ping)
+/ws/reasoning    — reasoning step decisions
+/ws/report       — section-by-section report streaming
+```
+
+
+
 ### 1. Contracts Layer (`src/redforge/contracts/`)
 Data contracts representing the standard model primitives across RedForge.
 * **`session.py`**: Defines the `Session` model, target specifications (`Target`, `TargetType`, `ScopePolicy`), and state enums.

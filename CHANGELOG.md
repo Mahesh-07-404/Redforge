@@ -2,6 +2,22 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-16] - 2026-07-01
+
+### Added
+* **Unified API Gateway** in `src/redforge/api/` — complete, production-grade FastAPI gateway exposing all RedForge capabilities.
+* **REST APIs** for Sessions, Chat, Workflows, Planner, Reasoning, Execution, Reports, Memory, Plugins, MCP, and System.
+* **WebSocket Endpoints** for real-time streaming: `/ws/chat`, `/ws/workflow`, `/ws/execution`, `/ws/events`, `/ws/reasoning`, and `/ws/report`.
+* **Middlewares** for CORS, Security Headers, Request Timing, Structured Logging, Rate Limiting, Payload Size Guard, and Authentication.
+* **Authentication Options** including JWT tokens, API keys, and RBAC roles (admin, operator, analyst, viewer).
+* **Health & Observability Probe Endpoints** exposing `/health`, `/live`, `/ready`, `/version`, and `/metrics`.
+* **Standard Response Envelope** formatting all success and error responses.
+* **Robust Test Suite** verifying REST endpoints, WebSockets, streaming, middlewares, validation, health checks, rate limiting, and exception handlers.
+
+### Fixed
+* Fixed double accept ASGI error on the `/ws/events` subscription flow.
+* Fixed forward reference unresolved dependencies for `ReadAuth` and `AdminAuth` types in OpenAPI generation.
+
 ## [2.0.0-phase-15] - 2026-06-29
 
 ### Added

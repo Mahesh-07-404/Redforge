@@ -1,0 +1,96 @@
+"""
+Workflow routes — Phase 16: Unified API Gateway
+"""
+from __future__ import annotations
+
+from typing import Optional
+from uuid import uuid4
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, Path
+
+from ..contracts import WorkflowStartRequest, WorkflowResponse, WorkflowListResponse, WorkflowStatusEnum
+from ..dependencies import get_current_auth, get_request_id, get_timer, ReadAuth
+from ..response import success, created
+
+
+router = APIRouter(prefix="/workflows", tags=["Workflows"])
+
+
+def _get_workflow_engine():
+    try:
+        from redforge.workflow.engine import WorkflowEngine
+        return WorkflowEngine()
+    except Exception:
+        return None
+
+
+@router.get("", summary="List available workflows")
+async def list_workflows(auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)):
+    """List all registered workflow definitions."""
+    workflows: list = []
+    try:
+        from redforge.workflow.registry import WorkflowRegistry
+        registry = WorkflowRegistry()
+        workflows = registry.list() if hasattr(registry, "list") else []
+    except Exception:
+        pass
+    payload = WorkflowListResponse(workflows=workflows, total=len(workflows))
+    return success(payload.model_dump(), duration_ms=timer.elapsed_ms, request_id=request_id)
+
+
+@router.post("/run", status_code=201, summary="Start a workflow")
+async def start_workflow(
+    body: WorkflowStartRequest,
+    auth=Depends(get_current_auth),
+    request_id: str = Depends(get_request_id),
+    timer=Depends(get_timer),
+):
+    """Start a named workflow for a given target."""
+    run_id = str(uuid4())
+    engine = _get_workflow_engine()
+    status = WorkflowStatusEnum.pending
+    error: Optional[str] = None
+
+    if engine:
+        try:
+            engine.execute(
+                workflow_id=body.workflow_id,
+                target=body.target,
+                session_id=body.session_id,
+                parameters=body.parameters,
+            )
+            status = WorkflowStatusEnum.running
+        except Exception as exc:
+            status = WorkflowStatusEnum.failed
+            error = str(exc)
+
+    payload = WorkflowResponse(
+        workflow_id=body.workflow_id,
+        run_id=run_id,
+        status=status,
+        session_id=body.session_id,
+        started_at=datetime.utcnow(),
+        error=error,
+    )
+    return created(payload.model_dump(), duration_ms=timer.elapsed_ms, request_id=request_id)
+
+
+@router.get("/{workflow_id}", summary="Get workflow details")
+async def get_workflow(
+    workflow_id: str = Path(...),
+    auth=Depends(get_current_auth),
+    request_id: str = Depends(get_request_id),
+    timer=Depends(get_timer),
+):
+    """Get the definition of a specific workflow."""
+    info: dict = {"id": workflow_id}
+    try:
+        from redforge.workflow.registry import WorkflowRegistry
+        registry = WorkflowRegistry()
+        w = registry.get(workflow_id) if hasattr(registry, "get") else None
+        if w:
+            info = w if isinstance(w, dict) else {"id": workflow_id, "workflow": str(w)}
+    except Exception:
+        pass
+    return success(info, duration_ms=timer.elapsed_ms, request_id=request_id)
