@@ -2,6 +2,18 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-19] - 2026-07-01
+
+### Added
+* **Observability Platform** in `src/redforge/observability/` — complete logging, tracing, auditing, and health checking telemetry package.
+* **Context-Bound JSON Logger**: JSON logging engine utilizing Python `contextvars` to automatically bind trace and process contexts.
+* **Prometheus metrics**: Gathers system counters, gauges, and histograms; exports scrape responses for Grafana integrations.
+* **Distributed Tracing Spans**: Manages tracer spans context nesting across async call processes.
+* **Cryptographic Immutable Audits**: Implements SHA-256 hash chains preventing log tampering or deletions.
+* **Host Resource Profiling**: Measures processing durations, CPU percentage deltas, and process memory RSS deltas.
+* **Health & Alerts**: Runs active diagnostics on CPU/memory limits, registers custom checkers, and handles warning callback notifications.
+* **Grafana Dashboard Templates**: Exports Grafana import-ready JSON files for telemetry views.
+
 ## [2.0.0-phase-18] - 2026-07-01
 
 ### Added

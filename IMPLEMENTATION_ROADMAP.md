@@ -32,6 +32,7 @@ Phase 7 → Hardening: Shim removal + CI enforcement
 Phase 16 → Unified API Gateway: FastAPI REST & WebSockets
 Phase 17 → React Dashboard: React Operations Interface
 Phase 18 → Distributed Execution Platform: Workflows Workers
+Phase 19 → Observability & Monitoring: Telemetry Metrics
 ```
 
 ---
@@ -1808,6 +1809,57 @@ src/redforge/distributed/
 
 ---
 
+## Phase 19 — Observability & Monitoring Platform
+
+**Git tag**: `v2.0.0-phase-19`
+
+### Objective
+
+Build a complete observability platform for RedForge that provides metrics, tracing, logging, auditing, and health monitoring across every subsystem.
+
+---
+
+### Files Created
+
+```
+src/redforge/observability/
+  __init__.py
+  contracts.py
+  manager.py
+  metrics.py
+  logger.py
+  audit.py
+  tracing.py
+  health.py
+  events.py
+  profiler.py
+  alerts.py
+  dashboard.py
+  exceptions.py
+```
+
+---
+
+### Key Features Implemented
+
+* **Context JSON Logging**: JSON logger utilizing python `contextvars` to automatically bind trace and process contexts.
+* **Prometheus exports**: Tracks counters, gauges, and histograms; exports scrape responses for Grafana integration.
+* **Distributed Tracing Spans**: Context-aware parent-child span trace maps tracing Conversation down to Reporting.
+* **Immutable Cryptographic Audit**: Cryptographically chained SHA-256 signatures log event hashes, verifying log integrity.
+* **Host Resource & Profiler checks**: CPU/memory RSS profiling and alert handlers for CPU and memory usage diagnostics.
+* **Grafana Dashboard definitions**: Auto-generates Grafana timeseries and stats JSON layouts.
+
+---
+
+### Acceptance Criteria
+
+- [ ] All 8 unit tests pass cleanly (`pytest tests/unit/test_observability.py`)
+- [ ] Platform exports standard Prometheus `/metrics` logs
+- [ ] Audit log verify_chain detects tampering
+- [ ] Git tag `v2.0.0-phase-19` is applied
+
+---
+
 ## Phase Summary Table
 
 | Phase | Name | Layers Touched | New Files | Modified | Deleted | Risk |
@@ -1823,8 +1875,9 @@ src/redforge/distributed/
 | 16 | Unified API Gateway | API Gateway REST/WS | 28 | 6 | 0 | Low |
 | 17 | React Dashboard | Frontend Web UI | 22 | 4 | 0 | Low |
 | 18 | Distributed Execution | Distributed package | 15 | 4 | 0 | Low |
+| 19 | Observability | Observability package | 12 | 4 | 0 | Low |
 
-**Total new modules**: 108  
+**Total new modules**: 120  
 **Total deleted files**: 26 (all shims or dead code)  
 **No-return point**: Phase 7 (shim removal). All phases before it are reversible.
 

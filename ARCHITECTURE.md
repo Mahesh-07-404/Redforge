@@ -4,6 +4,17 @@ This document describes the architectural layout of RedForge.
 
 ## Architectural Layers
 
+### 19. Observability & Monitoring Platform (`src/redforge/observability/`) — Phase 19
+A unified telemetry logging, tracing, auditing, and health checking package.
+* **`manager.py`**: Central coordinator wrapping all observability monitors.
+* **`logger.py`**: Context-bound, structured JSON logging engine.
+* **`metrics.py`**: Gathers system counters, gauges, and histograms; exports Prometheus-format telemetry endpoints.
+* **`tracing.py`**: Manages parent-child span traces context maps.
+* **`audit.py`**: Implements cryptographically chained SHA-256 immutable audit logs.
+* **`health.py` & `alerts.py`**: Resource usage checking (CPU, memory, disk) and operational alerts triggers.
+* **`profiler.py`**: Latency and resource profiling for slow execution blocks.
+* **`dashboard.py`**: Exposes Grafana timeseries and stats JSON layouts.
+
 ### 18. Distributed Execution Platform (`src/redforge/distributed/`) — Phase 18
 A resilient, multi-node scheduling and execution subsystem allowing RedForge tasks to scale horizontally.
 * **`manager.py`**: Public wrapper coordinate interface for client workflows.
