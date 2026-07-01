@@ -5,3 +5,10 @@ black>=24.1.0
 ruff>=0.1.0
 mypy>=1.8.0
 pre-commit>=3.5.0
+# Web layer — required by API test suite (test_api_gateway.py etc.)
+fastapi>=0.109.0
+uvicorn>=0.27.0
+httpx>=0.26.0
+websockets>=12.0
+psutil>=5.9.0
+sse-starlette>=1.6.0
