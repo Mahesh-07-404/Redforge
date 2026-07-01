@@ -6,15 +6,9 @@ from enum import Enum
 
 from .capabilities import Capability as Capability
 from .discovery import ToolDiscovery as ToolDiscovery
-from .exceptions import (
-    ToolNotFoundError as ToolNotFoundError,
-)
-from .exceptions import (
-    ToolRegistryError as ToolRegistryError,
-)
-from .exceptions import (
-    UnsupportedPlatformError as UnsupportedPlatformError,
-)
+from .exceptions import ToolNotFoundError as ToolNotFoundError
+from .exceptions import ToolRegistryError as ToolRegistryError
+from .exceptions import UnsupportedPlatformError as UnsupportedPlatformError
 from .installer import ToolInstaller as ToolInstaller
 from .platform import PlatformInfo as PlatformInfo
 from .platform import detect_platform as detect_platform
