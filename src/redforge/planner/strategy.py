@@ -17,13 +17,18 @@ class PlanningStrategy(ABC):
         pass
 
     def _build_plan_from_graph(
-        self, goal: str, graph: TaskGraph, confidence: float = 1.0, warnings: list[str] = []
+        self,
+        goal: str,
+        graph: TaskGraph,
+        confidence: float = 1.0,
+        warnings: list[str] | None = None,
     ) -> Plan:
         ordered_tasks = graph.get_ordered_tasks()
         dep_graph = {t.id: t.dependencies for t in ordered_tasks}
         estimated_duration = sum(t.estimated_duration for t in ordered_tasks)
-        required_tools = list(set(t.tool_hint for t in ordered_tasks if t.tool_hint))
+        required_tools = list({t.tool_hint for t in ordered_tasks if t.tool_hint})
         approval_required = any(t.requires_confirmation for t in ordered_tasks)
+        warnings = warnings or []
 
         return Plan(
             goal=goal,

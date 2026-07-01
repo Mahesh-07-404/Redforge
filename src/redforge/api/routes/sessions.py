@@ -8,17 +8,17 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-logger = logging.getLogger(__name__)
-
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, HTTPException, Path, Query
 
 from ..contracts import (
     SessionCreateRequest,
     SessionUpdateRequest,
 )
-from ..dependencies import get_current_auth, get_request_id, get_timer
+from ..dependencies import AuthInfo, RequestID, Timer
 from ..exceptions import SessionNotFoundError
 from ..response import created, no_content, success
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/sessions", tags=["Sessions"])
 
@@ -53,9 +53,9 @@ def _to_response(session) -> dict:
 @router.post("", status_code=201, summary="Create a new session")
 async def create_session(
     body: SessionCreateRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Create and persist a new RedForge session."""
     svc = _get_service()
@@ -70,14 +70,14 @@ async def create_session(
         )
         return created(_to_response(session), duration_ms=timer.elapsed_ms, request_id=request_id)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("", summary="List sessions")
 async def list_sessions(
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
     status: str | None = Query(None, description="Filter by status: active, archived, completed"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -99,15 +99,15 @@ async def list_sessions(
             request_id=request_id,
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/{session_id}", summary="Get a session")
 async def get_session(
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
     session_id: str = Path(..., description="Session ID"),
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
 ):
     """Retrieve a single session by ID."""
     svc = _get_service()
@@ -122,10 +122,10 @@ async def get_session(
 @router.patch("/{session_id}", summary="Update a session")
 async def update_session(
     body: SessionUpdateRequest,
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
     session_id: str = Path(..., description="Session ID"),
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
 ):
     """Update session target, autonomy, or name."""
     svc = _get_service()
@@ -142,8 +142,8 @@ async def update_session(
 
 @router.delete("/{session_id}", status_code=204, summary="Delete a session")
 async def delete_session(
+    auth: AuthInfo,
     session_id: str = Path(..., description="Session ID"),
-    auth=Depends(get_current_auth),
 ):
     """Permanently delete a session."""
     svc = _get_service()
@@ -157,9 +157,9 @@ async def delete_session(
 
 @router.post("/{session_id}/archive", summary="Archive a session")
 async def archive_session(
+    auth: AuthInfo,
+    request_id: RequestID,
     session_id: str = Path(..., description="Session ID"),
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
 ):
     """Mark session as archived."""
     svc = _get_service()

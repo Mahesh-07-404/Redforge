@@ -33,22 +33,25 @@ async def get_current_auth(request: Request) -> dict[str, Any]:
     return auth_info
 
 
-async def require_read(auth: dict = Depends(get_current_auth)) -> dict:
+AuthInfo = Annotated[dict[str, Any], Depends(get_current_auth)]
+
+
+async def require_read(auth: AuthInfo) -> dict[str, Any]:
     get_auth_service().check_scope(auth, "read")
     return auth
 
 
-async def require_write(auth: dict = Depends(get_current_auth)) -> dict:
+async def require_write(auth: AuthInfo) -> dict[str, Any]:
     get_auth_service().check_scope(auth, "write")
     return auth
 
 
-async def require_execute(auth: dict = Depends(get_current_auth)) -> dict:
+async def require_execute(auth: AuthInfo) -> dict[str, Any]:
     get_auth_service().check_scope(auth, "execute")
     return auth
 
 
-async def require_admin(auth: dict = Depends(get_current_auth)) -> dict:
+async def require_admin(auth: AuthInfo) -> dict[str, Any]:
     get_auth_service().check_scope(auth, "admin")
     return auth
 
@@ -151,7 +154,6 @@ async def get_workflow_or_404(workflow_id: str) -> dict[str, Any]:
 # Common type aliases
 # ---------------------------------------------------------------------------
 
-AuthInfo = Annotated[dict[str, Any], Depends(get_current_auth)]
 ReadAuth = Annotated[dict[str, Any], Depends(require_read)]
 WriteAuth = Annotated[dict[str, Any], Depends(require_write)]
 ExecuteAuth = Annotated[dict[str, Any], Depends(require_execute)]

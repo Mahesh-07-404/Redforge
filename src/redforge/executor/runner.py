@@ -19,7 +19,7 @@ class Runner:
         stdout, stderr, exit_code = "", "", 0
         error_msg = None
 
-        for attempt in range(retries):
+        for _attempt in range(retries):
             pm = ProcessManager(command)
             try:
                 pm.spawn()

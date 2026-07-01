@@ -6,9 +6,7 @@ from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger(__name__)
-
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Path
 
 from ..contracts import (
     ChatRequest,
@@ -16,8 +14,10 @@ from ..contracts import (
     ConversationHistoryResponse,
     ConversationMessage,
 )
-from ..dependencies import get_current_auth, get_request_id, get_timer
+from ..dependencies import AuthInfo, RequestID, Timer
 from ..response import no_content, success
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Chat & Conversation"])
 
@@ -36,9 +36,9 @@ def _run_chat(session_id: str, message: str) -> dict:
 @router.post("/chat", summary="Send a chat message (non-streaming)")
 async def chat(
     body: ChatRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Send a message to RedForge. For streaming, use /ws/chat."""
     session_id = body.session_id or "default"
@@ -56,10 +56,10 @@ async def chat(
 
 @router.get("/conversations/{session_id}", summary="Get conversation history")
 async def get_conversation(
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
     session_id: str = Path(..., description="Session ID"),
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
     limit: int = 50,
 ):
     """Retrieve message history for a session."""
@@ -85,8 +85,8 @@ async def get_conversation(
 
 @router.delete("/conversations/{session_id}", status_code=204, summary="Clear conversation history")
 async def clear_conversation(
+    auth: AuthInfo,
     session_id: str = Path(..., description="Session ID"),
-    auth=Depends(get_current_auth),
 ):
     """Clear all messages for a session."""
     try:

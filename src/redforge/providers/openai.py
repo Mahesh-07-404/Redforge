@@ -76,7 +76,7 @@ class OpenAIProvider(LLMProvider):
                 raw_response=response.model_dump(),
             )
         except Exception as e:
-            raise RuntimeError(f"OpenAI request failed: {e}")
+            raise RuntimeError(f"OpenAI request failed: {e}") from e
 
     async def chat_stream(
         self, messages: list[Message], tools: list[dict] | None = None, **kwargs
@@ -103,7 +103,7 @@ class OpenAIProvider(LLMProvider):
                 if content:
                     yield content
         except Exception as e:
-            raise RuntimeError(f"OpenAI stream failed: {e}")
+            raise RuntimeError(f"OpenAI stream failed: {e}") from e
 
     def is_available(self) -> bool:
         """Check if OpenAI API key is configured"""
@@ -114,7 +114,7 @@ class OpenAIProvider(LLMProvider):
         try:
             models = await self.client.models.list()
             return [m.id for m in models.data if m.id.startswith(("gpt", "o"))]
-        except:
+        except Exception:
             return FALLBACK_MODELS["openai"]
 
     def supports_tools(self) -> bool:

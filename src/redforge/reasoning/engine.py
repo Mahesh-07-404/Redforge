@@ -16,8 +16,8 @@ class ReasoningEngine:
 
     def process_goal(self, goal_text: str) -> list[Task]:
         self.state_machine.transition_to(ReasoningState.PLANNING)
-        goal = self.goal_manager.create_goal(goal_text)
-        strategy = StrategySelector.select_strategy(goal_text)
+        self.goal_manager.create_goal(goal_text)
+        StrategySelector.select_strategy(goal_text)
 
         tasks = TaskDecomposer.decompose(goal_text)
         self.state_machine.transition_to(ReasoningState.REASONING)

@@ -11,10 +11,12 @@ class ChunkEngine:
         content: str,
         session_id: str,
         source: str,
-        metadata: dict[str, Any] = {},
-        tags: list[str] = [],
+        metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
         chunk_size: int = 500,
     ) -> list[Chunk]:
+        metadata = metadata or {}
+        tags = tags or []
         chunks = []
         words = content.split()
         for i in range(0, len(words), chunk_size):

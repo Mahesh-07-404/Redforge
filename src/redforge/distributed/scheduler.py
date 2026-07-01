@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from .contracts import TaskMessage, TaskStatus
 from .queue import BaseQueue

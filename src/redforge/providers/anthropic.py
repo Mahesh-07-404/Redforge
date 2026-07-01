@@ -80,7 +80,7 @@ class AnthropicProvider(LLMProvider):
                 raw_response=raw_response,
             )
         except Exception as e:
-            raise RuntimeError(f"Anthropic request failed: {e}")
+            raise RuntimeError(f"Anthropic request failed: {e}") from e
 
     async def chat_stream(
         self, messages: list[Message], tools: list[dict] | None = None, **kwargs
@@ -108,7 +108,7 @@ class AnthropicProvider(LLMProvider):
                 async for text in stream.text_stream:
                     yield text
         except Exception as e:
-            raise RuntimeError(f"Anthropic stream failed: {e}")
+            raise RuntimeError(f"Anthropic stream failed: {e}") from e
 
     def is_available(self) -> bool:
         """Check if Anthropic API key is configured"""

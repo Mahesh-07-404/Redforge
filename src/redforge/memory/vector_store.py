@@ -137,7 +137,7 @@ class QdrantAdapter:
             collection_data = data.get(collection_name, {})
             results = []
             words = query.lower().split()
-            for entry_id, val in collection_data.items():
+            for _entry_id, val in collection_data.items():
                 content = val.get("content", "")
                 score = sum(1 for w in words if w in content.lower())
                 results.append((score, val))

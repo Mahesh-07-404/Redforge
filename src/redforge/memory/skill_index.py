@@ -10,13 +10,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from redforge.memory.vector import (
     MemoryEntry,
     SearchResult,
     create_vector_store,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class SkillCategory(str, Enum):
@@ -122,7 +122,7 @@ class SkillIndexer:
         entries = []
         count = 0
 
-        for root, dirs, files in os.walk(self.skills_dir):
+        for root, _dirs, files in os.walk(self.skills_dir):
             root_path = Path(root)
 
             for file in files:

@@ -74,7 +74,6 @@ class CVEGenerator:
         "xxe": "CWE-611",
         "rce": "CWE-78",
         "path_traversal": "CWE-22",
-        "ssrf": "CWE-918",
         "auth_bypass": "CWE-287",
         "deserialization": "CWE-502",
         "ssti": "CWE-1336",
@@ -123,8 +122,6 @@ class CVEGenerator:
 
         # Round and determine severity
         score = round(impact_score, 1)
-        severity = self._get_severity(score)
-
         return score, vector
 
     def _get_severity(self, score: float) -> str:
@@ -241,9 +238,9 @@ class ReportGenerator:
 
         md = f"""# {self.report.title}
 
-**Target:** {self.report.target}  
-**Author:** {self.report.author}  
-**Date:** {self.report.created_at}  
+**Target:** {self.report.target}
+**Author:** {self.report.author}
+**Date:** {self.report.created_at}
 **Version:** {self.report.version}
 
 ---
@@ -279,8 +276,8 @@ class ReportGenerator:
         for i, finding in enumerate(self.report.findings, 1):
             md += f"""### {i}. {finding.get("title", "Untitled")}
 
-**Severity:** {finding.get("severity", "INFO")}  
-**CVSS:** {finding.get("cvss_score", "N/A")}  
+**Severity:** {finding.get("severity", "INFO")}
+**CVSS:** {finding.get("cvss_score", "N/A")}
 **CWE:** {finding.get("cwe_id", "N/A")}
 
 #### Description
@@ -361,8 +358,6 @@ class ReportGenerator:
             return ""
 
         # Use markdown as content, wrap in HTML
-        markdown = self.generate_markdown()
-
         # Simple HTML template (in production, use proper templating)
         html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -371,7 +366,7 @@ class ReportGenerator:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{self.report.title}</title>
     <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.6; }}
         h1 {{ border-bottom: 2px solid #333; padding-bottom: 10px; }}
         h2 {{ color: #2c3e50; margin-top: 30px; }}
@@ -397,10 +392,10 @@ class ReportGenerator:
         <p><strong>Author:</strong> {self.report.author}</p>
         <p><strong>Date:</strong> {self.report.created_at}</p>
     </div>
-    
+
     <h2>Executive Summary</h2>
     <p>{self.report.executive_summary}</p>
-    
+
     <h2>Findings</h2>
     <table>
         <tr>

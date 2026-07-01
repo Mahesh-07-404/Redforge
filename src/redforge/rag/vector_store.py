@@ -16,7 +16,7 @@ class MemoryVectorStore(VectorStore):
         self.store: list[tuple[Chunk, list[float]]] = []
 
     async def add_chunks(self, chunks: list[Chunk], embeddings: list[list[float]]):
-        for c, emb in zip(chunks, embeddings):
+        for c, emb in zip(chunks, embeddings, strict=False):
             self.store.append((c, emb))
 
     async def search_vector(
@@ -24,7 +24,7 @@ class MemoryVectorStore(VectorStore):
     ) -> list[tuple[Chunk, float]]:
         results = []
         for c, emb in self.store:
-            score = sum(x * y for x, y in zip(embedding, emb))
+            score = sum(x * y for x, y in zip(embedding, emb, strict=False))
             results.append((c, score))
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:limit]

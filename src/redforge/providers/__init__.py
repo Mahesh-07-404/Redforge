@@ -1,10 +1,7 @@
 """LLM providers module"""
 
-from typing import Optional
-
 from redforge.providers.anthropic import AnthropicProvider
 from redforge.providers.base import ChatResponse, LLMProvider, Message
-from redforge.providers.catalog import DEFAULT_MODELS
 from redforge.providers.gemini import GeminiProvider
 from redforge.providers.groq import GroqProvider
 from redforge.providers.ollama import OllamaProvider

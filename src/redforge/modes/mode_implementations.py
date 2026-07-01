@@ -165,8 +165,6 @@ class BugBountyMode(BaseMode):
 
     def _run_scan(self, task: str, context: dict[str, Any]) -> list[Finding]:
         """Run vulnerability scan"""
-        target = context.get("target", "")
-
         findings = []
 
         # Basic vulnerability checks
@@ -176,7 +174,6 @@ class BugBountyMode(BaseMode):
 
     def _run_exploit(self, task: str, context: dict[str, Any]) -> list[dict[str, Any]]:
         """Run exploitation tests"""
-        target = context.get("target", "")
         findings = context.get("findings", [])
 
         exploits = []

@@ -6,21 +6,19 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends
-
-logger = logging.getLogger(__name__)
+from fastapi import APIRouter
 
 from ..contracts import MCPDiscoveryResponse, MCPResourceResponse, MCPToolResponse
-from ..dependencies import ReadAuth, get_request_id, get_timer
+from ..dependencies import ReadAuth, RequestID, Timer
 from ..response import success
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/mcp", tags=["MCP (Model Context Protocol)"])
 
 
 @router.get("/discover", summary="Discover all MCP tools and resources")
-async def discover(
-    auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
-):
+async def discover(auth: ReadAuth, request_id: RequestID, timer: Timer):
     """Return all registered MCP tools and resources."""
     tools: list = []
     resources: list = []
@@ -47,9 +45,7 @@ async def discover(
 
 
 @router.get("/tools", summary="List available MCP tools")
-async def list_tools(
-    auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
-):
+async def list_tools(auth: ReadAuth, request_id: RequestID, timer: Timer):
     tools: list = []
     try:
         from redforge.mcp.registry import MCPRegistry
@@ -65,9 +61,7 @@ async def list_tools(
 
 
 @router.get("/resources", summary="List available MCP resources")
-async def list_resources(
-    auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
-):
+async def list_resources(auth: ReadAuth, request_id: RequestID, timer: Timer):
     resources: list = []
     try:
         from redforge.mcp.registry import MCPRegistry

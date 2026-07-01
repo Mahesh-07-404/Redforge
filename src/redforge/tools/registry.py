@@ -472,7 +472,7 @@ class ToolRegistry:
     def lookup_tool_by_name(self, name: str) -> Tool:
         if name in self._cache:
             return self._cache[name]
-        for t_id, tool in self._tools.items():
+        for _t_id, tool in self._tools.items():
             if (
                 tool.name.lower() == name.lower()
                 or tool.id.lower() == name.lower()

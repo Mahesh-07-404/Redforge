@@ -222,7 +222,7 @@ def detect_platform() -> PlatformInfo:
 def get_tool_packages(tool: str) -> list[tuple[str, PackageManager]]:
     """Get package names for a tool on different platforms"""
     results = []
-    for plat_key, plat_data in TOOL_PACKAGES.items():
+    for _plat_key, plat_data in TOOL_PACKAGES.items():
         tools = plat_data.get("tools", {})
         if tool in tools:
             pm = plat_data.get("package_manager", PackageManager.NONE)

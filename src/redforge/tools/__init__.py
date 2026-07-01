@@ -1,19 +1,27 @@
 import logging
 import platform
 import shutil
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional
 
-from .capabilities import Capability
-from .discovery import ToolDiscovery
-from .exceptions import ToolNotFoundError, ToolRegistryError, UnsupportedPlatformError
-from .installer import ToolInstaller
-from .platform import PlatformInfo, detect_platform
-from .registry import ToolRegistry
-from .resolver import ToolResolver
-from .tool import Tool
-from .validator import ToolValidator
+from .capabilities import Capability as Capability
+from .discovery import ToolDiscovery as ToolDiscovery
+from .exceptions import (
+    ToolNotFoundError as ToolNotFoundError,
+)
+from .exceptions import (
+    ToolRegistryError as ToolRegistryError,
+)
+from .exceptions import (
+    UnsupportedPlatformError as UnsupportedPlatformError,
+)
+from .installer import ToolInstaller as ToolInstaller
+from .platform import PlatformInfo as PlatformInfo
+from .platform import detect_platform as detect_platform
+from .registry import ToolRegistry as ToolRegistry
+from .resolver import ToolResolver as ToolResolver
+from .tool import Tool as Tool
+from .validator import ToolValidator as ToolValidator
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +67,7 @@ class PlatformDetector:
                         return Platform.UBUNTU
                     else:
                         return Platform.DEBIAN
-            except:
+            except OSError:
                 return Platform.DEBIAN
         return Platform.DEBIAN
 

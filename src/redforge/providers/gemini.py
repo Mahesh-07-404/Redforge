@@ -72,7 +72,7 @@ class GeminiProvider(LLMProvider):
                 raw_response={"candidates": [str(response)]},
             )
         except Exception as e:
-            raise RuntimeError(f"Gemini request failed: {e}")
+            raise RuntimeError(f"Gemini request failed: {e}") from e
 
     async def chat_stream(
         self, messages: list[Message], tools: list[dict] | None = None, **kwargs
@@ -104,7 +104,7 @@ class GeminiProvider(LLMProvider):
                             yield p.text
 
         except Exception as e:
-            raise RuntimeError(f"Gemini stream failed: {e}")
+            raise RuntimeError(f"Gemini stream failed: {e}") from e
 
     def is_available(self) -> bool:
         """Check if Gemini API key is configured"""
@@ -116,7 +116,7 @@ class GeminiProvider(LLMProvider):
             client = self._get_client()
             models = client.models.list()
             return [m.name.replace("models/", "") for m in models]
-        except:
+        except Exception:
             return FALLBACK_MODELS["gemini"]
 
     def supports_tools(self) -> bool:

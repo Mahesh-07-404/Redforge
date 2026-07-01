@@ -72,7 +72,7 @@ class ScopeEntry:
                 ip = ipaddress.ip_address(target)
                 return ip in network
             return target == self.pattern
-        except:
+        except ValueError:
             return False
 
 
@@ -367,7 +367,6 @@ class SafetyValidator:
         """Validate bug bounty specific actions"""
         violations = []
 
-        action_type = action.get("type")
         target = action.get("target")
         technique = action.get("technique", "").lower()
 
@@ -395,8 +394,6 @@ class SafetyValidator:
     def validate_ctf_action(self, action: dict) -> list[SafetyViolation]:
         """Validate CTF specific actions (generally more permissive)"""
         violations = []
-
-        target = action.get("target")
 
         # CTF usually has full scope, but still check dangerous commands
         if action.get("command"):

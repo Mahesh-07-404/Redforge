@@ -39,4 +39,4 @@ class ProcessManager:
         except subprocess.TimeoutExpired:
             self.kill()
             stdout, stderr = self.process.communicate()
-            raise TimeoutError("Process timed out.")
+            raise TimeoutError("Process timed out.") from None

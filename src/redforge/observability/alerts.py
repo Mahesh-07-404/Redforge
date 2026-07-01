@@ -6,9 +6,9 @@ import uuid
 from collections.abc import Callable
 
 from .contracts import AlertRecord, AlertSeverity
+from .logger import StructuredLogger
 
 logger = logging.getLogger(__name__)
-from .logger import StructuredLogger
 
 
 class AlertsEngine:

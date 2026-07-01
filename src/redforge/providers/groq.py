@@ -77,7 +77,7 @@ class GroqProvider(LLMProvider):
                 raw_response=response.model_dump(),
             )
         except Exception as e:
-            raise RuntimeError(f"Groq request failed: {e}")
+            raise RuntimeError(f"Groq request failed: {e}") from e
 
     async def chat_stream(
         self, messages: list[Message], tools: list[dict] | None = None, **kwargs
@@ -103,7 +103,7 @@ class GroqProvider(LLMProvider):
                 if content:
                     yield content
         except Exception as e:
-            raise RuntimeError(f"Groq stream failed: {e}")
+            raise RuntimeError(f"Groq stream failed: {e}") from e
 
     def is_available(self) -> bool:
         """Check if Groq API key is configured"""

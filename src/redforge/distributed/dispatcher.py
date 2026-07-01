@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from .contracts import TaskMessage, TaskResult, TaskStatus
 from .lease import LeaseManager
 from .load_balancer import LoadBalancer

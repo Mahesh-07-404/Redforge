@@ -263,7 +263,7 @@ class Pipeline:
         max_iterations = 10
         total_tokens = 0
 
-        for i in range(max_iterations):
+        for _i in range(max_iterations):
             # 4. Dynamic Skill Loader
             skills = self.skill_loader.select_skills(
                 intent.intent_type.value, session.mode, raw_input
@@ -328,7 +328,6 @@ class Pipeline:
             # 6. Hallucination Guard (Cross-check text only)
             is_valid, reason = self.hallucination_guard.check(content, session.target)
             if not is_valid:
-                error_msg = f"RedForge Internal Error: {reason}"
                 history.append(
                     Message(role="user", content=f"Refactor your previous response. {reason}")
                 )

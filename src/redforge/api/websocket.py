@@ -18,9 +18,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["WebSocket Streaming"])
 

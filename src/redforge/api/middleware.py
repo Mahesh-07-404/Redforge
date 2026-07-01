@@ -10,8 +10,6 @@ import time
 import uuid
 from collections.abc import Callable
 
-logger = logging.getLogger(__name__)
-
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -27,6 +25,8 @@ from .security import (
     extract_api_key,
     extract_bearer_token,
 )
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Request ID / Trace ID injection

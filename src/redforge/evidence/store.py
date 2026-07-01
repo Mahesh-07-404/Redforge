@@ -31,7 +31,7 @@ class EvidenceStore:
                 f.write(bundle.model_dump_json(indent=2))
 
         except Exception as e:
-            raise StoreError(f"Failed to store evidence bundle: {str(e)}")
+            raise StoreError(f"Failed to store evidence bundle: {str(e)}") from e
 
     def load_bundle(self, session_id: str) -> EvidenceBundle:
         session_dir = os.path.join(self.base_dir, "evidence", session_id)
@@ -44,4 +44,4 @@ class EvidenceStore:
                 data = json.load(f)
             return EvidenceBundle(**data)
         except Exception as e:
-            raise StoreError(f"Failed to load evidence bundle: {str(e)}")
+            raise StoreError(f"Failed to load evidence bundle: {str(e)}") from e

@@ -8,9 +8,7 @@ import logging
 from datetime import datetime
 from uuid import uuid4
 
-logger = logging.getLogger(__name__)
-
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Path
 
 from ..contracts import (
     WorkflowListResponse,
@@ -18,8 +16,10 @@ from ..contracts import (
     WorkflowStartRequest,
     WorkflowStatusEnum,
 )
-from ..dependencies import ReadAuth, get_current_auth, get_request_id, get_timer
+from ..dependencies import AuthInfo, ReadAuth, RequestID, Timer
 from ..response import created, success
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/workflows", tags=["Workflows"])
 
@@ -37,9 +37,7 @@ def _get_workflow_engine():
 
 
 @router.get("", summary="List available workflows")
-async def list_workflows(
-    auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
-):
+async def list_workflows(auth: ReadAuth, request_id: RequestID, timer: Timer):
     """List all registered workflow definitions."""
     workflows: list = []
     try:
@@ -56,9 +54,9 @@ async def list_workflows(
 @router.post("/run", status_code=201, summary="Start a workflow")
 async def start_workflow(
     body: WorkflowStartRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Start a named workflow for a given target."""
     run_id = str(uuid4())
@@ -92,10 +90,10 @@ async def start_workflow(
 
 @router.get("/{workflow_id}", summary="Get workflow details")
 async def get_workflow(
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
     workflow_id: str = Path(...),
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
 ):
     """Get the definition of a specific workflow."""
     info: dict = {"id": workflow_id}

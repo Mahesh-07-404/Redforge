@@ -6,17 +6,17 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends
-
-logger = logging.getLogger(__name__)
+from fastapi import APIRouter
 
 from ..contracts import (
     MemoryQueryRequest,
     MemoryQueryResponse,
     MemoryStoreRequest,
 )
-from ..dependencies import get_current_auth, get_request_id, get_timer
+from ..dependencies import AuthInfo, RequestID, Timer
 from ..response import no_content, success
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/memory", tags=["Memory"])
 
@@ -24,9 +24,9 @@ router = APIRouter(prefix="/memory", tags=["Memory"])
 @router.post("/store", summary="Store a memory entry")
 async def store_memory(
     body: MemoryStoreRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Store a text entry in session memory."""
     stored = False
@@ -53,9 +53,9 @@ async def store_memory(
 @router.post("/query", summary="Query session memory")
 async def query_memory(
     body: MemoryQueryRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Retrieve top-k relevant memory entries for a query."""
     results: list = []
@@ -85,7 +85,7 @@ async def query_memory(
 
 
 @router.delete("/session/{session_id}", status_code=204, summary="Flush session memory")
-async def flush_memory(session_id: str, auth=Depends(get_current_auth)):
+async def flush_memory(session_id: str, auth: AuthInfo):
     """Remove all short-term memory entries for a session."""
     try:
         from redforge.memory.manager import MemoryManager

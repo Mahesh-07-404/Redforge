@@ -9,13 +9,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from redforge.memory.vector import (
     MemoryEntry,
     SearchResult,
     create_vector_store,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryManager:
@@ -115,8 +115,8 @@ class MemoryManager:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
-                """INSERT OR REPLACE INTO findings 
-                   (id, title, severity, category, description, target, evidence, status, timestamp) 
+                """INSERT OR REPLACE INTO findings
+                   (id, title, severity, category, description, target, evidence, status, timestamp)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     fid,

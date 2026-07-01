@@ -6,10 +6,10 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from ..contracts import ExecutionRequest, ExecutionResponse
-from ..dependencies import get_current_auth, get_request_id, get_timer
+from ..dependencies import AuthInfo, RequestID, Timer
 from ..response import success
 
 router = APIRouter(prefix="/execution", tags=["Execution"])
@@ -18,9 +18,9 @@ router = APIRouter(prefix="/execution", tags=["Execution"])
 @router.post("/run", summary="Execute a tool command (approved plans only)")
 async def run_tool(
     body: ExecutionRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """
     Execute a single tool against an approved plan step.

@@ -5,7 +5,7 @@ Auth endpoints, API key management, system info.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from ..auth import get_auth_service
 from ..contracts import (
@@ -16,10 +16,10 @@ from ..contracts import (
 )
 from ..dependencies import (
     AdminAuth,
+    AuthInfo,
     ReadAuth,
-    get_current_auth,
-    get_request_id,
-    get_timer,
+    RequestID,
+    Timer,
 )
 from ..exceptions import AuthenticationError
 from ..response import created, no_content, success
@@ -35,9 +35,7 @@ auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @auth_router.post("/token", summary="Issue a JWT access token")
-async def issue_token(
-    body: TokenRequest, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
-):
+async def issue_token(body: TokenRequest, request_id: RequestID, timer: Timer):
     """
     Issue a JWT access token.
     In production, validate credentials against a user store.
@@ -54,9 +52,9 @@ async def issue_token(
 @auth_router.post("/api-keys", status_code=201, summary="Create an API key")
 async def create_api_key(
     body: APIKeyRequest,
-    auth_info=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth_info: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Create a new API key (admin scope required)."""
     auth = get_auth_service()
@@ -75,9 +73,7 @@ async def create_api_key(
 
 
 @auth_router.get("/api-keys", summary="List API keys")
-async def list_api_keys(
-    auth_info: AdminAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
-):
+async def list_api_keys(auth_info: AdminAuth, request_id: RequestID, timer: Timer):
     """List all API keys (admin only, API key values are not returned)."""
     auth = get_auth_service()
     keys = auth.list_api_keys()
@@ -87,7 +83,7 @@ async def list_api_keys(
 
 
 @auth_router.delete("/api-keys/{key_id}", status_code=204, summary="Revoke an API key")
-async def revoke_api_key(key_id: str, auth_info=Depends(get_current_auth)):
+async def revoke_api_key(key_id: str, auth_info: AuthInfo):
     """Revoke (disable) an API key."""
     auth = get_auth_service()
     auth.revoke_api_key(key_id)
@@ -100,9 +96,7 @@ async def revoke_api_key(key_id: str, auth_info=Depends(get_current_auth)):
 
 
 @router.get("/info", summary="System information")
-async def system_info(
-    auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
-):
+async def system_info(auth: ReadAuth, request_id: RequestID, timer: Timer):
     """Return runtime and configuration metadata."""
     import platform
     import sys

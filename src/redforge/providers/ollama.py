@@ -63,7 +63,7 @@ class OllamaProvider(LLMProvider):
                 raw_response=data,
             )
         except httpx.HTTPError as e:
-            raise RuntimeError(f"Ollama request failed: {e}")
+            raise RuntimeError(f"Ollama request failed: {e}") from e
 
     async def chat_stream(
         self, messages: list[Message], tools: list[dict] | None = None, **kwargs
@@ -99,7 +99,7 @@ class OllamaProvider(LLMProvider):
                         except json.JSONDecodeError:
                             continue
         except httpx.HTTPError as e:
-            raise RuntimeError(f"Ollama stream failed: {e}")
+            raise RuntimeError(f"Ollama stream failed: {e}") from e
 
     def is_available(self) -> bool:
         """Check if Ollama is running"""
@@ -108,7 +108,7 @@ class OllamaProvider(LLMProvider):
 
             response = httpx.get(f"{self.base_url}/api/tags", timeout=5.0)
             return response.status_code == 200
-        except:
+        except httpx.HTTPError:
             return False
 
     async def list_models(self) -> list[str]:
@@ -118,7 +118,7 @@ class OllamaProvider(LLMProvider):
             response.raise_for_status()
             data = response.json()
             return [m["name"] for m in data.get("models", [])]
-        except:
+        except httpx.HTTPError:
             return []
 
     def supports_tools(self) -> bool:
