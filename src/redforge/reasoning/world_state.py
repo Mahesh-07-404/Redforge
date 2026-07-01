@@ -21,8 +21,8 @@ class WorldState:
             elif e.entity_type == "Port":
                 try:
                     self.ports.add(int(val))
-                except Exception:
-                    pass
+                except ValueError:
+                    pass  # nosec B110 - port value is non-numeric; silently skip malformed port entity
             elif e.entity_type == "Service":
                 self.services.add(val)
             elif e.entity_type == "Technology":

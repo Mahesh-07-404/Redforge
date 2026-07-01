@@ -4,8 +4,11 @@ CRUD for RedForge sessions.
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
@@ -25,7 +28,8 @@ def _get_service():
     try:
         from redforge.core.session import SessionService
         return SessionService()
-    except Exception:
+    except Exception as exc:  # nosec B110 - session service failure is handled by returning None
+        logger.debug("Failed to load SessionService: %s", exc)
         return None
 
 
@@ -146,8 +150,8 @@ async def delete_session(
     if svc:
         try:
             svc.delete(session_id)
-        except Exception:
-            pass
+        except Exception as exc:  # nosec B110 - deleting session is best-effort
+            logger.warning("Failed to delete session '%s': %s", session_id, exc)
     return no_content()
 
 
@@ -162,6 +166,6 @@ async def archive_session(
     if svc:
         try:
             svc.archive(session_id)
-        except AttributeError:
-            pass
+        except AttributeError as exc:  # nosec B110 - session archiver missing or unsupported
+            logger.debug("Archive method not supported on session service for session '%s': %s", session_id, exc)
     return success({"archived": True, "session_id": session_id}, request_id=request_id)

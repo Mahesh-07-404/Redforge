@@ -34,14 +34,20 @@ async def run_tool(
     findings: list = []
 
     try:
-        from redforge.executor.executor import Executor
-        executor = Executor()
-        result = executor.run(
-            tool=body.tool,
+        from redforge.contracts.tool import ToolCall
+        from redforge.contracts.intent import RiskLevel
+        from redforge.tools.runner import ToolRunner
+        tool_call = ToolCall(
+            tool_name=body.tool,
             command=body.command,
+            target=body.command[-1] if body.command else "",
+            timeout_seconds=body.timeout or 60,
+            risk_level=RiskLevel.LOW,
             session_id=body.session_id,
-            timeout=body.timeout,
+            approved=True
         )
+        runner = ToolRunner()
+        result = runner.run(tool_call)
         if hasattr(result, "stdout"):
             stdout = result.stdout or ""
             stderr = result.stderr or ""

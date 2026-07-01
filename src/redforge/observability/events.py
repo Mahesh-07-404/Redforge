@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any, Callable, Dict, List, Set
+
+logger = logging.getLogger(__name__)
 
 
 class ObservabilityEvent:
@@ -36,13 +39,13 @@ class EventBus:
         for handler in listeners:
             try:
                 handler(event)
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - isolated handler; must not crash event bus
+                logger.warning("Observability event handler raised an error (event=%s): %s", name, exc)
                 
         # Notify wildcard listeners
         wildcard_listeners = self._listeners.get("*", set())
         for handler in wildcard_listeners:
             try:
                 handler(event)
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - isolated handler; must not crash event bus
+                logger.warning("Observability wildcard handler raised an error (event=%s): %s", name, exc)

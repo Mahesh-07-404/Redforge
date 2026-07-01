@@ -1,7 +1,10 @@
+import logging
 from typing import List
 from .contracts import Chunk, RAGQuery, RAGResult
 from .vector_store import VectorStore
 from .embedder import EmbeddingProvider
+
+logger = logging.getLogger(__name__)
 
 class HybridSearch:
     def __init__(self, vector_store: VectorStore, embedding_provider: EmbeddingProvider):
@@ -38,8 +41,8 @@ class HybridSearch:
                         score=score,
                         source_type=chunk.source
                     ))
-        except Exception:
-            pass
+        except Exception as exc:  # nosec B110 - vector search is best-effort; keyword results still returned
+            logger.debug("Vector embedding search failed, using keyword results only: %s", exc)
             
         unique_results = []
         seen_ids = set()

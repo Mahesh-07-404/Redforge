@@ -1,6 +1,9 @@
+import logging
 from typing import List, Optional
 from ..providers.base import Message, LLMProvider
 from ..contracts.conversation import ConversationContext
+
+logger = logging.getLogger(__name__)
 
 class ConversationManager:
     def __init__(self, llm_provider: LLMProvider):
@@ -52,8 +55,8 @@ class ConversationManager:
         try:
             if self.llm_provider.supports_streaming():
                 use_streaming = True
-        except Exception:
-            pass
+        except Exception as exc:  # nosec B110 - best-effort check for streaming support
+            logger.debug("Failed to check if LLM provider supports streaming: %s", exc)
             
         if use_streaming:
             content_chunks = []

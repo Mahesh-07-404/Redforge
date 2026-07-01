@@ -1,5 +1,6 @@
 """RedForge Memory Manager Component"""
 
+import logging
 import sqlite3
 import json
 import uuid
@@ -7,6 +8,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 from redforge.memory.vector import (
     VectorStore,
@@ -146,8 +149,8 @@ class MemoryManager:
                 f = dict(row)
                 try:
                     f["evidence"] = json.loads(f["evidence"]) if f["evidence"] else None
-                except Exception:
-                    pass
+                except (ValueError, TypeError) as exc:  # nosec B110 - best-effort evidence JSON decode
+                    logger.debug("Failed to decode evidence JSON for finding '%s': %s", f.get('id'), exc)
                 findings.append(f)
             return findings
 
@@ -238,8 +241,8 @@ class WorkspaceMemoryManager:
                     state = json.loads(row[0])
                     if "session_entry" in state:
                         session_history.append(state["session_entry"])
-                except Exception:
-                    pass
+                except (ValueError, KeyError) as exc:  # nosec B110 - best-effort session JSON decode
+                    logger.debug("Failed to decode session state JSON: %s", exc)
 
         self._memory = WorkspaceMemory(
             workspace_id=self.workspace_id,

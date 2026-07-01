@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from typing import Callable, Dict, List, Optional
 from .contracts import AlertRecord, AlertSeverity
+
+logger = logging.getLogger(__name__)
 from .logger import StructuredLogger
 
 
@@ -52,8 +55,8 @@ class AlertsEngine:
         for handler in self._handlers:
             try:
                 handler(alert)
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - isolated handler; must not crash alert dispatch
+                logger.warning("Alert handler raised an error (alert_id=%s): %s", alert_id, exc)
                 
         return alert
 

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Callable, Coroutine
+import logging
+from typing import Callable, Coroutine, Optional
 from .registry import WorkerRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class HeartbeatMonitor:
@@ -45,6 +48,6 @@ class HeartbeatMonitor:
                 for worker_id in offline_worker_ids:
                     # Invoke async recovery callback
                     await self.recovery_callback(worker_id)
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - heartbeat loop must survive transient errors
+                logger.warning("Heartbeat monitoring loop encountered an error: %s", exc)
             await asyncio.sleep(self.check_interval)

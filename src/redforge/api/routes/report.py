@@ -3,8 +3,11 @@ Report routes — Phase 16: Unified API Gateway
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Path
 from fastapi.responses import PlainTextResponse
@@ -31,13 +34,11 @@ async def generate_report(
     title = f"RedForge Security Report — Session {body.session_id}"
 
     try:
-        from redforge.reporting.engine import ReportingEngine
-        engine = ReportingEngine()
+        from redforge.reports.engine import ReportEngine
+        engine = ReportEngine()
         report = engine.generate(
             session_id=body.session_id,
             format=body.format.value,
-            include_evidence=body.include_evidence,
-            include_remediation=body.include_remediation,
         )
         if isinstance(report, dict):
             content = report.get("content", "")
@@ -73,13 +74,13 @@ async def get_markdown_report(
     """Return the raw Markdown report as plain text."""
     content = f"# RedForge Security Report\n\nSession: {session_id}\n\n*No findings recorded.*"
     try:
-        from redforge.reporting.engine import ReportingEngine
-        engine = ReportingEngine()
+        from redforge.reports.engine import ReportEngine
+        engine = ReportEngine()
         result = engine.generate(session_id=session_id, format="markdown")
         if isinstance(result, str):
             content = result
         elif isinstance(result, dict):
             content = result.get("content", content)
-    except Exception:
-        pass
+    except Exception as exc:  # nosec B110 - raw report load is best-effort
+        logger.warning("Failed to generate raw report for session '%s': %s", session_id, exc)
     return PlainTextResponse(content=content, media_type="text/markdown")

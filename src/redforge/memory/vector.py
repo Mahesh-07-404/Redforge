@@ -1,11 +1,14 @@
 """Vector store manager supporting Qdrant and ChromaDB"""
 
 import json
+import logging
 import hashlib
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -86,8 +89,8 @@ class SimpleVectorStore(VectorStore):
                     data = json.load(f)
                     for entry_data in data.get("entries", []):
                         self._entries[entry_data["id"]] = MemoryEntry(**entry_data)
-            except:
-                pass
+            except (OSError, ValueError, KeyError) as exc:  # nosec B110 - best-effort persistent store load
+                logger.debug("SimpleVectorStore failed to load '%s', starting empty: %s", self.storage_file, exc)
     
     def _save(self) -> None:
         with open(self.storage_file, "w") as f:
@@ -415,8 +418,8 @@ class QdrantVectorStore(VectorStore):
                     collection_name=self.collection_name,
                     vectors_config=VectorParams(size=384, distance=Distance.COSINE),
                 )
-            except:
-                pass
+            except Exception as exc:  # nosec B110 - best-effort Qdrant collection recreation
+                logger.debug("QdrantVectorStore clear failed for '%s': %s", self.collection_name, exc)
 
 
 def create_vector_store(
@@ -431,7 +434,7 @@ def create_vector_store(
             store = QdrantVectorStore(persist_dir, collection_name)
             if store.is_available:
                 return store
-        except:
-            pass
+        except Exception as exc:  # nosec B110 - Qdrant unavailable; fall back to SimpleVectorStore
+            logger.debug("Qdrant store creation failed, using SimpleVectorStore: %s", exc)
     
     return SimpleVectorStore(persist_dir, collection_name)

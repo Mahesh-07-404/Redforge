@@ -1,3 +1,4 @@
+import logging
 from typing import List, Dict, Any
 import json
 from .schema import NormalizedEntity, EvidenceReference
@@ -5,6 +6,8 @@ from .entities import (
     HostEntity, URLResource, TechnologyEntity, PortEntity,
     ServiceEntity, FindingEntity, CVEEntity, DNSRecordEntity, DirectoryEntity
 )
+
+logger = logging.getLogger(__name__)
 
 class BaseMapper:
     tool_name: str = ""
@@ -155,8 +158,8 @@ class NucleiMapper(BaseMapper):
         for line in raw_content.splitlines():
             try:
                 findings.append(json.loads(line))
-            except Exception:
-                pass
+            except (ValueError, TypeError) as exc:  # nosec B110 - best-effort Nuclei JSON line parse
+                logger.debug("Skipping non-JSON Nuclei output line: %s", exc)
                 
         if not findings:
             findings = [{"info": {"name": "Vulnerability Found", "severity": "high", "classification": {"cve-id": "CVE-2026-1234"}}}]
@@ -178,7 +181,10 @@ class NucleiMapper(BaseMapper):
             )
             entities.append(finding_ent)
             
-            cve = info.get("classification", {}).get("cve-id")
+            classification = info.get("classification")
+            cve = None
+            if isinstance(classification, dict):
+                cve = classification.get("cve-id")
             if cve:
                 entities.append(CVEEntity(
                     id=f"cve_{cve.lower()}",

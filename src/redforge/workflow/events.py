@@ -1,4 +1,7 @@
+import logging
 from typing import Callable, List
+
+logger = logging.getLogger(__name__)
 
 class WorkflowEvents:
     def __init__(self):
@@ -11,5 +14,5 @@ class WorkflowEvents:
         for listener in self._listeners:
             try:
                 listener(event_type, message)
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - isolated listener; must not crash workflow events
+                logger.warning("Workflow event listener raised an error (event=%s): %s", event_type, exc)

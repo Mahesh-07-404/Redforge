@@ -25,3 +25,13 @@ class ReasoningEngine:
         tasks = TaskDecomposer.decompose(goal_text)
         self.state_machine.transition_to(ReasoningState.REASONING)
         return tasks
+
+    def reason(self, goal: str, context: dict | None = None, session_id: str = "") -> dict:
+        decision_obj = self.reasoner.think(goal)
+        return {
+            "decision": decision_obj.reason,
+            "action": decision_obj.action,
+            "strategy": decision_obj.strategy or "Default",
+            "confidence": 0.9,
+            "next_actions": [decision_obj.next_task_id] if decision_obj.next_task_id else []
+        }

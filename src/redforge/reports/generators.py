@@ -491,8 +491,8 @@ Example:
             json_match = re.search(r'\[.*\]', response, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group())
-        except:
-            pass
+        except (json.JSONDecodeError, AttributeError):
+            pass  # nosec B110 - LLM JSON parse is best-effort; caller receives error dict if parsing fails
         
         return [{"error": "Could not generate workflow"}]
 

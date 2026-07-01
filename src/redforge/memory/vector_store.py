@@ -1,18 +1,50 @@
+import logging
 import uuid
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from ..contracts.memory import MemoryEntry
+
+logger = logging.getLogger(__name__)
 
 try:
     from qdrant_client import QdrantClient
     from qdrant_client.http.models import Distance, VectorParams, PointStruct
     HAS_QDRANT = True
 except ImportError:
+    class DummyQdrantClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        def get_collections(self, *args, **kwargs):
+            class DummyCollectionList:
+                collections = []
+            return DummyCollectionList()
+        def create_collection(self, *args, **kwargs):
+            pass
+        def upsert(self, *args, **kwargs):
+            pass
+        def query_points(self, *args, **kwargs):
+            class DummyPoints:
+                points = []
+            return DummyPoints()
+        def delete_collection(self, *args, **kwargs):
+            pass
+
+    class DummyDistance:
+        COSINE = "Cosine"
+
+    class DummyVectorParams:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class DummyPointStruct:
+        def __init__(self, *args, **kwargs):
+            pass
+
     HAS_QDRANT = False
-    QdrantClient = None
-    Distance = None
-    VectorParams = None
-    PointStruct = None
+    QdrantClient = DummyQdrantClient
+    Distance = DummyDistance
+    VectorParams = DummyVectorParams
+    PointStruct = DummyPointStruct
 
 class QdrantAdapter:
     def __init__(self, persist_dir: str):
@@ -22,7 +54,7 @@ class QdrantAdapter:
         if HAS_QDRANT:
             self.client = QdrantClient(path=f"{persist_dir}/qdrant")
         else:
-            self.client = None
+            self.client = QdrantClient()
 
     def _ensure_collection(self, collection_name: str):
         if not HAS_QDRANT:
@@ -44,8 +76,8 @@ class QdrantAdapter:
                 try:
                     with open(fallback_file, "r") as f:
                         data = json.load(f)
-                except Exception:
-                    pass
+                except (OSError, ValueError) as exc:  # nosec B110 - best-effort fallback file read
+                    logger.debug("Fallback store read failed, starting with empty store: %s", exc)
             collection_data = data.setdefault(collection_name, {})
             entry_id = entry.id or str(uuid.uuid4())
             collection_data[entry_id] = {
@@ -56,8 +88,8 @@ class QdrantAdapter:
             try:
                 with open(fallback_file, "w") as f:
                     json.dump(data, f)
-            except Exception:
-                pass
+            except (OSError, ValueError) as exc:  # nosec B110 - best-effort fallback file write
+                logger.warning("Fallback store write failed for collection '%s': %s", collection_name, exc)
             return
 
         self._ensure_collection(collection_name)
@@ -85,7 +117,8 @@ class QdrantAdapter:
             try:
                 with open(fallback_file, "r") as f:
                     data = json.load(f)
-            except Exception:
+            except (OSError, ValueError) as exc:  # nosec B110 - best-effort fallback file read
+                logger.debug("Fallback retrieve read failed for collection '%s': %s", collection_name, exc)
                 return []
             collection_data = data.get(collection_name, {})
             results = []
@@ -142,12 +175,12 @@ class QdrantAdapter:
                         del data[collection_name]
                         with open(fallback_file, "w") as f:
                             json.dump(data, f)
-                except Exception:
-                    pass
+                except (OSError, ValueError) as exc:  # nosec B110 - best-effort fallback collection drop
+                    logger.debug("Fallback drop_collection failed for '%s': %s", collection_name, exc)
             return
 
         try:
             self.client.delete_collection(collection_name=collection_name)
-        except Exception:
-            pass
+        except Exception as exc:  # nosec B110 - best-effort Qdrant collection deletion
+            logger.debug("Qdrant delete_collection failed for '%s': %s", collection_name, exc)
 

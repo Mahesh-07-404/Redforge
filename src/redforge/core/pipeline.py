@@ -256,8 +256,8 @@ class Pipeline:
                 supports = self.llm_provider.supports_streaming()
                 if isinstance(supports, bool) and supports:
                     use_streaming = True
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - best-effort check for streaming support
+                logger.debug("Failed to check if LLM provider supports streaming in pipeline: %s", exc)
 
             if use_streaming:
                 content_chunks = []

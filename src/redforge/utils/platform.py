@@ -155,8 +155,8 @@ def detect_platform() -> PlatformInfo:
         try:
             result = subprocess.run(["sw_vers", "-productVersion"], capture_output=True, text=True)
             os_version = result.stdout.strip()
-        except:
-            pass
+        except (OSError, subprocess.SubprocessError) as exc:  # nosec B110 - sw_vers unavailable; version remains empty
+            pass  # macOS version detection is best-effort
     elif system == "win32":
         platform = Platform.WINDOWS
         package_manager = PackageManager.WINGET
@@ -228,7 +228,7 @@ def check_command_exists(command: str) -> bool:
         try:
             result = subprocess.run(f"where {command}", shell=True, capture_output=True)
             return result.returncode == 0
-        except:
+        except (OSError, subprocess.SubprocessError):  # nosec B110 - 'where' unavailable on this Windows install
             pass
     
     return False
@@ -245,7 +245,7 @@ def check_tool_available(tool: str) -> Tuple[bool, Optional[str]]:
             result = subprocess.run(f"where {tool}", shell=True, capture_output=True, text=True)
             if result.returncode == 0:
                 return True, result.stdout.strip().split('\n')[0]
-        except:
+        except (OSError, subprocess.SubprocessError):  # nosec B110 - 'where' unavailable on this Windows install
             pass
     
     return False, None
@@ -266,8 +266,8 @@ def get_tool_version(tool: str) -> Optional[str]:
             if result.returncode == 0:
                 output = result.stdout + result.stderr
                 return output.strip().split('\n')[0]
-        except:
-            continue
+        except (OSError, subprocess.SubprocessError, subprocess.TimeoutExpired):
+            continue  # nosec B110 - version flag not supported; try next flag
     
     return None
 

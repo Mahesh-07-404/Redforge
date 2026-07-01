@@ -1,5 +1,6 @@
 """Skill indexing system for agent knowledge retrieval"""
 
+import logging
 import os
 import json
 import hashlib
@@ -8,6 +9,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 from redforge.memory.vector import VectorStore, MemoryEntry, SearchResult, create_vector_store
 
@@ -74,8 +77,8 @@ class SkillIndexer:
                     for skill_data in data.get("skills", []):
                         skill = SkillEntry(**skill_data)
                         self._skills_index[skill.path] = skill
-            except:
-                pass
+            except (OSError, ValueError, TypeError) as exc:  # nosec B110 - best-effort manifest load
+                logger.debug("Failed to load skills manifest from '%s': %s", self._index_file, exc)
     
     def _save_manifest(self) -> None:
         """Save skill manifest"""

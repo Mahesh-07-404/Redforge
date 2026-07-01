@@ -72,8 +72,8 @@ class SessionStore:
 
 class SessionService:
     """Core Session Service for creating, loading, updating, and listing agent sessions."""
-    def __init__(self, store: SessionStore):
-        self.store = store
+    def __init__(self, store: Optional[SessionStore] = None):
+        self.store = store or SessionStore()
 
     def create(self, mode: str, target: str | None, autonomy: str, session_id: Optional[str] = None, name: str = "") -> Session:
         sid = session_id or str(uuid.uuid4())

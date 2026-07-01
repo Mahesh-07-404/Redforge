@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from .contracts import NormalizedBundle, NormalizationResult, NormalizationStatus
 from .registry import MapperRegistry
@@ -5,6 +6,8 @@ from .schema import EvidenceReference
 from .resolver import RelationshipResolver
 from .validator import NormalizationValidator
 from ..evidence.contracts import EvidenceBundle
+
+logger = logging.getLogger(__name__)
 
 class ResultNormalizer:
     def __init__(self):
@@ -38,8 +41,8 @@ class ResultNormalizer:
                 if art.content_type == "parsed_output":
                     try:
                         parsed_content = json.loads(art.content)
-                    except Exception:
-                        pass
+                    except (ValueError, TypeError) as exc:  # nosec B110 - best-effort artifact JSON decode
+                        logger.debug("Failed to decode artifact JSON (task=%s, artifact=%s): %s", ev.task_id, art.id, exc)
                         
                 try:
                     tool_entities = mapper.map_output(
@@ -49,8 +52,8 @@ class ResultNormalizer:
                         meta=meta
                     )
                     entities.extend(tool_entities)
-                except Exception:
-                    pass
+                except Exception as exc:  # nosec B110 - best-effort mapper execution; skip failing artifact
+                    logger.warning("Mapper '%s' failed for artifact '%s': %s", mapper.__class__.__name__, art.id, exc)
                     
         unique_entities = []
         seen_ids = set()

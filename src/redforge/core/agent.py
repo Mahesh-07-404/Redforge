@@ -48,7 +48,7 @@ class RedForgeAgent:
             from .intent import IntentService as IntentEngine
             from ..skills.registry import SkillRegistry
             from ..skills.loader import DynamicSkillLoader
-            from ..tools.executor import ToolExecutor
+            from ..tools.manager import ToolService as ToolExecutor
             from .verifier import Verifier
             from ..reports.engine import ReportEngine
             from .safety import SafetyEngine
@@ -135,7 +135,7 @@ class RedForgeAgent:
         sid = session_id or "default"
         await self._emit("run_start", user_input=user_input, session_id=sid)
         
-        state_dict = {
+        state_dict: Dict[str, Any] = {
             "messages": [],
             "findings": [],
             "tools_used": [],
@@ -247,8 +247,8 @@ class RedForgeAgent:
                 if isinstance(resp, str):
                     return resp
                 return getattr(resp, "content", "SCAN")
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - intent classification failure falls back to SCAN
+                logger.debug("Intent classification failed, falling back to SCAN: %s", exc)
         return "SCAN"
 
     def _merge_state(self, state: AgentState, update: dict) -> AgentState:

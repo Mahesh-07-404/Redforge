@@ -3,7 +3,10 @@ Memory routes — Phase 16: Unified API Gateway
 """
 from __future__ import annotations
 
+import logging
 from fastapi import APIRouter, Depends
+
+logger = logging.getLogger(__name__)
 
 from ..contracts import MemoryStoreRequest, MemoryQueryRequest, MemoryQueryResponse, MemoryEntry
 from ..dependencies import get_current_auth, get_request_id, get_timer
@@ -59,8 +62,8 @@ async def query_memory(
             else:
                 d = dict(e)
             results.append(d)
-    except Exception:
-        pass
+    except Exception as exc:  # nosec B110 - memory query is best-effort
+        logger.warning("Failed to query session memory for session '%s': %s", body.session_id, exc)
 
     payload = MemoryQueryResponse(
         session_id=body.session_id,
@@ -78,6 +81,6 @@ async def flush_memory(session_id: str, auth=Depends(get_current_auth)):
         from redforge.memory.manager import MemoryManager
         mgr = MemoryManager()
         mgr.flush_session(session_id)
-    except Exception:
-        pass
+    except Exception as exc:  # nosec B110 - memory flush is best-effort
+        logger.warning("Failed to flush session memory for session '%s': %s", session_id, exc)
     return no_content()

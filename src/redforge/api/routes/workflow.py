@@ -3,9 +3,12 @@ Workflow routes — Phase 16: Unified API Gateway
 """
 from __future__ import annotations
 
+import logging
 from typing import Optional
 from uuid import uuid4
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Path
 
@@ -21,7 +24,8 @@ def _get_workflow_engine():
     try:
         from redforge.workflow.engine import WorkflowEngine
         return WorkflowEngine()
-    except Exception:
+    except Exception as exc:  # nosec B110 - workflow engine loading failure is handled by returning None
+        logger.debug("Failed to load WorkflowEngine: %s", exc)
         return None
 
 
@@ -33,8 +37,8 @@ async def list_workflows(auth: ReadAuth, request_id: str = Depends(get_request_i
         from redforge.workflow.registry import WorkflowRegistry
         registry = WorkflowRegistry()
         workflows = registry.list() if hasattr(registry, "list") else []
-    except Exception:
-        pass
+    except Exception as exc:  # nosec B110 - listing workflows is best-effort
+        logger.warning("Failed to list workflows: %s", exc)
     payload = WorkflowListResponse(workflows=workflows, total=len(workflows))
     return success(payload.model_dump(), duration_ms=timer.elapsed_ms, request_id=request_id)
 
@@ -91,6 +95,6 @@ async def get_workflow(
         w = registry.get(workflow_id) if hasattr(registry, "get") else None
         if w:
             info = w if isinstance(w, dict) else {"id": workflow_id, "workflow": str(w)}
-    except Exception:
-        pass
+    except Exception as exc:  # nosec B110 - workflow retrieval is best-effort
+        logger.warning("Failed to retrieve details for workflow '%s': %s", workflow_id, exc)
     return success(info, duration_ms=timer.elapsed_ms, request_id=request_id)

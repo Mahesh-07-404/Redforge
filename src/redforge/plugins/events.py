@@ -1,4 +1,7 @@
+import logging
 from typing import Callable, List
+
+logger = logging.getLogger(__name__)
 
 class PluginEvents:
     def __init__(self):
@@ -11,5 +14,5 @@ class PluginEvents:
         for listener in self.listeners:
             try:
                 listener(event_type, plugin_id)
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - isolated listener; must not crash plugin events
+                logger.warning("Plugin event listener raised an error (event=%s, plugin=%s): %s", event_type, plugin_id, exc)

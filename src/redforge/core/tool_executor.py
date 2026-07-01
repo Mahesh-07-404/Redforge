@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import inspect
+import logging
 import shutil
 import subprocess
 import textwrap
@@ -17,6 +18,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -348,8 +351,8 @@ class ToolExecutor:
             result = self._event_callback({"event": event, **payload})
             if inspect.isawaitable(result):
                 await result
-        except Exception:
-            pass
+        except Exception as exc:  # nosec B110 - event callback invocation failure must not block execution pipeline
+            logger.warning("Event callback raised an error (event=%s): %s", event, exc)
 
     async def _emit_result(self, call_id: str, result: ToolResult) -> None:
         await self._emit(

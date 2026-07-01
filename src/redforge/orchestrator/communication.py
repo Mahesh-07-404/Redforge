@@ -1,5 +1,8 @@
+import logging
 from typing import List, Dict, Any, Callable
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 class AgentMessage(BaseModel):
     message_type: str  # TaskAssigned, TaskStarted, TaskCompleted, TaskFailed, etc.
@@ -18,5 +21,5 @@ class CommunicationBus:
         for sub in self._subscribers:
             try:
                 sub(msg)
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - isolated subscriber; must not crash message bus
+                logger.warning("CommunicationBus subscriber raised an error (type=%s): %s", msg.message_type, exc)

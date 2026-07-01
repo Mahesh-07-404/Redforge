@@ -1,11 +1,14 @@
 """RedForge Skill Registry"""
 
+import logging
 import os
 import yaml
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class SkillMetadata:
@@ -46,7 +49,8 @@ class SkillRegistry:
     def _register_file(self, file_path: Path) -> None:
         try:
             content = file_path.read_text(encoding="utf-8", errors="replace")
-        except Exception:
+        except (OSError, PermissionError) as exc:  # nosec B110 - best-effort skill file scan; skip unreadable files
+            logger.debug("Skipping unreadable skill file '%s': %s", file_path, exc)
             return
 
         # Parse YAML frontmatter if available
@@ -58,8 +62,8 @@ class SkillRegistry:
             try:
                 metadata = yaml.safe_load(frontmatter_match.group(1)) or {}
                 content_body = content[frontmatter_match.end():]
-            except Exception:
-                pass
+            except (ValueError, yaml.YAMLError) as exc:  # nosec B110 - best-effort YAML frontmatter parse
+                logger.debug("Failed to parse frontmatter in '%s': %s", file_path, exc)
 
         # Apply path-based fallbacks for missing fields
         try:

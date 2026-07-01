@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Dict, List, Optional
 from .contracts import TaskMessage, TaskResult, TaskStatus
@@ -11,6 +12,8 @@ from .dispatcher import TaskDispatcher
 from .lease import LeaseManager
 from .retry import RetryPolicy
 from .heartbeat import HeartbeatMonitor
+
+logger = logging.getLogger(__name__)
 
 
 class DistributedCoordinator:
@@ -132,8 +135,8 @@ class DistributedCoordinator:
                 expired_task_ids = self.lease_manager.check_expired()
                 for task_id in expired_task_ids:
                     await self._reschedule_task(task_id, "Lease expired.")
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - lease-check loop must survive transient errors
+                logger.warning("Lease check loop encountered an error: %s", exc)
             await asyncio.sleep(1.0)
 
     async def _dispatch_loop(self) -> None:
@@ -153,8 +156,8 @@ class DistributedCoordinator:
                         else:
                             # Task execution failed on worker, try rescheduling/retrying
                             await self._reschedule_task(result.task_id, result.error or "Task failed.")
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - dispatch loop must survive transient errors
+                logger.warning("Dispatch loop encountered an error: %s", exc)
             await asyncio.sleep(0.5)
 
     async def get_stats(self) -> dict:

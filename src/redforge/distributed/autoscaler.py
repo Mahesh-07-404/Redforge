@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Callable, List, Optional
 from .registry import WorkerRegistry
 from .queue import BaseQueue
 from .worker import DistributedWorker
+
+logger = logging.getLogger(__name__)
 
 
 class DistributedAutoscaler:
@@ -74,8 +77,8 @@ class DistributedAutoscaler:
                 elif q_size == 0 and w_count > self.min_workers:
                     # Find worker with least load and scale it down
                     await self._scale_down()
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - monitoring loop must survive transient errors
+                logger.warning("Autoscaler monitoring loop encountered an error: %s", exc)
             await asyncio.sleep(self.check_interval)
 
     async def _scale_up(self) -> None:

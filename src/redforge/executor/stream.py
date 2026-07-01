@@ -1,5 +1,8 @@
+import logging
 from typing import Callable, List
 from .events import ExecutionEvent
+
+logger = logging.getLogger(__name__)
 
 class StreamManager:
     def __init__(self):
@@ -16,5 +19,5 @@ class StreamManager:
         for sub in self._subscribers:
             try:
                 sub(event)
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - isolated subscriber; must not crash stream
+                logger.warning("Stream subscriber raised an error (event=%s): %s", event, exc)

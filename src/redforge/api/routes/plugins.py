@@ -3,7 +3,10 @@ Plugin routes — Phase 16: Unified API Gateway
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Path
 
@@ -18,7 +21,8 @@ def _get_manager():
     try:
         from redforge.plugins.manager import PluginManager
         return PluginManager()
-    except Exception:
+    except Exception as exc:  # nosec B110 - plugin manager failure is handled by returning None
+        logger.debug("Failed to load PluginManager: %s", exc)
         return None
 
 
@@ -37,8 +41,8 @@ async def list_plugins(auth: ReadAuth, request_id: str = Depends(get_request_id)
                     plugins.append(p.model_dump())
                 else:
                     plugins.append(vars(p))
-        except Exception:
-            pass
+        except Exception as exc:  # nosec B110 - listing plugins is best-effort
+            logger.warning("Failed to list plugins: %s", exc)
     payload = PluginListResponse(plugins=plugins, total=len(plugins))
     return success(payload.model_dump(), duration_ms=timer.elapsed_ms, request_id=request_id)
 
@@ -72,8 +76,8 @@ async def enable_plugin(
     if mgr:
         try:
             mgr.enable(plugin_id)
-        except Exception:
-            pass
+        except Exception as exc:  # nosec B110 - enabling plugin is best-effort
+            logger.warning("Failed to enable plugin '%s': %s", plugin_id, exc)
     return success({"plugin_id": plugin_id, "enabled": True}, request_id=request_id)
 
 
@@ -87,8 +91,8 @@ async def disable_plugin(
     if mgr:
         try:
             mgr.disable(plugin_id)
-        except Exception:
-            pass
+        except Exception as exc:  # nosec B110 - disabling plugin is best-effort
+            logger.warning("Failed to disable plugin '%s': %s", plugin_id, exc)
     return success({"plugin_id": plugin_id, "enabled": False}, request_id=request_id)
 
 
@@ -101,6 +105,6 @@ async def uninstall_plugin(
     if mgr:
         try:
             mgr.uninstall(plugin_id)
-        except Exception:
-            pass
+        except Exception as exc:  # nosec B110 - uninstalling plugin is best-effort
+            logger.warning("Failed to uninstall plugin '%s': %s", plugin_id, exc)
     return no_content()

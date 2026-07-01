@@ -13,9 +13,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime
+import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -61,8 +64,8 @@ class ConnectionManager:
     async def send(self, websocket: WebSocket, event: Dict[str, Any]) -> None:
         try:
             await websocket.send_text(json.dumps(event, default=str))
-        except Exception:
-            pass
+        except Exception as exc:  # nosec B110 - sending WS frame can fail if connection is dropped
+            logger.debug("Failed to send websocket text frame: %s", exc)
 
     async def broadcast(self, session_id: str, event: Dict[str, Any]) -> None:
         for ws in self._connections.get(session_id, [])[:]:
@@ -84,7 +87,7 @@ def _event(event_type: str, session_id: Optional[str] = None, **kwargs) -> Dict:
     return {
         "event_type": event_type,
         "session_id": session_id,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         **kwargs,
     }
 
@@ -152,8 +155,8 @@ async def ws_chat(websocket: WebSocket):
     except Exception as exc:
         try:
             await manager.send(websocket, _event("error", session_id=session_id, message=str(exc)))
-        except Exception:
-            pass
+        except Exception as exc_inner:  # nosec B110 - isolated error handling best-effort frame send
+            logger.debug("Failed to send error frame to websocket in ws_chat: %s", exc_inner)
         manager.disconnect(websocket, session_id)
 
 
@@ -211,8 +214,8 @@ async def ws_workflow(websocket: WebSocket):
     except Exception as exc:
         try:
             await manager.send(websocket, _event("error", message=str(exc)))
-        except Exception:
-            pass
+        except Exception as exc_inner:  # nosec B110 - isolated error handling best-effort frame send
+            logger.debug("Failed to send error frame to websocket in ws_workflow: %s", exc_inner)
         manager.disconnect(websocket, session_id)
 
 
@@ -250,9 +253,20 @@ async def ws_execution(websocket: WebSocket):
             stderr = ""
             exit_code = None
             try:
-                from redforge.executor.executor import Executor
-                executor = Executor()
-                result = executor.run(tool=tool, command=command, session_id=session_id)
+                from redforge.contracts.tool import ToolCall
+                from redforge.contracts.intent import RiskLevel
+                from redforge.tools.runner import ToolRunner
+                tool_call = ToolCall(
+                    tool_name=tool,
+                    command=command,
+                    target=command[-1] if command else "",
+                    timeout_seconds=60,
+                    risk_level=RiskLevel.LOW,
+                    session_id=session_id,
+                    approved=True
+                )
+                runner = ToolRunner()
+                result = runner.run(tool_call)
                 if hasattr(result, "stdout"):
                     stdout = result.stdout or ""
                     stderr = result.stderr or ""
@@ -299,8 +313,8 @@ async def ws_execution(websocket: WebSocket):
     except Exception as exc:
         try:
             await manager.send(websocket, _event("error", message=str(exc)))
-        except Exception:
-            pass
+        except Exception as exc_inner:  # nosec B110 - isolated error handling best-effort frame send
+            logger.debug("Failed to send error frame to websocket in ws_execution: %s", exc_inner)
         manager.disconnect(websocket, session_id)
 
 
@@ -336,8 +350,8 @@ async def ws_events(websocket: WebSocket):
     except Exception as exc:
         try:
             await manager.send(websocket, _event("error", message=str(exc)))
-        except Exception:
-            pass
+        except Exception as exc_inner:  # nosec B110 - isolated error handling best-effort frame send
+            logger.debug("Failed to send error frame to websocket in ws_events: %s", exc_inner)
         manager.disconnect(websocket, session_id)
 
 
@@ -387,8 +401,8 @@ async def ws_reasoning(websocket: WebSocket):
     except Exception as exc:
         try:
             await manager.send(websocket, _event("error", message=str(exc)))
-        except Exception:
-            pass
+        except Exception as exc_inner:  # nosec B110 - isolated error handling best-effort frame send
+            logger.debug("Failed to send error frame to websocket in ws_reasoning: %s", exc_inner)
         manager.disconnect(websocket, session_id)
 
 
@@ -417,8 +431,8 @@ async def ws_report(websocket: WebSocket):
 
             content = ""
             try:
-                from redforge.reporting.engine import ReportingEngine
-                engine = ReportingEngine()
+                from redforge.reports.engine import ReportEngine
+                engine = ReportEngine()
                 result = engine.generate(session_id=session_id, format=fmt)
                 content = result if isinstance(result, str) else result.get("content", "") if isinstance(result, dict) else ""
             except Exception as exc:
@@ -442,6 +456,6 @@ async def ws_report(websocket: WebSocket):
     except Exception as exc:
         try:
             await manager.send(websocket, _event("error", message=str(exc)))
-        except Exception:
-            pass
+        except Exception as exc_inner:  # nosec B110 - isolated error handling best-effort frame send
+            logger.debug("Failed to send error frame to websocket in ws_report: %s", exc_inner)
         manager.disconnect(websocket, session_id)

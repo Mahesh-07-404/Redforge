@@ -32,7 +32,7 @@ def detect_platform() -> PlatformInfo:
                     return PlatformInfo("Debian", "apt", "sudo apt install -y {package}", ["/usr/bin", "/usr/local/bin"])
                 elif "fedora" in content:
                     return PlatformInfo("Fedora", "dnf", "sudo dnf install -y {package}", ["/usr/bin", "/usr/local/bin"])
-        except:
-            pass
+        except (OSError, PermissionError):
+            pass  # nosec B110 - /etc/os-release unreadable; fall back to generic Debian config
         return PlatformInfo("Debian", "apt", "sudo apt install -y {package}", ["/usr/bin", "/usr/local/bin"])
     return PlatformInfo("Debian", "apt", "sudo apt install -y {package}", ["/usr/bin", "/usr/local/bin"])

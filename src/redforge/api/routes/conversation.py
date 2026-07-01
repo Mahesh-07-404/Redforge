@@ -3,7 +3,10 @@ Chat & Conversation routes — Phase 16: Unified API Gateway
 """
 from __future__ import annotations
 
+import logging
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Path
 
@@ -62,8 +65,8 @@ async def get_conversation(
         if session and hasattr(session, "metadata"):
             history = session.metadata.get("conversation_history", [])
             messages = history[-limit:]
-    except Exception:
-        pass
+    except Exception as exc:  # nosec B110 - session history load is best-effort
+        logger.warning("Failed to load message history for session '%s': %s", session_id, exc)
 
     payload = ConversationHistoryResponse(
         session_id=session_id,
@@ -86,6 +89,6 @@ async def clear_conversation(
         if session and hasattr(session, "metadata"):
             session.metadata.pop("conversation_history", None)
             svc.save(session)
-    except Exception:
-        pass
+    except Exception as exc:  # nosec B110 - clearing history is best-effort
+        logger.warning("Failed to clear conversation history for session '%s': %s", session_id, exc)
     return no_content()

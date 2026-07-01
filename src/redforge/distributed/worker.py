@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 import inspect
 from typing import Callable, List, Optional
 from .contracts import TaskMessage, TaskResult, TaskStatus, WorkerStatus
 from .registry import WorkerRegistry
 from .exceptions import DistributedError
+
+logger = logging.getLogger(__name__)
 
 
 class DistributedWorker:
@@ -149,6 +152,6 @@ class DistributedWorker:
             try:
                 if self.registry:
                     self.registry.heartbeat(self.worker_id, load=self.load)
-            except Exception:
-                pass
+            except Exception as exc:  # nosec B110 - heartbeat loop must survive transient registry errors
+                logger.warning("Worker %s heartbeat encountered an error: %s", self.worker_id, exc)
             await asyncio.sleep(self.heartbeat_interval)

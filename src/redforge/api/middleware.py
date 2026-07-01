@@ -4,9 +4,12 @@ Request pipeline: auth injection, rate limiting, logging, timing, tracing, secur
 """
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -124,8 +127,8 @@ def _log_request(
             "client": (request.client.host if request.client else "unknown"),
             "error": error,
         })
-    except Exception:
-        pass
+    except Exception as exc:  # nosec B110 - request logging failure must not crash request lifecycle
+        logger.debug("Request logger failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------
