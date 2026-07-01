@@ -31,6 +31,7 @@ Phase 7 → Hardening: Shim removal + CI enforcement
 ...
 Phase 16 → Unified API Gateway: FastAPI REST & WebSockets
 Phase 17 → React Dashboard: React Operations Interface
+Phase 18 → Distributed Execution Platform: Workflows Workers
 ```
 
 ---
@@ -1746,14 +1747,64 @@ dashboard/
 * **Report Preview & Export**: Compile markdown, html, json, and pdf formats and trigger local downloads.
 * **Settings & Auth**: Save custom gateway base URLs, store JWT tokens or API key authentication scopes, and swap Light/Dark mode themes.
 
----
-
 ### Acceptance Criteria
 
 - [ ] All Vitest unit tests pass cleanly (`npm test`)
 - [ ] UI is responsive and styled using Tailwind CSS layers
 - [ ] Dashboard communicates only with REST APIs and WebSockets (no Python module imports)
 - [ ] Git tag `v2.0.0-phase-17` is applied
+
+---
+
+## Phase 18 — Distributed Execution Platform
+
+**Git tag**: `v2.0.0-phase-18`
+
+### Objective
+
+Transform RedForge from a single-process application into a distributed execution platform capable of running security workflows across multiple workers and machines.
+
+---
+
+### Files Created
+
+```
+src/redforge/distributed/
+  __init__.py
+  contracts.py
+  manager.py
+  scheduler.py
+  dispatcher.py
+  queue.py
+  worker.py
+  heartbeat.py
+  registry.py
+  autoscaler.py
+  lease.py
+  coordinator.py
+  retry.py
+  load_balancer.py
+  exceptions.py
+```
+
+---
+
+### Key Features Implemented
+
+* **Priority Queue & Backends**: Unified queues supporting InMemory fallbacks, Redis priority ZSets, and RabbitMQ.
+* **Resilient Dependency Scheduler**: Evaluates task dependency graphs, schedules ready tasks, and handles failure cascades.
+* **Autoscaling Workers Pool**: Regulates local worker node pool sizes dynamically based on system demands.
+* **Worker Leases & Retries**: Tracks active leases, handles heartbeat check failures, and reschedules with exponential backoffs.
+* **Load Balancer**: Implements Round Robin, Least Loaded, Capability routing, and Weighted algorithms.
+
+---
+
+### Acceptance Criteria
+
+- [ ] All 8 unit tests pass cleanly (`pytest tests/unit/test_distributed.py`)
+- [ ] Platform supports Redis, RabbitMQ, and In-Memory Priority Queues
+- [ ] Multi-worker execution resolves task graphs and recovers on worker failure
+- [ ] Git tag `v2.0.0-phase-18` is applied
 
 ---
 
@@ -1771,10 +1822,13 @@ dashboard/
 | 7 | Hardening | All (deletions only) | 3 | 9 | 26 | High |
 | 16 | Unified API Gateway | API Gateway REST/WS | 28 | 6 | 0 | Low |
 | 17 | React Dashboard | Frontend Web UI | 22 | 4 | 0 | Low |
+| 18 | Distributed Execution | Distributed package | 15 | 4 | 0 | Low |
 
-**Total new modules**: 93  
+**Total new modules**: 108  
 **Total deleted files**: 26 (all shims or dead code)  
 **No-return point**: Phase 7 (shim removal). All phases before it are reversible.
+
+---
 
 ## Parallel Work Opportunities
 

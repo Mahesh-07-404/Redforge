@@ -4,6 +4,17 @@ This document describes the architectural layout of RedForge.
 
 ## Architectural Layers
 
+### 18. Distributed Execution Platform (`src/redforge/distributed/`) — Phase 18
+A resilient, multi-node scheduling and execution subsystem allowing RedForge tasks to scale horizontally.
+* **`manager.py`**: Public wrapper coordinate interface for client workflows.
+* **`scheduler.py`**: Enforces dependency graphs, holding child tasks until all parents complete, or cascading cancellations.
+* **`queue.py`**: Implements Priority queues with InMemory, Redis, or RabbitMQ backends.
+* **`worker.py`**: DistributedWorker nodes handling heartbeat emission, auto-registration, and timeout tool runners.
+* **`dispatcher.py`**: TaskDispatcher picking ready tasks and routing to load-balanced worker instances.
+* **`load_balancer.py`**: Round Robin, Least Loaded, Capability-based, and Weighted routing algorithms.
+* **`lease.py` & `heartbeat.py`**: Lease structures and health loops to recover dead workers.
+* **`autoscaler.py`**: Regulates worker pool size dynamically based on load.
+
 ### 17. React Operator Dashboard (`dashboard/`) — Phase 17
 A modern, single-page operations interface built with React, Vite, and Tailwind CSS. It communicates exclusively with the Unified API Gateway over HTTP/REST and WebSockets.
 * **`layouts/DashboardLayout.tsx`**: Embeds sidebar navigation panels, active session switcher, API connection status monitors, and light/dark theme toggles.

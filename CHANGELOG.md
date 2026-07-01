@@ -2,6 +2,18 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-18] - 2026-07-01
+
+### Added
+* **Distributed Execution Engine** in `src/redforge/distributed/` — transforms RedForge from a single-process application into a distributed scheduling engine.
+* **Unified Queue Wrappers**: Implemented InMemory fallback queues, Redis ZSet priority queues, and AMQP RabbitMQ queues.
+* **Dependency-Aware Scheduler**: Triggers tasks only when upstream dependencies succeed. Recursively cancels child trees on parent failures.
+* **Autoscaling Pools**: Spawns and stops worker nodes dynamically depending on active loads and queue lengths.
+* **Task Dispatches & Leases**: Handles worker task assignments, renews, and recovers dead worker states on missed heartbeats.
+* **Resilient Retry Policies**: Integrates exponential backoff strategies and Dead-Letter Queue (DLQ) task isolation.
+* **Load Balancer algorithms**: Implemented Round Robin, Least Loaded, Capability-based routing, and Weighted scheduling.
+* **Full Unit Test suite**: Added tests covering all load balancers, scheduling graphs, heartbeat monitors, and coordinators.
+
 ## [2.0.0-phase-17] - 2026-07-01
 
 ### Added
