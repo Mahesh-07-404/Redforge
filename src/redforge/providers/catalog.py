@@ -83,4 +83,3 @@ def resolve_api_key(provider: str, api_key: str = "") -> str:
             return value
 
     return ""
-

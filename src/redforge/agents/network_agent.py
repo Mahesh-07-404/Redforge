@@ -1,5 +1,6 @@
 from .base import BaseAgent
 
+
 class NetworkAgent(BaseAgent):
     def __init__(self):
         super().__init__()

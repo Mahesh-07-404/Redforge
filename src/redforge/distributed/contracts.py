@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from enum import Enum
-from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -26,7 +26,7 @@ class TaskStatus(str, Enum):
 class WorkerMetadata(BaseModel):
     worker_id: str
     host: str
-    capabilities: List[str] = Field(default_factory=list)
+    capabilities: list[str] = Field(default_factory=list)
     status: WorkerStatus = WorkerStatus.ONLINE
     load: int = 0  # Number of running tasks
     weight: float = 1.0
@@ -37,15 +37,15 @@ class TaskMessage(BaseModel):
     task_id: str
     session_id: str
     tool: str
-    command: List[str]
+    command: list[str]
     priority: int = 0  # Higher value = higher priority
-    dependencies: List[str] = Field(default_factory=list)
+    dependencies: list[str] = Field(default_factory=list)
     status: TaskStatus = TaskStatus.PENDING
     retries: int = 0
     max_retries: int = 3
     timeout: float = 300.0  # seconds
-    lease_owner: Optional[str] = None
-    lease_expires_at: Optional[float] = None
+    lease_owner: str | None = None
+    lease_expires_at: float | None = None
     created_at: float = Field(default_factory=time.time)
 
 
@@ -56,7 +56,7 @@ class TaskResult(BaseModel):
     stdout: str = ""
     stderr: str = ""
     duration_ms: float = 0.0
-    error: Optional[str] = None
+    error: str | None = None
     timestamp: float = Field(default_factory=time.time)
 
 

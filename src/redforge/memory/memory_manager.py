@@ -1,44 +1,40 @@
 """RedForge Memory Manager Component"""
 
+import json
 import logging
 import sqlite3
-import json
 import uuid
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from redforge.memory.vector import (
+    MemoryEntry,
+    SearchResult,
+    create_vector_store,
+)
 
 logger = logging.getLogger(__name__)
 
-from redforge.memory.vector import (
-    VectorStore,
-    MemoryEntry,
-    SearchResult,
-    create_vector_store
-)
 
 class MemoryManager:
     """Three-layered memory management using SQLite for long-term persistence"""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         if db_path:
             self.db_path = Path(db_path)
         else:
             # Create a local redforge.db in workspace directory
             self.db_path = Path("./redforge.db")
-        
+
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
         # Short term in-memory layer
-        self.short_term: Dict[str, Any] = {}
+        self.short_term: dict[str, Any] = {}
         # Workspace layer (current session cache)
-        self.workspace: Dict[str, Any] = {
-            "target": None,
-            "findings": [],
-            "notes": []
-        }
+        self.workspace: dict[str, Any] = {"target": None, "findings": [], "notes": []}
 
     def _init_db(self) -> None:
         """Initialize SQLite database tables for long term storage"""
@@ -99,11 +95,11 @@ class MemoryManager:
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT OR REPLACE INTO targets (host, description) VALUES (?, ?)",
-                (host, description)
+                (host, description),
             )
             conn.commit()
 
-    def get_targets(self) -> List[Dict[str, Any]]:
+    def get_targets(self) -> list[dict[str, Any]]:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
@@ -111,16 +107,16 @@ class MemoryManager:
             return [dict(row) for row in cursor.fetchall()]
 
     # Findings
-    def add_finding(self, finding: Dict[str, Any]) -> None:
+    def add_finding(self, finding: dict[str, Any]) -> None:
         fid = finding.get("id")
         if not any(f.get("id") == fid for f in self.workspace["findings"]):
             self.workspace["findings"].append(finding)
-            
+
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
-                """INSERT OR REPLACE INTO findings 
-                   (id, title, severity, category, description, target, evidence, status, timestamp) 
+                """INSERT OR REPLACE INTO findings
+                   (id, title, severity, category, description, target, evidence, status, timestamp)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     fid,
@@ -131,12 +127,12 @@ class MemoryManager:
                     finding.get("target"),
                     json.dumps(finding.get("evidence")),
                     finding.get("status"),
-                    finding.get("timestamp")
-                )
+                    finding.get("timestamp"),
+                ),
             )
             conn.commit()
 
-    def get_findings(self, verified_only: bool = False) -> List[Dict[str, Any]]:
+    def get_findings(self, verified_only: bool = False) -> list[dict[str, Any]]:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
@@ -149,8 +145,13 @@ class MemoryManager:
                 f = dict(row)
                 try:
                     f["evidence"] = json.loads(f["evidence"]) if f["evidence"] else None
-                except (ValueError, TypeError) as exc:  # nosec B110 - best-effort evidence JSON decode
-                    logger.debug("Failed to decode evidence JSON for finding '%s': %s", f.get('id'), exc)
+                except (
+                    ValueError,
+                    TypeError,
+                ) as exc:  # nosec B110 - best-effort evidence JSON decode
+                    logger.debug(
+                        "Failed to decode evidence JSON for finding '%s': %s", f.get("id"), exc
+                    )
                 findings.append(f)
             return findings
 
@@ -160,7 +161,7 @@ class MemoryManager:
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO reports (title, target, content, format) VALUES (?, ?, ?, ?)",
-                (title, target, content, report_format)
+                (title, target, content, report_format),
             )
             conn.commit()
 
@@ -172,7 +173,7 @@ class MemoryManager:
             cursor.execute("INSERT INTO notes (content) VALUES (?)", (content,))
             conn.commit()
 
-    def get_notes(self) -> List[str]:
+    def get_notes(self) -> list[str]:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT content FROM notes")
@@ -180,24 +181,22 @@ class MemoryManager:
 
     # Workspace management
     def clear_workspace(self) -> None:
-        self.workspace = {
-            "target": None,
-            "findings": [],
-            "notes": []
-        }
+        self.workspace = {"target": None, "findings": [], "notes": []}
 
 
 # ---------------------------------------------------------------------------
 # Legacy Compatibility Classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class WorkspaceMemory:
     """Memory context for a workspace"""
+
     workspace_id: str
-    session_history: List[Dict[str, Any]] = field(default_factory=list)
-    findings: List[Dict[str, Any]] = field(default_factory=list)
-    notes: List[str] = field(default_factory=list)
+    session_history: list[dict[str, Any]] = field(default_factory=list)
+    findings: list[dict[str, Any]] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
     context_summary: str = ""
 
 
@@ -205,10 +204,7 @@ class WorkspaceMemoryManager:
     """Manages workspace memory with RAG capabilities (legacy wrapper delegating to SQLite)"""
 
     def __init__(
-        self,
-        workspace_id: str,
-        persist_dir: str = "./workspaces",
-        vector_db: str = "simple"
+        self, workspace_id: str, persist_dir: str = "./workspaces", vector_db: str = "simple"
     ):
         self.workspace_id = workspace_id
         self.persist_dir = Path(persist_dir) / workspace_id
@@ -220,7 +216,7 @@ class WorkspaceMemoryManager:
         self.vector_store = create_vector_store(
             vector_db=vector_db,
             persist_dir=str(self.persist_dir),
-            collection_name=f"redforge_memory_{workspace_id}"
+            collection_name=f"redforge_memory_{workspace_id}",
         )
 
         self._memory = WorkspaceMemory(workspace_id=workspace_id)
@@ -230,7 +226,7 @@ class WorkspaceMemoryManager:
         """Load memory from SQLite database and index files"""
         findings = self.sqlite_mm.get_findings()
         notes = self.sqlite_mm.get_notes()
-        
+
         # Load session history from SQLite sessions table
         session_history = []
         with sqlite3.connect(self.sqlite_mm.db_path) as conn:
@@ -241,7 +237,10 @@ class WorkspaceMemoryManager:
                     state = json.loads(row[0])
                     if "session_entry" in state:
                         session_history.append(state["session_entry"])
-                except (ValueError, KeyError) as exc:  # nosec B110 - best-effort session JSON decode
+                except (
+                    ValueError,
+                    KeyError,
+                ) as exc:  # nosec B110 - best-effort session JSON decode
                     logger.debug("Failed to decode session state JSON: %s", exc)
 
         self._memory = WorkspaceMemory(
@@ -249,14 +248,14 @@ class WorkspaceMemoryManager:
             session_history=session_history,
             findings=findings,
             notes=notes,
-            context_summary=""
+            context_summary="",
         )
 
     def _save(self) -> None:
         """Commit changes to SQLite (already done in add_ methods)"""
         pass
 
-    def add_session(self, user_input: str, response: str, metadata: Optional[Dict] = None) -> str:
+    def add_session(self, user_input: str, response: str, metadata: dict | None = None) -> str:
         """Add a session exchange to memory"""
         session_id = str(uuid.uuid4())
         session_entry = {
@@ -264,7 +263,7 @@ class WorkspaceMemoryManager:
             "timestamp": datetime.now().isoformat(),
             "user_input": user_input,
             "response": response,
-            "metadata": metadata or {}
+            "metadata": metadata or {},
         }
 
         self._memory.session_history.append(session_entry)
@@ -274,7 +273,7 @@ class WorkspaceMemoryManager:
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT OR REPLACE INTO sessions (name, target, state_json) VALUES (?, ?, ?)",
-                (session_id, "", json.dumps({"session_entry": session_entry}))
+                (session_id, "", json.dumps({"session_entry": session_entry})),
             )
             conn.commit()
 
@@ -285,10 +284,10 @@ class WorkspaceMemoryManager:
             metadata={
                 "type": "session",
                 "workspace_id": self.workspace_id,
-                "timestamp": session_entry["timestamp"]
+                "timestamp": session_entry["timestamp"],
             },
             workspace_id=self.workspace_id,
-            entry_type="session"
+            entry_type="session",
         )
         self.vector_store.add([entry])
         return session_id
@@ -300,7 +299,7 @@ class WorkspaceMemoryManager:
         description: str,
         severity: str = "medium",
         target: str = "",
-        evidence: Optional[Dict] = None
+        evidence: dict | None = None,
     ) -> str:
         """Add a security finding"""
         finding_id = str(uuid.uuid4())
@@ -314,7 +313,7 @@ class WorkspaceMemoryManager:
             "severity": severity,
             "target": target,
             "evidence": evidence or {},
-            "status": "VERIFIED" if evidence else "UNVERIFIED"
+            "status": "VERIFIED" if evidence else "UNVERIFIED",
         }
 
         self._memory.findings.append(finding)
@@ -327,10 +326,10 @@ class WorkspaceMemoryManager:
                 "type": "finding",
                 "finding_type": finding_type,
                 "severity": severity,
-                "workspace_id": self.workspace_id
+                "workspace_id": self.workspace_id,
             },
             workspace_id=self.workspace_id,
-            entry_type="finding"
+            entry_type="finding",
         )
         self.vector_store.add([entry])
         return finding_id
@@ -344,12 +343,9 @@ class WorkspaceMemoryManager:
         entry = MemoryEntry(
             id=note_id,
             content=f"Note: {note}",
-            metadata={
-                "type": "note",
-                "workspace_id": self.workspace_id
-            },
+            metadata={"type": "note", "workspace_id": self.workspace_id},
             workspace_id=self.workspace_id,
-            entry_type="note"
+            entry_type="note",
         )
         self.vector_store.add([entry])
         return note_id
@@ -358,21 +354,14 @@ class WorkspaceMemoryManager:
         self._memory.context_summary = summary
 
     def search(
-        self,
-        query: str,
-        limit: int = 5,
-        entry_type: Optional[str] = None
-    ) -> List[SearchResult]:
+        self, query: str, limit: int = 5, entry_type: str | None = None
+    ) -> list[SearchResult]:
         filter_dict = {"workspace_id": self.workspace_id}
         if entry_type:
             filter_dict["type"] = entry_type
         return self.vector_store.search(query, limit=limit, filter_dict=filter_dict)
 
-    def get_context_for_llm(
-        self,
-        query: str = "",
-        max_entries: int = 10
-    ) -> str:
+    def get_context_for_llm(self, query: str = "", max_entries: int = 10) -> str:
         context_parts = []
         context_parts.append(f"## Workspace: {self.workspace_id}")
 
@@ -398,13 +387,11 @@ class WorkspaceMemoryManager:
         if recent_findings:
             context_parts.append("\n### Recent Findings")
             for finding in recent_findings:
-                context_parts.append(
-                    f"- [{finding['severity'].upper()}] {finding['title']}"
-                )
+                context_parts.append(f"- [{finding['severity'].upper()}] {finding['title']}")
 
         return "\n".join(context_parts)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         return {
             "workspace_id": self.workspace_id,
             "total_sessions": len(self._memory.session_history),
@@ -412,14 +399,12 @@ class WorkspaceMemoryManager:
             "total_notes": len(self._memory.notes),
             "has_summary": bool(self._memory.context_summary),
             "vector_store_available": self.vector_store.is_available,
-            "indexed_entries": len(self.vector_store.list_entries())
+            "indexed_entries": len(self.vector_store.list_entries()),
         }
 
     def list_findings(
-        self,
-        severity: Optional[str] = None,
-        finding_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, severity: str | None = None, finding_type: str | None = None
+    ) -> list[dict[str, Any]]:
         findings = self._memory.findings
         if severity:
             findings = [f for f in findings if f.get("severity") == severity]
@@ -427,11 +412,9 @@ class WorkspaceMemoryManager:
             findings = [f for f in findings if f.get("type") == finding_type]
         return sorted(findings, key=lambda x: x.get("timestamp", ""), reverse=True)
 
-    def list_sessions(self, limit: int = 20) -> List[Dict[str, Any]]:
+    def list_sessions(self, limit: int = 20) -> list[dict[str, Any]]:
         return sorted(
-            self._memory.session_history,
-            key=lambda x: x.get("timestamp", ""),
-            reverse=True
+            self._memory.session_history, key=lambda x: x.get("timestamp", ""), reverse=True
         )[:limit]
 
     def clear(self) -> None:
@@ -443,11 +426,7 @@ class WorkspaceMemoryManager:
 class GlobalMemory:
     """Global memory manager for all workspaces"""
 
-    def __init__(
-        self,
-        persist_dir: str = "./workspaces",
-        vector_db: str = "simple"
-    ):
+    def __init__(self, persist_dir: str = "./workspaces", vector_db: str = "simple"):
         self.persist_dir = Path(persist_dir)
         self.persist_dir.mkdir(parents=True, exist_ok=True)
         self.vector_db = vector_db
@@ -455,30 +434,23 @@ class GlobalMemory:
         self.global_store = create_vector_store(
             vector_db=vector_db,
             persist_dir=str(self.persist_dir),
-            collection_name="redforge_global"
+            collection_name="redforge_global",
         )
 
     def add_global_memory(
-        self,
-        content: str,
-        memory_type: str = "general",
-        tags: Optional[List[str]] = None
+        self, content: str, memory_type: str = "general", tags: list[str] | None = None
     ) -> str:
         memory_id = str(uuid.uuid4())
         entry = MemoryEntry(
             id=memory_id,
             content=content,
-            metadata={
-                "type": memory_type,
-                "tags": tags or [],
-                "global": True
-            },
-            entry_type=memory_type
+            metadata={"type": memory_type, "tags": tags or [], "global": True},
+            entry_type=memory_type,
         )
         self.global_store.add([entry])
         return memory_id
 
-    def search_global(self, query: str, limit: int = 5) -> List[SearchResult]:
+    def search_global(self, query: str, limit: int = 5) -> list[SearchResult]:
         return self.global_store.search(query, limit=limit)
 
     def get_context(self, query: str = "") -> str:

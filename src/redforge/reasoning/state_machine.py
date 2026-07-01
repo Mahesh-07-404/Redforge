@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ReasoningState(Enum):
     IDLE = "IDLE"
     PLANNING = "PLANNING"
@@ -11,6 +12,7 @@ class ReasoningState(Enum):
     REPLANNING = "REPLANNING"
     FINISHED = "FINISHED"
     FAILED = "FAILED"
+
 
 class ReasoningStateMachine:
     def __init__(self):

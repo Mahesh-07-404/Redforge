@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import asyncio
-from typing import Any, Dict, List, Optional
-from .contracts import TaskMessage, TaskResult, TaskStatus, WorkerMetadata
+from typing import Any
+
+from .autoscaler import DistributedAutoscaler
+from .contracts import TaskMessage, TaskResult, TaskStatus
+from .coordinator import DistributedCoordinator
+from .dispatcher import TaskDispatcher
+from .lease import LeaseManager
+from .load_balancer import LoadBalancer
 from .queue import BaseQueue, InMemoryQueue
 from .registry import WorkerRegistry
-from .scheduler import DistributedScheduler
-from .dispatcher import TaskDispatcher
-from .load_balancer import LoadBalancer
-from .lease import LeaseManager
 from .retry import RetryPolicy
-from .coordinator import DistributedCoordinator
+from .scheduler import DistributedScheduler
 from .worker import DistributedWorker
-from .autoscaler import DistributedAutoscaler
 
 
 class DistributedManager:
@@ -20,7 +20,7 @@ class DistributedManager:
 
     def __init__(
         self,
-        queue: Optional[BaseQueue] = None,
+        queue: BaseQueue | None = None,
         heartbeat_timeout: float = 10.0,
         algorithm: str = "least_loaded",
     ) -> None:
@@ -30,7 +30,7 @@ class DistributedManager:
         self.load_balancer = LoadBalancer()
         self.lease_manager = LeaseManager()
         self.retry_policy = RetryPolicy()
-        
+
         self.dispatcher = TaskDispatcher(
             queue=self.queue,
             registry=self.registry,
@@ -38,7 +38,7 @@ class DistributedManager:
             lease_manager=self.lease_manager,
             algorithm=algorithm,
         )
-        
+
         self.coordinator = DistributedCoordinator(
             queue=self.queue,
             registry=self.registry,
@@ -47,10 +47,10 @@ class DistributedManager:
             lease_manager=self.lease_manager,
             retry_policy=self.retry_policy,
         )
-        
+
         # Initialize autoscaler (disabled by default until start_autoscaling called)
-        self.autoscaler: Optional[DistributedAutoscaler] = None
-        self._local_workers: Dict[str, DistributedWorker] = {}
+        self.autoscaler: DistributedAutoscaler | None = None
+        self._local_workers: dict[str, DistributedWorker] = {}
 
     async def start(self) -> None:
         """Start the distributed execution engine coordination loops."""
@@ -61,7 +61,7 @@ class DistributedManager:
         if self.autoscaler:
             await self.autoscaler.stop()
         await self.coordinator.stop()
-        
+
         # Stop any manually registered local workers
         for worker in list(self._local_workers.values()):
             await worker.stop()
@@ -70,7 +70,7 @@ class DistributedManager:
     async def create_local_worker(
         self,
         worker_id: str,
-        capabilities: Optional[List[str]] = None,
+        capabilities: list[str] | None = None,
         heartbeat_interval: float = 1.0,
     ) -> DistributedWorker:
         """Create and start a local worker node monitored by this manager."""
@@ -92,6 +92,7 @@ class DistributedManager:
         scale_up_threshold: int = 2,
     ) -> None:
         """Enable dynamic autoscaling pool."""
+
         def worker_factory(wid: str) -> DistributedWorker:
             w = DistributedWorker(
                 worker_id=wid,
@@ -118,9 +119,9 @@ class DistributedManager:
         task_id: str,
         session_id: str,
         tool: str,
-        command: List[str],
+        command: list[str],
         priority: int = 0,
-        dependencies: Optional[List[str]] = None,
+        dependencies: list[str] | None = None,
         timeout: float = 30.0,
     ) -> TaskMessage:
         """Submit a task to the execution scheduler."""
@@ -136,15 +137,15 @@ class DistributedManager:
         await self.coordinator.submit_task(task)
         return task
 
-    def get_status(self, task_id: str) -> Optional[TaskStatus]:
+    def get_status(self, task_id: str) -> TaskStatus | None:
         """Get the current execution status of a task."""
         task = self.coordinator.tasks.get(task_id)
         return task.status if task else None
 
-    def get_result(self, task_id: str) -> Optional[TaskResult]:
+    def get_result(self, task_id: str) -> TaskResult | None:
         """Get the output results of a completed task."""
         return self.coordinator.results.get(task_id)
 
-    async def get_monitoring_stats(self) -> Dict[str, Any]:
+    async def get_monitoring_stats(self) -> dict[str, Any]:
         """Return running execution statistics for monitoring endpoints."""
         return await self.coordinator.get_stats()

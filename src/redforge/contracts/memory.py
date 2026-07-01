@@ -1,13 +1,16 @@
 from pydantic import BaseModel
 
+
 class MemoryEntry(BaseModel):
     id: str
     content: str
     metadata: dict
-    
+
+
 class ContextBundle(BaseModel):
     content: str
     total_tokens: int
+
 
 class ContextBudget(BaseModel):
     system_prompt: int

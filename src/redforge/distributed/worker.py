@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import time
-import inspect
-from typing import Callable, List, Optional
+from collections.abc import Callable
+
 from .contracts import TaskMessage, TaskResult, TaskStatus, WorkerStatus
 from .registry import WorkerRegistry
-from .exceptions import DistributedError
 
 logger = logging.getLogger(__name__)
 
@@ -19,31 +19,31 @@ class DistributedWorker:
         self,
         worker_id: str,
         host: str = "localhost",
-        capabilities: Optional[List[str]] = None,
-        registry: Optional[WorkerRegistry] = None,
+        capabilities: list[str] | None = None,
+        registry: WorkerRegistry | None = None,
         heartbeat_interval: float = 2.0,
-        executor_fn: Optional[Callable[[TaskMessage], TaskResult]] = None,
+        executor_fn: Callable[[TaskMessage], TaskResult] | None = None,
     ) -> None:
         self.worker_id = worker_id
         self.host = host
         self.capabilities = capabilities or ["all"]
         self.registry = registry
         self.heartbeat_interval = heartbeat_interval
-        
+
         # Internal executor function (falls back to executing a mock/real process)
         self.executor_fn = executor_fn or self._default_execute
-        
+
         self.status = WorkerStatus.ONLINE
         self.load = 0
         self._running = False
-        self._heartbeat_task: Optional[asyncio.Task] = None
+        self._heartbeat_task: asyncio.Task | None = None
 
     async def start(self) -> None:
         """Register worker and start heartbeat updates."""
         if self._running:
             return
         self._running = True
-        
+
         # Self-register
         if self.registry:
             self.registry.register(
@@ -64,7 +64,7 @@ class DistributedWorker:
             except asyncio.CancelledError:
                 pass
             self._heartbeat_task = None
-            
+
         if self.registry:
             self.registry.unregister(self.worker_id)
 
@@ -72,14 +72,13 @@ class DistributedWorker:
         """Execute task message payload and return structured outcome."""
         self.load += 1
         start_time = time.time()
-        
+
         try:
             # Check timeout handling
             if task.timeout:
                 try:
                     result = await asyncio.wait_for(
-                        self._run_executor_fn(task),
-                        timeout=task.timeout
+                        self._run_executor_fn(task), timeout=task.timeout
                     )
                 except asyncio.TimeoutError:
                     result = TaskResult(
@@ -103,7 +102,7 @@ class DistributedWorker:
             )
         finally:
             self.load = max(0, self.load - 1)
-            
+
         return result
 
     async def _run_executor_fn(self, task: TaskMessage) -> TaskResult:
@@ -119,7 +118,7 @@ class DistributedWorker:
         start_time = time.time()
         # Mock execution logic
         time.sleep(0.1)  # Simulate short work
-        
+
         # Mocking specific tool behavior for tests
         if task.tool == "nmap":
             stdout = f"Host {task.command[-1]} up. Ports 80, 443 open."
@@ -136,7 +135,7 @@ class DistributedWorker:
             exit_code = 0
             status = TaskStatus.COMPLETED
             err_msg = None
-            
+
         duration = (time.time() - start_time) * 1000
         return TaskResult(
             task_id=task.task_id,
@@ -152,6 +151,8 @@ class DistributedWorker:
             try:
                 if self.registry:
                     self.registry.heartbeat(self.worker_id, load=self.load)
-            except Exception as exc:  # nosec B110 - heartbeat loop must survive transient registry errors
+            except (
+                Exception
+            ) as exc:  # nosec B110 - heartbeat loop must survive transient registry errors
                 logger.warning("Worker %s heartbeat encountered an error: %s", self.worker_id, exc)
             await asyncio.sleep(self.heartbeat_interval)

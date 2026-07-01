@@ -1,5 +1,7 @@
 from enum import Enum
+
 from pydantic import BaseModel
+
 
 class IntentType(str, Enum):
     # Legacy intents
@@ -9,7 +11,7 @@ class IntentType(str, Enum):
     LEARN = "learn"
     CONFIGURE = "configure"
     CLARIFY = "clarify"
-    
+
     # Phase 2 intents
     GENERAL_CHAT = "general_chat"
     BUG_BOUNTY = "bugbounty"
@@ -23,12 +25,14 @@ class IntentType(str, Enum):
     CONFIG = "config"
     UNKNOWN = "unknown"
 
+
 class RiskLevel(str, Enum):
     SAFE = "safe"
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     DESTRUCTIVE = "destructive"
+
 
 class ParsedIntent(BaseModel):
     raw_input: str

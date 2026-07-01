@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
-from typing import Dict, List, Optional
+
 from .contracts import TaskMessage, TaskResult, TaskStatus
+from .dispatcher import TaskDispatcher
+from .heartbeat import HeartbeatMonitor
+from .lease import LeaseManager
 from .queue import BaseQueue
 from .registry import WorkerRegistry
-from .scheduler import DistributedScheduler
-from .dispatcher import TaskDispatcher
-from .lease import LeaseManager
 from .retry import RetryPolicy
-from .heartbeat import HeartbeatMonitor
+from .scheduler import DistributedScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +40,13 @@ class DistributedCoordinator:
             registry=self.registry,
             recovery_callback=self.handle_worker_failure,
         )
-        self._lease_loop_task: Optional[asyncio.Task] = None
-        self._dispatch_loop_task: Optional[asyncio.Task] = None
-        
+        self._lease_loop_task: asyncio.Task | None = None
+        self._dispatch_loop_task: asyncio.Task | None = None
+
         # Results collection for finished tasks
-        self.results: Dict[str, TaskResult] = {}
+        self.results: dict[str, TaskResult] = {}
         # List of all submitted tasks in registry
-        self.tasks: Dict[str, TaskMessage] = {}
+        self.tasks: dict[str, TaskMessage] = {}
         self._lock = asyncio.Lock()
 
     async def start(self) -> None:
@@ -55,7 +54,7 @@ class DistributedCoordinator:
         if self._running:
             return
         self._running = True
-        
+
         await self._heartbeat_monitor.start()
         self._lease_loop_task = asyncio.create_task(self._lease_check_loop())
         self._dispatch_loop_task = asyncio.create_task(self._dispatch_loop())
@@ -64,7 +63,7 @@ class DistributedCoordinator:
         """Stop distributed coordinator monitoring loops."""
         self._running = False
         await self._heartbeat_monitor.stop()
-        
+
         if self._lease_loop_task:
             self._lease_loop_task.cancel()
             try:
@@ -72,7 +71,7 @@ class DistributedCoordinator:
             except asyncio.CancelledError:
                 pass
             self._lease_loop_task = None
-            
+
         if self._dispatch_loop_task:
             self._dispatch_loop_task.cancel()
             try:
@@ -111,12 +110,12 @@ class DistributedCoordinator:
             task.retries += 1
             task.status = TaskStatus.QUEUED
             delay = self.retry_policy.get_delay(task)
-            
+
             # Wait for backoff delay before pushing back
             async def re_push():
                 await asyncio.sleep(delay)
                 await self.queue.push(task)
-            
+
             asyncio.create_task(re_push())
         else:
             task.status = TaskStatus.DEAD_LETTER
@@ -155,7 +154,9 @@ class DistributedCoordinator:
                             await self.scheduler.complete_task(result.task_id)
                         else:
                             # Task execution failed on worker, try rescheduling/retrying
-                            await self._reschedule_task(result.task_id, result.error or "Task failed.")
+                            await self._reschedule_task(
+                                result.task_id, result.error or "Task failed."
+                            )
             except Exception as exc:  # nosec B110 - dispatch loop must survive transient errors
                 logger.warning("Dispatch loop encountered an error: %s", exc)
             await asyncio.sleep(0.5)

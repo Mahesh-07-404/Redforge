@@ -1,20 +1,21 @@
 """
 Report routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 import logging
 from datetime import datetime
 from uuid import uuid4
 
-logger = logging.getLogger(__name__)
-
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Path
 from fastapi.responses import PlainTextResponse
 
-from ..contracts import ReportRequest, ReportResponse, ReportFormatEnum
-from ..dependencies import get_current_auth, get_request_id, get_timer
+from ..contracts import ReportRequest, ReportResponse
+from ..dependencies import AuthInfo, RequestID, Timer
 from ..response import success
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -22,9 +23,9 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 @router.post("/generate", summary="Generate a security report")
 async def generate_report(
     body: ReportRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Generate a formatted security report from session evidence and findings."""
     report_id = str(uuid4())
@@ -35,6 +36,7 @@ async def generate_report(
 
     try:
         from redforge.reports.engine import ReportEngine
+
         engine = ReportEngine()
         report = engine.generate(
             session_id=body.session_id,
@@ -68,13 +70,14 @@ async def generate_report(
 
 @router.get("/{session_id}/markdown", summary="Get Markdown report")
 async def get_markdown_report(
+    auth: AuthInfo,
     session_id: str = Path(...),
-    auth=Depends(get_current_auth),
 ):
     """Return the raw Markdown report as plain text."""
     content = f"# RedForge Security Report\n\nSession: {session_id}\n\n*No findings recorded.*"
     try:
         from redforge.reports.engine import ReportEngine
+
         engine = ReportEngine()
         result = engine.generate(session_id=session_id, format="markdown")
         if isinstance(result, str):

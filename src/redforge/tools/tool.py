@@ -1,27 +1,27 @@
-from typing import List, Optional
 from pydantic import BaseModel
+
 
 class Tool(BaseModel):
     id: str
     name: str
     binary: str
-    version: Optional[str] = None
-    platforms: List[str] = []
-    supported_modes: List[str] = []
-    categories: List[str] = []
+    version: str | None = None
+    platforms: list[str] = []
+    supported_modes: list[str] = []
+    categories: list[str] = []
     description: str
-    capabilities: List[str] = []
-    required_permissions: List[str] = []
+    capabilities: list[str] = []
+    required_permissions: list[str] = []
     install_method: str = "apt"
-    documentation: Optional[str] = None
+    documentation: str | None = None
     health: str = "healthy"
     availability: bool = False
-    
+
     # Backward compatibility attributes
-    command: Optional[str] = None
-    package: Optional[str] = None
-    install_command: Optional[str] = None
-    category: Optional[str] = None
+    command: str | None = None
+    package: str | None = None
+    install_command: str | None = None
+    category: str | None = None
     essential: bool = False
-    min_version: Optional[str] = None
-    alternatives: List[str] = []
+    min_version: str | None = None
+    alternatives: list[str] = []

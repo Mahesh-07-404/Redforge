@@ -1,15 +1,16 @@
-import shutil
 import os
-from typing import Optional
+import shutil
+
 from .platform import detect_platform
+
 
 class ToolDiscovery:
     @staticmethod
-    def find_binary(binary_name: str) -> Optional[str]:
+    def find_binary(binary_name: str) -> str | None:
         path = shutil.which(binary_name)
         if path:
             return path
-        
+
         plat = detect_platform()
         for p in plat.default_paths:
             full_path = os.path.join(p, binary_name)

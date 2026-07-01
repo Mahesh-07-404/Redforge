@@ -1,24 +1,25 @@
 from __future__ import annotations
 
-import time
 import os
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any
+
 from .logger import StructuredLogger
 
 
 class Profiler:
     """Measures code block CPU, memory usage, and execution latency."""
 
-    def __init__(self, logger: Optional[StructuredLogger] = None) -> None:
+    def __init__(self, logger: StructuredLogger | None = None) -> None:
         self.logger = logger or StructuredLogger("profiler")
         self.slow_threshold_seconds = 2.0
-        self._profiles: List[Dict[str, Any]] = []
+        self._profiles: list[dict[str, Any]] = []
 
-    def profile(self, name: str, threshold: Optional[float] = None) -> ProfileContext:
+    def profile(self, name: str, threshold: float | None = None) -> ProfileContext:
         """Create a profile measurement context manager."""
         return ProfileContext(self, name, threshold or self.slow_threshold_seconds)
 
-    def record_profile(self, measurement: Dict[str, Any]) -> None:
+    def record_profile(self, measurement: dict[str, Any]) -> None:
         self._profiles.append(measurement)
         duration = measurement["duration_seconds"]
         if duration > measurement["threshold"]:
@@ -30,7 +31,7 @@ class Profiler:
                 memory_delta_mb=measurement["memory_delta_mb"],
             )
 
-    def get_profiles(self) -> List[Dict[str, Any]]:
+    def get_profiles(self) -> list[dict[str, Any]]:
         return self._profiles
 
     def clear(self) -> None:
@@ -44,7 +45,7 @@ class ProfileContext:
         self.profiler = profiler
         self.name = name
         self.threshold = threshold
-        
+
         self.start_time = 0.0
         self.start_memory = 0.0
 
@@ -56,7 +57,7 @@ class ProfileContext:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         end_time = time.time()
         end_memory = self._get_memory_usage()
-        
+
         duration = end_time - self.start_time
         memory_delta = end_memory - self.start_memory
 
@@ -74,12 +75,14 @@ class ProfileContext:
         """Return RSS memory usage of current process in MB."""
         try:
             import psutil
+
             process = psutil.Process(os.getpid())
             return process.memory_info().rss / (1024 * 1024)
         except ImportError:
             # Fallback using resource library on Unix
             try:
                 import resource
+
                 # resource.getrusage returns in kilobytes on Linux
                 return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
             except Exception:

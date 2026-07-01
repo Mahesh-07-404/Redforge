@@ -1,13 +1,14 @@
 """Tool service for managing and executing system tools."""
 
 import logging
-from typing import List, Dict, Any, Optional
+
 from ..contracts.tool import ToolCall, ToolResult
 from .executor import ToolExecutor
-from .registry import ToolRegistry
 from .installer import ToolInstaller
+from .registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
+
 
 class ToolService:
     """Service to handle tool availability, execution routing, and automated installation."""
@@ -32,12 +33,12 @@ class ToolService:
                     parsed_output={},
                     execution_time_ms=0,
                     timed_out=False,
-                    error=f"Tool '{tool_call.tool_name}' is not installed on this system."
+                    error=f"Tool '{tool_call.tool_name}' is not installed on this system.",
                 )
 
         return self.executor.execute(tool_call)
 
-    def list_available(self) -> List[str]:
+    def list_available(self) -> list[str]:
         """List all tools defined in registry."""
         return self.registry.list_available()
 

@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import time
-import os
-from typing import Callable, Dict, List, Optional
-from .contracts import HealthStatus, ComponentHealth, HealthState, SystemResourceUsage
+from collections.abc import Callable
+
+from .contracts import ComponentHealth, HealthState, HealthStatus, SystemResourceUsage
 
 
 class HealthMonitor:
     """Collects system health status diagnostic metrics and checks resource usage levels."""
 
     def __init__(self) -> None:
-        self._checkers: Dict[str, Callable[[], ComponentHealth]] = {}
+        self._checkers: dict[str, Callable[[], ComponentHealth]] = {}
 
     def register_checker(self, name: str, checker_fn: Callable[[], ComponentHealth]) -> None:
         """Register custom component health checking function."""
@@ -40,7 +40,11 @@ class HealthMonitor:
 
         # Get system resources
         resources = self._get_system_resources()
-        if resources.memory_percent > 90.0 or resources.cpu_percent > 95.0 or resources.disk_percent > 95.0:
+        if (
+            resources.memory_percent > 90.0
+            or resources.cpu_percent > 95.0
+            or resources.disk_percent > 95.0
+        ):
             overall_state = HealthState.DEGRADED
 
         return HealthStatus(
@@ -54,6 +58,7 @@ class HealthMonitor:
         """Read CPU/Memory/Disk resource metrics with safe environment fallbacks."""
         try:
             import psutil
+
             cpu = psutil.cpu_percent(interval=None)
             mem = psutil.virtual_memory()
             disk = psutil.disk_usage("/")
@@ -68,6 +73,7 @@ class HealthMonitor:
             # Unix-only fallback using resource & os
             try:
                 import resource
+
                 mem_used = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
                 # Mock total size if not queryable
                 return SystemResourceUsage(

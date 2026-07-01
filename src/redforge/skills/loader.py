@@ -1,7 +1,7 @@
 """RedForge Dynamic Skill Loader"""
 
-from typing import List, Optional, Dict, Any
-from redforge.skills.registry import SkillRegistry, SkillMetadata
+from redforge.skills.registry import SkillMetadata, SkillRegistry
+
 
 class DynamicSkillLoader:
     """Dynamically loads and selects skills based on intent, limiting context size"""
@@ -9,12 +9,12 @@ class DynamicSkillLoader:
     def __init__(self, registry: SkillRegistry):
         self.registry = registry
 
-    def select_skills(self, intent: str, active_mode: str, query: str) -> List[SkillMetadata]:
+    def select_skills(self, intent: str, active_mode: str, query: str) -> list[SkillMetadata]:
         """
         Select skills dynamically according to the V2 rules.
         Maximum loaded: 5, hard limit: 10.
         """
-        selected: List[SkillMetadata] = []
+        selected: list[SkillMetadata] = []
 
         # Ensure registry is loaded
         if not self.registry.skills:
@@ -26,7 +26,14 @@ class DynamicSkillLoader:
         t0_all = [s for s in all_skills if s.category == "SYSTEM"]
         t0_all.sort(key=lambda s: s.name)
         t0_selected = []
-        sys_kws = ["personality", "persona", "conversation", "prompt", "anti_hallucination", "hallucination"]
+        sys_kws = [
+            "personality",
+            "persona",
+            "conversation",
+            "prompt",
+            "anti_hallucination",
+            "hallucination",
+        ]
         for kw in sys_kws:
             for s in t0_all:
                 if kw in s.name.lower() and s not in t0_selected:
@@ -51,10 +58,19 @@ class DynamicSkillLoader:
         # 3. Tier 2 Mode skills based on active mode
         if active_mode:
             norm_mode = active_mode.upper()
-            t2_excl = {"02_planning", "03_execution", "04_verification", "16_reporting", "execution_workflow", "reporting_standards"}
+            t2_excl = {
+                "02_planning",
+                "03_execution",
+                "04_verification",
+                "16_reporting",
+                "execution_workflow",
+                "reporting_standards",
+            }
             t2_skills = [
-                s for s in all_skills 
-                if s.category == "MODES" and s.mode == norm_mode
+                s
+                for s in all_skills
+                if s.category == "MODES"
+                and s.mode == norm_mode
                 and not any(excl in s.name for excl in t2_excl)
             ]
             t2_skills.sort(key=lambda s: s.name)
@@ -64,16 +80,88 @@ class DynamicSkillLoader:
         if intent in ("RECON", "SCAN"):
             query_lower = query.lower()
             tool_keywords = {
-                "01_recon_tools": ["recon", "whois", "dns", "subdomain", "enum", "dig", "cert", "subfinder", "dns_enum"],
-                "02_web_tools": ["web", "http", "url", "ffuf", "curl", "whatweb", "http_get", "dirb", "gobuster", "dir"],
-                "03_binary_tools": ["binary", "elf", "gdb", "ropper", "checksec", "pwntools", "exploit", "assembly", "compile", "pwn"],
-                "04_forensics_tools": ["forensic", "binwalk", "exiftool", "strings", "file", "analysis", "wireshark", "pcap"],
-                "05_password_tools": ["password", "hydra", "john", "hashcat", "crack", "brute", "wordlist"],
+                "01_recon_tools": [
+                    "recon",
+                    "whois",
+                    "dns",
+                    "subdomain",
+                    "enum",
+                    "dig",
+                    "cert",
+                    "subfinder",
+                    "dns_enum",
+                ],
+                "02_web_tools": [
+                    "web",
+                    "http",
+                    "url",
+                    "ffuf",
+                    "curl",
+                    "whatweb",
+                    "http_get",
+                    "dirb",
+                    "gobuster",
+                    "dir",
+                ],
+                "03_binary_tools": [
+                    "binary",
+                    "elf",
+                    "gdb",
+                    "ropper",
+                    "checksec",
+                    "pwntools",
+                    "exploit",
+                    "assembly",
+                    "compile",
+                    "pwn",
+                ],
+                "04_forensics_tools": [
+                    "forensic",
+                    "binwalk",
+                    "exiftool",
+                    "strings",
+                    "file",
+                    "analysis",
+                    "wireshark",
+                    "pcap",
+                ],
+                "05_password_tools": [
+                    "password",
+                    "hydra",
+                    "john",
+                    "hashcat",
+                    "crack",
+                    "brute",
+                    "wordlist",
+                ],
                 "06_network_tools": ["network", "nmap", "port", "ip", "host", "ping", "scan"],
-                "07_exploitation_tools": ["exploit", "payload", "shell", "reverse", "metasploit", "msf", "reverse_shell"],
-                "08_vulnerability_scanners": ["scanner", "nuclei", "nikto", "vuln", "vulnerability"],
-                "09_container_cloud": ["container", "docker", "kubernetes", "k8s", "cloud", "aws", "azure", "gcp"],
-                "10_wireless_tools": ["wireless", "wifi", "aircrack", "reaver", "wpa", "wep"]
+                "07_exploitation_tools": [
+                    "exploit",
+                    "payload",
+                    "shell",
+                    "reverse",
+                    "metasploit",
+                    "msf",
+                    "reverse_shell",
+                ],
+                "08_vulnerability_scanners": [
+                    "scanner",
+                    "nuclei",
+                    "nikto",
+                    "vuln",
+                    "vulnerability",
+                ],
+                "09_container_cloud": [
+                    "container",
+                    "docker",
+                    "kubernetes",
+                    "k8s",
+                    "cloud",
+                    "aws",
+                    "azure",
+                    "gcp",
+                ],
+                "10_wireless_tools": ["wireless", "wifi", "aircrack", "reaver", "wpa", "wep"],
             }
             matched_tools = []
             for s in all_skills:
@@ -91,15 +179,29 @@ class DynamicSkillLoader:
             if not matched_tools:
                 for s in all_skills:
                     if s.category == "TOOLS":
-                        if any(x in s.name for x in ("01_recon_tools", "06_network_tools", "08_vulnerability_scanners")):
+                        if any(
+                            x in s.name
+                            for x in (
+                                "01_recon_tools",
+                                "06_network_tools",
+                                "08_vulnerability_scanners",
+                            )
+                        ):
                             matched_tools.append(s)
-            
+
             matched_tools.sort(key=lambda s: s.name)
             selected.extend(matched_tools)
 
         # 5. Tier 4 Execution skills
         if intent not in ("CHAT", "LEARNING", "CODING"):
-            t4_order = ["02_planning", "03_execution", "04_verification", "16_reporting", "execution_workflow", "reporting_standards"]
+            t4_order = [
+                "02_planning",
+                "03_execution",
+                "04_verification",
+                "16_reporting",
+                "execution_workflow",
+                "reporting_standards",
+            ]
             t4_skills = []
             for item in t4_order:
                 for s in all_skills:
@@ -108,7 +210,7 @@ class DynamicSkillLoader:
                             t4_skills.append(s)
                     elif s.category == "MODES" and item in s.name:
                         t4_skills.append(s)
-            
+
             # Deduplicate t4 list
             unique_t4 = []
             seen_t4 = set()
@@ -132,7 +234,12 @@ class DynamicSkillLoader:
 
         return unique_selected
 
-    def build_context(self, selected_skills: List[SkillMetadata], active_mode: str = "bugbounty", intent: str = "SCAN") -> str:
+    def build_context(
+        self,
+        selected_skills: list[SkillMetadata],
+        active_mode: str = "bugbounty",
+        intent: str = "SCAN",
+    ) -> str:
         """Format selected skills into a clean system context block grouped by Tiers"""
         parts = []
 
@@ -150,8 +257,19 @@ class DynamicSkillLoader:
 
         # Tier 2 - ACTIVE MODE
         parts.append(f"\n=== TIER 2: ACTIVE MODE ({active_mode.upper()}) ===")
-        t2_excl = {"02_planning", "03_execution", "04_verification", "16_reporting", "execution_workflow", "reporting_standards"}
-        t2 = [s for s in selected_skills if s.category == "MODES" and not any(x in s.name for x in t2_excl)]
+        t2_excl = {
+            "02_planning",
+            "03_execution",
+            "04_verification",
+            "16_reporting",
+            "execution_workflow",
+            "reporting_standards",
+        }
+        t2 = [
+            s
+            for s in selected_skills
+            if s.category == "MODES" and not any(x in s.name for x in t2_excl)
+        ]
         for s in t2:
             parts.append(f"### [MODE] {s.name}\n{s.content}")
 
@@ -164,21 +282,32 @@ class DynamicSkillLoader:
         # Tier 4 - EXECUTION
         if intent not in ("CHAT", "LEARNING", "CODING"):
             parts.append("\n=== TIER 4: EXECUTION ===")
-            t4 = [s for s in selected_skills if s.category in ("EXECUTION", "AUTONOMY") or any(x in s.name for x in t2_excl)]
-            
+            t4 = [
+                s
+                for s in selected_skills
+                if s.category in ("EXECUTION", "AUTONOMY") or any(x in s.name for x in t2_excl)
+            ]
+
             # Sort according to standard order
-            t4_order = ["02_planning", "03_execution", "04_verification", "16_reporting", "execution_workflow", "reporting_standards"]
+            t4_order = [
+                "02_planning",
+                "03_execution",
+                "04_verification",
+                "16_reporting",
+                "execution_workflow",
+                "reporting_standards",
+            ]
             ordered_t4 = []
             for item in t4_order:
                 for s in t4:
                     if item in s.name and s not in ordered_t4:
                         ordered_t4.append(s)
-            
+
             # Append anything that didn't match standard order at the end
             for s in t4:
                 if s not in ordered_t4:
                     ordered_t4.append(s)
-                    
+
             for s in ordered_t4:
                 parts.append(f"### [EXECUTION] {s.name}\n{s.content}")
 
@@ -186,4 +315,3 @@ class DynamicSkillLoader:
 
 
 SkillService = DynamicSkillLoader
-

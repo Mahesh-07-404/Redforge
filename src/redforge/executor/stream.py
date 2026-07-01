@@ -1,12 +1,14 @@
 import logging
-from typing import Callable, List
+from collections.abc import Callable
+
 from .events import ExecutionEvent
 
 logger = logging.getLogger(__name__)
 
+
 class StreamManager:
     def __init__(self):
-        self._subscribers: List[Callable[[ExecutionEvent], None]] = []
+        self._subscribers: list[Callable[[ExecutionEvent], None]] = []
 
     def subscribe(self, callback: Callable[[ExecutionEvent], None]):
         self._subscribers.append(callback)

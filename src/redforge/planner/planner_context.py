@@ -1,12 +1,15 @@
-from typing import Optional, Dict, Any
+from typing import Any
+
 from pydantic import BaseModel
-from ..contracts.session import Session
+
 from ..contracts.intent import ParsedIntent
+from ..contracts.session import Session
+
 
 class PlannerContext(BaseModel):
-    active_session: Optional[Session] = None
-    target: Optional[str] = None
-    current_goal: Optional[str] = None
-    intent: Optional[ParsedIntent] = None
-    user_preferences: Dict[str, Any] = {}
-    active_mode: Optional[str] = None
+    active_session: Session | None = None
+    target: str | None = None
+    current_goal: str | None = None
+    intent: ParsedIntent | None = None
+    user_preferences: dict[str, Any] = {}
+    active_mode: str | None = None

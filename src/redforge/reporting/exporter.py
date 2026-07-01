@@ -1,6 +1,8 @@
 import json
+
 from .contracts import SynthesisReport
 from .renderer import ReportRenderer
+
 
 class ReportExporter:
     @staticmethod
@@ -23,11 +25,11 @@ class ReportExporter:
                         {
                             "ruleId": f.cve or f.id,
                             "message": {"text": f.description},
-                            "level": "error" if f.severity in ("Critical", "High") else "warning"
+                            "level": "error" if f.severity in ("Critical", "High") else "warning",
                         }
                         for f in report.findings
-                    ]
+                    ],
                 }
-            ]
+            ],
         }
         return json.dumps(sarif, indent=2)

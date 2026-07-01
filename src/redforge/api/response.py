@@ -2,10 +2,10 @@
 Standard Response builder — Phase 16: Unified API Gateway
 Every route returns the same APIResponse envelope.
 """
+
 from __future__ import annotations
 
-import time
-from typing import Any, List, Optional
+from typing import Any
 
 from fastapi.responses import JSONResponse
 
@@ -40,7 +40,7 @@ def no_content() -> JSONResponse:
 
 
 def error_response(
-    errors: List[str],
+    errors: list[str],
     status_code: int = 400,
     request_id: str = "",
 ) -> JSONResponse:
@@ -54,6 +54,7 @@ def error_response(
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _jsonable(obj: Any) -> Any:
     """Convert Pydantic model to JSON-serializable dict."""
     if hasattr(obj, "model_dump"):
@@ -63,8 +64,9 @@ def _jsonable(obj: Any) -> Any:
 
 
 def _serialize(obj: Any) -> Any:
-    from datetime import datetime
     import uuid
+    from datetime import datetime
+
     if isinstance(obj, datetime):
         return obj.isoformat()
     if isinstance(obj, uuid.UUID):

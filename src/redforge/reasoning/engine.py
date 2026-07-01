@@ -1,14 +1,11 @@
-from typing import List
-from .state_machine import ReasoningStateMachine, ReasoningState
-from .goal_manager import GoalManager
-from .task_decomposer import TaskDecomposer
-from .strategy_selector import StrategySelector
-from .reasoner import Reasoner
-from .self_evaluator import SelfEvaluator
-from .reflection import SelfReflection
-from .replanner import Replanner
-from .failure_handler import FailureHandler
 from ..planner.task import Task
+from .failure_handler import FailureHandler
+from .goal_manager import GoalManager
+from .reasoner import Reasoner
+from .state_machine import ReasoningState, ReasoningStateMachine
+from .strategy_selector import StrategySelector
+from .task_decomposer import TaskDecomposer
+
 
 class ReasoningEngine:
     def __init__(self):
@@ -17,11 +14,11 @@ class ReasoningEngine:
         self.reasoner = Reasoner()
         self.failure_handler = FailureHandler()
 
-    def process_goal(self, goal_text: str) -> List[Task]:
+    def process_goal(self, goal_text: str) -> list[Task]:
         self.state_machine.transition_to(ReasoningState.PLANNING)
-        goal = self.goal_manager.create_goal(goal_text)
-        strategy = StrategySelector.select_strategy(goal_text)
-        
+        self.goal_manager.create_goal(goal_text)
+        StrategySelector.select_strategy(goal_text)
+
         tasks = TaskDecomposer.decompose(goal_text)
         self.state_machine.transition_to(ReasoningState.REASONING)
         return tasks
@@ -33,5 +30,5 @@ class ReasoningEngine:
             "action": decision_obj.action,
             "strategy": decision_obj.strategy or "Default",
             "confidence": 0.9,
-            "next_actions": [decision_obj.next_task_id] if decision_obj.next_task_id else []
+            "next_actions": [decision_obj.next_task_id] if decision_obj.next_task_id else [],
         }

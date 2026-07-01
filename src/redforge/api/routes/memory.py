@@ -1,16 +1,22 @@
 """
 Memory routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 import logging
-from fastapi import APIRouter, Depends
+
+from fastapi import APIRouter
+
+from ..contracts import (
+    MemoryQueryRequest,
+    MemoryQueryResponse,
+    MemoryStoreRequest,
+)
+from ..dependencies import AuthInfo, RequestID, Timer
+from ..response import no_content, success
 
 logger = logging.getLogger(__name__)
-
-from ..contracts import MemoryStoreRequest, MemoryQueryRequest, MemoryQueryResponse, MemoryEntry
-from ..dependencies import get_current_auth, get_request_id, get_timer
-from ..response import success, no_content
 
 router = APIRouter(prefix="/memory", tags=["Memory"])
 
@@ -18,20 +24,23 @@ router = APIRouter(prefix="/memory", tags=["Memory"])
 @router.post("/store", summary="Store a memory entry")
 async def store_memory(
     body: MemoryStoreRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Store a text entry in session memory."""
     stored = False
     try:
-        from redforge.memory.manager import MemoryManager
         from redforge.contracts.memory import MemoryEntry as ContractEntry
+        from redforge.memory.manager import MemoryManager
+
         mgr = MemoryManager()
-        entry = ContractEntry(content=body.content, session_id=body.session_id, metadata=body.metadata)
+        entry = ContractEntry(
+            content=body.content, session_id=body.session_id, metadata=body.metadata
+        )
         mgr.store(session_id=body.session_id, entry=entry)
         stored = True
-    except Exception as exc:
+    except Exception:
         stored = False
 
     return success(
@@ -44,14 +53,15 @@ async def store_memory(
 @router.post("/query", summary="Query session memory")
 async def query_memory(
     body: MemoryQueryRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Retrieve top-k relevant memory entries for a query."""
     results: list = []
     try:
         from redforge.memory.manager import MemoryManager
+
         mgr = MemoryManager()
         entries = mgr.retrieve(session_id=body.session_id, query=body.query, top_k=body.top_k)
         for e in entries:
@@ -75,10 +85,11 @@ async def query_memory(
 
 
 @router.delete("/session/{session_id}", status_code=204, summary="Flush session memory")
-async def flush_memory(session_id: str, auth=Depends(get_current_auth)):
+async def flush_memory(session_id: str, auth: AuthInfo):
     """Remove all short-term memory entries for a session."""
     try:
         from redforge.memory.manager import MemoryManager
+
         mgr = MemoryManager()
         mgr.flush_session(session_id)
     except Exception as exc:  # nosec B110 - memory flush is best-effort

@@ -7,17 +7,15 @@ All tools are gated by the SafetyEngine and the active autonomy level.
 from __future__ import annotations
 
 import asyncio
-import json
 import inspect
 import logging
 import shutil
-import subprocess
 import textwrap
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +34,8 @@ class ToolResult:
     returncode: int
     duration_s: float
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    error: Optional[str] = None
-    finding: Optional[Dict[str, Any]] = None   # populated by reflect step
+    error: str | None = None
+    finding: dict[str, Any] | None = None  # populated by reflect step
 
     @property
     def success(self) -> bool:
@@ -49,7 +47,7 @@ class ToolResult:
         raw = (self.stdout or "") + ("\n" + self.stderr if self.stderr else "")
         return raw[:6000] + "\n[OUTPUT TRUNCATED]" if len(raw) > 6000 else raw
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "tool": self.tool,
             "command": self.command,
@@ -92,12 +90,12 @@ class ToolExecutor:
         safety_engine=None,
         autonomy_level: str = "manual",
         timeout_default: int = 60,
-        event_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
+        event_callback: Callable[[dict[str, Any]], Any] | None = None,
     ):
         self.safety = safety_engine
         self.autonomy_level = autonomy_level
         self.timeout_default = timeout_default
-        self._history: List[ToolResult] = []
+        self._history: list[ToolResult] = []
         self._event_callback = event_callback
         self._call_seq = 0
 
@@ -108,8 +106,8 @@ class ToolExecutor:
     async def bash(
         self,
         command: str,
-        timeout: Optional[int] = None,
-        cwd: Optional[str] = None,
+        timeout: int | None = None,
+        cwd: str | None = None,
     ) -> ToolResult:
         """Run an arbitrary bash command."""
         call_id = self._next_call_id()
@@ -133,14 +131,16 @@ class ToolExecutor:
     async def python_run(
         self,
         code: str,
-        timeout: Optional[int] = None,
+        timeout: int | None = None,
     ) -> ToolResult:
         """Execute a Python snippet and capture stdout/stderr."""
         call_id = self._next_call_id()
         command = f"{__import__('sys').executable} <temp-script>"
         await self._emit("tool_start", call_id=call_id, tool="python", command=command)
         # Wrap in a temp script executed via the current interpreter
-        import sys, tempfile, os
+        import os
+        import sys
+        import tempfile
 
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, encoding="utf-8"
@@ -167,7 +167,7 @@ class ToolExecutor:
     async def http_get(
         self,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
+        headers: dict[str, str] | None = None,
         timeout: int = 15,
     ) -> ToolResult:
         """Make a safe HTTP GET request using curl."""
@@ -180,6 +180,7 @@ class ToolExecutor:
         # scope check
         if self.safety:
             from urllib.parse import urlparse
+
             host = urlparse(url).netloc.split(":")[0]
             v = self.safety.check_target(host)
             if v and v.blocked:
@@ -187,7 +188,9 @@ class ToolExecutor:
                 await self._emit_result(call_id, result)
                 return result
 
-        result = await self._run_subprocess(cmd, tool_name="http_get", timeout=timeout + 5, shell=True)
+        result = await self._run_subprocess(
+            cmd, tool_name="http_get", timeout=timeout + 5, shell=True
+        )
         await self._emit_result(call_id, result)
         return result
 
@@ -202,7 +205,9 @@ class ToolExecutor:
         call_id = self._next_call_id()
         await self._emit("tool_start", call_id=call_id, tool="nmap", command=cmd)
         if not shutil.which("nmap"):
-            result = self._error_result("nmap", cmd, "nmap is not installed. Run: sudo apt install nmap")
+            result = self._error_result(
+                "nmap", cmd, "nmap is not installed. Run: sudo apt install nmap"
+            )
             await self._emit_result(call_id, result)
             return result
 
@@ -244,7 +249,9 @@ class ToolExecutor:
             # fall back to curl + headers
             cmd = f'curl -sI --max-time 10 "{url}"'
             await self._emit("tool_start", call_id=call_id, tool="whatweb(curl)", command=cmd)
-            result = await self._run_subprocess(cmd, tool_name="whatweb(curl)", timeout=20, shell=True)
+            result = await self._run_subprocess(
+                cmd, tool_name="whatweb(curl)", timeout=20, shell=True
+            )
             await self._emit_result(call_id, result)
             return result
         cmd = f'whatweb -a 3 "{url}"'
@@ -286,20 +293,24 @@ class ToolExecutor:
         tool_name: str,
         timeout: int,
         shell: bool = True,
-        cwd: Optional[str] = None,
+        cwd: str | None = None,
     ) -> ToolResult:
         t0 = time.monotonic()
         try:
-            proc = await asyncio.create_subprocess_shell(
-                cmd if shell else " ".join(cmd),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=cwd,
-            ) if shell else await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=cwd,
+            proc = (
+                await asyncio.create_subprocess_shell(
+                    cmd if shell else " ".join(cmd),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=cwd,
+                )
+                if shell
+                else await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=cwd,
+                )
             )
             try:
                 stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=timeout)
@@ -351,7 +362,9 @@ class ToolExecutor:
             result = self._event_callback({"event": event, **payload})
             if inspect.isawaitable(result):
                 await result
-        except Exception as exc:  # nosec B110 - event callback invocation failure must not block execution pipeline
+        except (
+            Exception
+        ) as exc:  # nosec B110 - event callback invocation failure must not block execution pipeline
             logger.warning("Event callback raised an error (event=%s): %s", event, exc)
 
     async def _emit_result(self, call_id: str, result: ToolResult) -> None:
@@ -405,14 +418,14 @@ class ToolExecutor:
         self._history.append(r)
         return r
 
-    def get_history(self, limit: int = 20) -> List[Dict[str, Any]]:
+    def get_history(self, limit: int = 20) -> list[dict[str, Any]]:
         return [r.to_dict() for r in self._history[-limit:]]
 
     def clear_history(self) -> None:
         self._history.clear()
 
     @property
-    def last_result(self) -> Optional[ToolResult]:
+    def last_result(self) -> ToolResult | None:
         return self._history[-1] if self._history else None
 
 
@@ -421,7 +434,7 @@ class ToolExecutor:
 # ---------------------------------------------------------------------------
 
 
-def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
+def parse_tool_calls(text: str) -> list[dict[str, Any]]:
     """
     Detect ``TOOL:`` directives in the LLM response.
 
@@ -443,7 +456,7 @@ def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
     # Strip markdown code blocks if the LLM wrongly wrapped the TOOL block
     text = re.sub(r"```[a-zA-Z]*", "", text)
     text = text.replace("```", "")
-    
+
     calls = []
     blocks = re.split(r"TOOL:\s*", text, flags=re.IGNORECASE)
 
@@ -453,9 +466,9 @@ def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
             continue
 
         # Strip any trailing backticks from tool_name just in case
-        tool_name = lines[0].strip().strip('`').lower()
-        params: Dict[str, str] = {}
-        code_lines: List[str] = []
+        tool_name = lines[0].strip().strip("`").lower()
+        params: dict[str, str] = {}
+        code_lines: list[str] = []
         in_code = False
 
         for line in lines[1:]:
@@ -464,7 +477,9 @@ def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
                 in_code = True
                 continue
             if in_code:
-                if re.match(r"^(TOOL:|COMMAND:|TARGET:|FLAGS:|ARGS:)", line_stripped, re.IGNORECASE):
+                if re.match(
+                    r"^(TOOL:|COMMAND:|TARGET:|FLAGS:|ARGS:)", line_stripped, re.IGNORECASE
+                ):
                     in_code = False
                 else:
                     code_lines.append(line)
@@ -472,11 +487,11 @@ def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
             m = re.match(r"^([A-Z]+):\s*(.*)", line_stripped, re.IGNORECASE)
             if m:
                 key = m.group(1).lower()
-                val = m.group(2).strip().strip('`')
+                val = m.group(2).strip().strip("`")
                 params[key] = val
 
         if code_lines:
-            params["code"] = "\n".join(code_lines).strip('`\n')
+            params["code"] = "\n".join(code_lines).strip("`\n")
 
         if tool_name:
             calls.append({"tool": tool_name, **params})

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Set
+
 from .contracts import TaskMessage, TaskStatus
 from .exceptions import QueueError
 
@@ -16,7 +16,7 @@ class BaseQueue(ABC):
         pass
 
     @abstractmethod
-    async def pop(self) -> Optional[TaskMessage]:
+    async def pop(self) -> TaskMessage | None:
         """Pop the highest priority task from the queue."""
         pass
 
@@ -26,12 +26,12 @@ class BaseQueue(ABC):
         pass
 
     @abstractmethod
-    async def get(self, task_id: str) -> Optional[TaskMessage]:
+    async def get(self, task_id: str) -> TaskMessage | None:
         """Get a task by ID."""
         pass
 
     @abstractmethod
-    async def list_tasks(self) -> List[TaskMessage]:
+    async def list_tasks(self) -> list[TaskMessage]:
         """List all tasks in the queue."""
         pass
 
@@ -50,9 +50,9 @@ class InMemoryQueue(BaseQueue):
     """Fallback thread-safe In-Memory Priority Queue."""
 
     def __init__(self) -> None:
-        self._tasks: Dict[str, TaskMessage] = {}
+        self._tasks: dict[str, TaskMessage] = {}
         # Priority sorted list of task_ids
-        self._queue: List[str] = []
+        self._queue: list[str] = []
         self._lock = asyncio.Lock()
 
     async def push(self, task: TaskMessage) -> None:
@@ -66,7 +66,7 @@ class InMemoryQueue(BaseQueue):
                 key=lambda tid: (-self._tasks[tid].priority, self._tasks[tid].created_at)
             )
 
-    async def pop(self) -> Optional[TaskMessage]:
+    async def pop(self) -> TaskMessage | None:
         async with self._lock:
             if not self._queue:
                 return None
@@ -82,11 +82,11 @@ class InMemoryQueue(BaseQueue):
                 self._queue.remove(task_id)
             self._tasks.pop(task_id, None)
 
-    async def get(self, task_id: str) -> Optional[TaskMessage]:
+    async def get(self, task_id: str) -> TaskMessage | None:
         async with self._lock:
             return self._tasks.get(task_id)
 
-    async def list_tasks(self) -> List[TaskMessage]:
+    async def list_tasks(self) -> list[TaskMessage]:
         async with self._lock:
             return list(self._tasks.values())
 
@@ -114,7 +114,10 @@ class RedisQueue(BaseQueue):
     async def connect(self) -> None:
         try:
             import redis.asyncio as aioredis
-            self._redis = aioredis.Redis(host=self.host, port=self.port, db=self.db, decode_responses=True)
+
+            self._redis = aioredis.Redis(
+                host=self.host, port=self.port, db=self.db, decode_responses=True
+            )
             # Ping connection
             await self._redis.ping()
             self._use_fallback = False
@@ -136,7 +139,7 @@ class RedisQueue(BaseQueue):
         except Exception as exc:
             raise QueueError(f"Redis push failed: {exc}") from exc
 
-    async def pop(self) -> Optional[TaskMessage]:
+    async def pop(self) -> TaskMessage | None:
         if self._use_fallback:
             return await self._in_memory_fallback.pop()
 
@@ -167,7 +170,7 @@ class RedisQueue(BaseQueue):
         except Exception as exc:
             raise QueueError(f"Redis remove failed: {exc}") from exc
 
-    async def get(self, task_id: str) -> Optional[TaskMessage]:
+    async def get(self, task_id: str) -> TaskMessage | None:
         if self._use_fallback:
             return await self._in_memory_fallback.get(task_id)
 
@@ -179,7 +182,7 @@ class RedisQueue(BaseQueue):
         except Exception as exc:
             raise QueueError(f"Redis get failed: {exc}") from exc
 
-    async def list_tasks(self) -> List[TaskMessage]:
+    async def list_tasks(self) -> list[TaskMessage]:
         if self._use_fallback:
             return await self._in_memory_fallback.list_tasks()
 
@@ -224,16 +227,16 @@ class RabbitMQQueue(BaseQueue):
     async def push(self, task: TaskMessage) -> None:
         await self._in_memory_fallback.push(task)
 
-    async def pop(self) -> Optional[TaskMessage]:
+    async def pop(self) -> TaskMessage | None:
         return await self._in_memory_fallback.pop()
 
     async def remove(self, task_id: str) -> None:
         await self._in_memory_fallback.remove(task_id)
 
-    async def get(self, task_id: str) -> Optional[TaskMessage]:
+    async def get(self, task_id: str) -> TaskMessage | None:
         return await self._in_memory_fallback.get(task_id)
 
-    async def list_tasks(self) -> List[TaskMessage]:
+    async def list_tasks(self) -> list[TaskMessage]:
         return await self._in_memory_fallback.list_tasks()
 
     async def size(self) -> int:

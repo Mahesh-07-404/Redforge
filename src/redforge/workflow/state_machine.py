@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class WorkflowState(Enum):
     CREATED = "CREATED"
     READY = "READY"
@@ -9,6 +10,7 @@ class WorkflowState(Enum):
     FAILED = "FAILED"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
+
 
 class WorkflowStateMachine:
     def __init__(self):

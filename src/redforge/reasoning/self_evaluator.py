@@ -1,13 +1,15 @@
-from typing import Dict, Any
+from typing import Any
+
 from .world_state import WorldState
+
 
 class SelfEvaluator:
     @staticmethod
-    def evaluate_progress(world_state: WorldState, goal_text: str) -> Dict[str, Any]:
+    def evaluate_progress(world_state: WorldState, goal_text: str) -> dict[str, Any]:
         coverage = 0.0
         confidence = 0.5
         completed = False
-        
+
         gt = goal_text.lower()
         if "recon" in gt:
             if world_state.hosts:
@@ -19,9 +21,5 @@ class SelfEvaluator:
                 coverage = 0.9
                 confidence = 0.8
                 completed = True
-                
-        return {
-            "coverage": coverage,
-            "confidence": confidence,
-            "completed": completed
-        }
+
+        return {"coverage": coverage, "confidence": confidence, "completed": completed}

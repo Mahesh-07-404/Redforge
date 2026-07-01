@@ -1,9 +1,9 @@
-from typing import List
 from .contracts import PluginMetadata
-from .registry import PluginRegistry
-from .loader import PluginLoader
-from .hooks import PluginHooks
 from .events import PluginEvents
+from .hooks import PluginHooks
+from .loader import PluginLoader
+from .registry import PluginRegistry
+
 
 class PluginManager:
     def __init__(self):

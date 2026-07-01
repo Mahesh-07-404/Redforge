@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Callable, List, Optional
-from .registry import WorkerRegistry
+from collections.abc import Callable
+
 from .queue import BaseQueue
+from .registry import WorkerRegistry
 from .worker import DistributedWorker
 
 logger = logging.getLogger(__name__)
@@ -30,21 +31,21 @@ class DistributedAutoscaler:
         self.max_workers = max_workers
         self.scale_up_threshold = scale_up_threshold
         self.check_interval = check_interval
-        
-        self.active_autoscaled_workers: List[DistributedWorker] = []
+
+        self.active_autoscaled_workers: list[DistributedWorker] = []
         self._running = False
-        self._loop_task: Optional[asyncio.Task] = None
+        self._loop_task: asyncio.Task | None = None
 
     async def start(self) -> None:
         """Start the background autoscaling monitoring loop."""
         if self._running:
             return
         self._running = True
-        
+
         # Initialize to min_workers
         while len(self.active_autoscaled_workers) < self.min_workers:
             await self._scale_up()
-            
+
         self._loop_task = asyncio.create_task(self._monitor_loop())
 
     async def stop(self) -> None:
@@ -69,7 +70,7 @@ class DistributedAutoscaler:
                 q_size = await self.queue.size()
                 workers = self.registry.list_online_workers()
                 w_count = len(workers)
-                
+
                 # Check Scale-Up
                 if q_size >= self.scale_up_threshold and w_count < self.max_workers:
                     await self._scale_up()

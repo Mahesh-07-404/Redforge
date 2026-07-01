@@ -1,6 +1,7 @@
-from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
+
 from .metadata import ArtifactMetadata
+
 
 class Artifact(BaseModel):
     id: str
@@ -9,15 +10,18 @@ class Artifact(BaseModel):
     content: str
     metadata: ArtifactMetadata
 
+
 class TimelineEvent(BaseModel):
     timestamp: str
     event: str
     description: str
 
+
 class ExecutionTimeline(BaseModel):
     session_id: str
     execution_id: str
-    events: List[TimelineEvent] = []
+    events: list[TimelineEvent] = []
+
 
 class Evidence(BaseModel):
     id: str
@@ -25,11 +29,12 @@ class Evidence(BaseModel):
     status: str
     duration: float
     exit_code: int
-    artifacts: List[Artifact] = []
+    artifacts: list[Artifact] = []
+
 
 class EvidenceBundle(BaseModel):
     session_id: str
     execution_id: str
     plan_goal: str
     timeline: ExecutionTimeline
-    evidence_list: List[Evidence] = []
+    evidence_list: list[Evidence] = []

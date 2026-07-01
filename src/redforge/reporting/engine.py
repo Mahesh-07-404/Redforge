@@ -1,8 +1,10 @@
-from typing import List, Dict, Any
+from typing import Any
+
 from .contracts import SynthesisReport
-from .synthesizer import KnowledgeSynthesizer
 from .correlation import CorrelationEngine
 from .deduplicator import Deduplicator
+from .synthesizer import KnowledgeSynthesizer
+
 
 class ReportingEngine:
     @staticmethod
@@ -10,9 +12,9 @@ class ReportingEngine:
         session_id: str,
         execution_id: str,
         target: str,
-        raw_evidence: List[Dict[str, Any]],
-        entities: List[Any],
-        world_state_findings: List[str]
+        raw_evidence: list[dict[str, Any]],
+        entities: list[Any],
+        world_state_findings: list[str],
     ) -> SynthesisReport:
         report = KnowledgeSynthesizer.synthesize(
             session_id=session_id,
@@ -20,9 +22,9 @@ class ReportingEngine:
             target=target,
             raw_evidence=raw_evidence,
             entities=entities,
-            world_state_findings=world_state_findings
+            world_state_findings=world_state_findings,
         )
-        
+
         report.findings = CorrelationEngine.correlate_findings(report.findings)
         report.findings = Deduplicator.deduplicate(report.findings)
         return report

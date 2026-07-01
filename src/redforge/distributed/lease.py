@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Dict, List, Optional
+
 from .exceptions import LeaseExpiredError
 
 
@@ -16,7 +16,7 @@ class LeaseManager:
     """Manages active task execution leases assigned to workers."""
 
     def __init__(self) -> None:
-        self._leases: Dict[str, LeaseInfo] = {}
+        self._leases: dict[str, LeaseInfo] = {}
 
     def acquire(self, task_id: str, worker_id: str, duration: float) -> None:
         expires_at = time.time() + duration
@@ -35,13 +35,13 @@ class LeaseManager:
             )
         lease.expires_at = time.time() + duration
 
-    def get_owner(self, task_id: str) -> Optional[str]:
+    def get_owner(self, task_id: str) -> str | None:
         lease = self._leases.get(task_id)
         if lease and lease.expires_at > time.time():
             return lease.worker_id
         return None
 
-    def check_expired(self) -> List[str]:
+    def check_expired(self) -> list[str]:
         """Find task IDs of expired leases and remove them."""
         now = time.time()
         expired = []

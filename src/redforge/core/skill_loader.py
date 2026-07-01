@@ -1,11 +1,13 @@
 """Skill loader for agent instructions and knowledge"""
 
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from redforge.skills.registry import SkillRegistry, SkillMetadata
+from typing import Any
+
 from redforge.skills.loader import DynamicSkillLoader
+from redforge.skills.registry import SkillMetadata, SkillRegistry
+
 
 @dataclass
 class Skill:
@@ -13,10 +15,10 @@ class Skill:
     path: str
     content: str
     category: str
-    mode: Optional[str] = None
+    mode: str | None = None
     difficulty: str = "intermediate"
-    tags: List[str] = field(default_factory=list)
-    loaded_at: Optional[datetime] = None
+    tags: list[str] = field(default_factory=list)
+    loaded_at: datetime | None = None
 
 
 class SkillLoader:
@@ -24,14 +26,14 @@ class SkillLoader:
 
     _DEFAULT_SKILLS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "skills"
 
-    def __init__(self, skills_dir: Optional[str] = None):
+    def __init__(self, skills_dir: str | None = None):
         self.skills_dir = Path(skills_dir) if skills_dir else self._DEFAULT_SKILLS_DIR
         self.registry = SkillRegistry(str(self.skills_dir))
         self.loader = DynamicSkillLoader(self.registry)
         self._loaded = False
 
     @property
-    def _skills(self) -> Dict[str, Skill]:
+    def _skills(self) -> dict[str, Skill]:
         # Wrap the registry's SkillMetadata into Skill objects for backward compatibility
         result = {}
         for k, s in self.registry.skills.items():
@@ -41,12 +43,12 @@ class SkillLoader:
                 content=s.content,
                 category=s.category,
                 mode=s.mode,
-                tags=s.tags
+                tags=s.tags,
             )
         return result
 
     @_skills.setter
-    def _skills(self, value: Dict[str, Any]) -> None:
+    def _skills(self, value: dict[str, Any]) -> None:
         self.registry.skills = {}
         for k, v in value.items():
             if isinstance(v, Skill):
@@ -56,7 +58,7 @@ class SkillLoader:
                     content=v.content,
                     category=v.category,
                     mode=v.mode,
-                    tags=v.tags
+                    tags=v.tags,
                 )
             elif isinstance(v, SkillMetadata):
                 self.registry.skills[k] = v
@@ -68,7 +70,7 @@ class SkillLoader:
                     content=getattr(v, "content", ""),
                     category=getattr(v, "category", "SYSTEM"),
                     mode=getattr(v, "mode", None),
-                    tags=getattr(v, "tags", [])
+                    tags=getattr(v, "tags", []),
                 )
 
     def load_skills(self) -> None:
@@ -84,15 +86,15 @@ class SkillLoader:
         defaults = {
             "SYSTEM/persona": (
                 "SYSTEM",
-                """## RedForge Agent\nAutonomous pentesting AI. Always verify scope. Document findings. Non-destructive first.\n"""
+                """## RedForge Agent\nAutonomous pentesting AI. Always verify scope. Document findings. Non-destructive first.\n""",
             ),
             "MODES/bugbounty": (
                 "MODES",
-                """## Bug Bounty Recon\npassive: whois, dns, certs\nactive: nmap, ffuf, subfinder\nvulns: sqli, xss, ssrf, idor\n"""
+                """## Bug Bounty Recon\npassive: whois, dns, certs\nactive: nmap, ffuf, subfinder\nvulns: sqli, xss, ssrf, idor\n""",
             ),
             "MODES/ctf": (
                 "MODES",
-                """## CTF Approach\nWeb: sqli, xss, lfi, idor\nBinary: gdb, pwntools, ropper\nCrypto: padding oracle, xor, rsa\nForensics: binwalk, strings, exiftool\n"""
+                """## CTF Approach\nWeb: sqli, xss, lfi, idor\nBinary: gdb, pwntools, ropper\nCrypto: padding oracle, xor, rsa\nForensics: binwalk, strings, exiftool\n""",
             ),
         }
         self.registry.skills = {}
@@ -128,7 +130,7 @@ class SkillLoader:
         if not self._loaded:
             self.load_skills()
         query_tokens = set(query.lower().split())
-        scored: List[tuple] = []
+        scored: list[tuple] = []
 
         for s in self.registry.list_skills():
             blob = (s.name + " " + s.content + " " + s.category).lower()
@@ -151,17 +153,22 @@ class SkillLoader:
         selected = self.loader.select_skills(intent, active_mode, query)
         return self.loader.build_context(selected, active_mode, intent)
 
-    def get_skill(self, name: str) -> Optional[Skill]:
+    def get_skill(self, name: str) -> Skill | None:
         if not self._loaded:
             self.load_skills()
         s = self.registry.get_skill(name)
         if s:
             return Skill(
-                name=s.name, path=s.path, content=s.content, category=s.category, mode=s.mode, tags=s.tags
+                name=s.name,
+                path=s.path,
+                content=s.content,
+                category=s.category,
+                mode=s.mode,
+                tags=s.tags,
             )
         return None
 
-    def list_skills(self, category: Optional[str] = None) -> List[Skill]:
+    def list_skills(self, category: str | None = None) -> list[Skill]:
         if not self._loaded:
             self.load_skills()
         skills = []
@@ -169,11 +176,18 @@ class SkillLoader:
             if category and s.category.upper() != category.upper():
                 continue
             skills.append(
-                Skill(name=s.name, path=s.path, content=s.content, category=s.category, mode=s.mode, tags=s.tags)
+                Skill(
+                    name=s.name,
+                    path=s.path,
+                    content=s.content,
+                    category=s.category,
+                    mode=s.mode,
+                    tags=s.tags,
+                )
             )
         return skills
 
-    def search_skills(self, query: str) -> List[Skill]:
+    def search_skills(self, query: str) -> list[Skill]:
         if not self._loaded:
             self.load_skills()
         q = query.lower()
@@ -181,7 +195,14 @@ class SkillLoader:
         for s in self.registry.list_skills():
             if q in s.name.lower() or q in s.content.lower():
                 skills.append(
-                    Skill(name=s.name, path=s.path, content=s.content, category=s.category, mode=s.mode, tags=s.tags)
+                    Skill(
+                        name=s.name,
+                        path=s.path,
+                        content=s.content,
+                        category=s.category,
+                        mode=s.mode,
+                        tags=s.tags,
+                    )
                 )
         return skills
 
@@ -192,8 +213,8 @@ class SkillLoader:
         self._loaded = False
         self.load_skills()
 
-    def stats(self) -> Dict[str, Any]:
-        by_cat: Dict[str, int] = {}
+    def stats(self) -> dict[str, Any]:
+        by_cat: dict[str, int] = {}
         for s in self.registry.list_skills():
             by_cat[s.category] = by_cat.get(s.category, 0) + 1
         return {
