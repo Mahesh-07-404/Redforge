@@ -4,6 +4,15 @@ This document describes the architectural layout of RedForge.
 
 ## Architectural Layers
 
+### 20. Production Hardening & Enterprise Release — Phase 20
+Enterprise release configurations, container packaging templates, installation scripts, CI/CD pipelines, and performance benchmarks.
+* **`docker/Dockerfile`**: Compiles lightweight Python 3.12 containers containing Kali scanner binaries.
+* **`docker/docker-compose.yml`**: Integrates the API gateway, worker pool, and Redis/RabbitMQ queues.
+* **`k8s/` & `helm/`**: Kubernetes deployments and Helm charts for horizontal auto-scaling.
+* **`scripts/`**: Installation, updating, and uninstallation scripts.
+* **Environment Profiles**: Configures environments (dev, test, stage, prod) using profile files.
+* **`tests/performance_benchmarks.py`**: Benchmarks measuring startup speed, memory footprint, tracing speed, scheduling latency, reporting compiler performance, and RAG search.
+
 ### 19. Observability & Monitoring Platform (`src/redforge/observability/`) — Phase 19
 A unified telemetry logging, tracing, auditing, and health checking package.
 * **`manager.py`**: Central coordinator wrapping all observability monitors.

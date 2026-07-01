@@ -1,0 +1,8 @@
+{
+  "import_startup_ms": 199.87964630126953,
+  "memory_rss_mb": 69.1171875,
+  "obs_trace_increment_1k_ms": 22.800922393798828,
+  "distributed_submit_latency_ms": 0.1723766326904297,
+  "report_compile_markdown_ms": 0.10395050048828125,
+  "rag_retrieval_ms": 0.11157989501953125
+}

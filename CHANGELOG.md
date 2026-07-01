@@ -2,6 +2,17 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [3.0.0] - 2026-07-01
+
+### Added
+* **Container Deployments**: Created production `docker/Dockerfile`, `docker-compose.yml`, Kubernetes deployment manifests, and Helm templates.
+* **Autonomic installation Scripts**: Added scripts for installation (`install.sh`), uninstallation (`uninstall.sh`), and updating (`update.sh`).
+* **Environment Profiles**: Enabled environment loading support for `development`, `testing`, `staging`, and `production`.
+* **CI/CD Pipelines**: Configured workflows for code linting, unit testing, building packages, releasing tags, and scanning security parameters.
+* **Performance Benchmarks Suite**: Created a performance suite measuring startup latency, memory RSS usage, tracing speed, scheduling, reporting, and RAG retrieval times.
+* **Comprehensive Integration Tests**: Created end-to-end integration test validating the entire pipeline.
+* **Production Documentation**: Generated installation manuals, deployment guides, security policies, developer contributions rules, API references, and plugin guides.
+
 ## [2.0.0-phase-19] - 2026-07-01
 
 ### Added

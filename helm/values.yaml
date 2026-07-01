@@ -1,0 +1,15 @@
+replicaCount: 2
+
+image:
+  repository: redforge/api
+  pullPolicy: IfNotPresent
+  tag: "3.0.0"
+
+service:
+  type: ClusterIP
+  port: 80
+
+redis:
+  enabled: true
+  host: redis-master
+  port: 6379

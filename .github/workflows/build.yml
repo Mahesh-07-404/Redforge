@@ -1,0 +1,26 @@
+name: Build Package & Artifacts
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install build tool dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+    - name: Build python sdist and wheel archives
+      run: python -m build
+    - name: Archive build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-packages
+        path: dist/

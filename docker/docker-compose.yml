@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: redforge-api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDFORGE_ENV=production
+      - REDFORGE_PORT=8000
+      - REDFORGE_REDIS_HOST=redis
+      - REDFORGE_REDIS_PORT=6379
+      - REDFORGE_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - redis
+      - rabbitmq
+    restart: always
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: redforge-worker
+    command: python -m redforge.distributed.worker --worker-id worker-compose --host api
+    environment:
+      - REDFORGE_ENV=production
+      - REDFORGE_REDIS_HOST=redis
+      - REDFORGE_REDIS_PORT=6379
+    depends_on:
+      - api
+      - redis
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: redforge-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: redforge-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: always

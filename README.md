@@ -1,288 +1,63 @@
-# RedForge
+# RedForge Enterprise Platform (v3.0.0)
 
-**Autonomous CLI-based Penetration Testing AI Agent**
+**Autonomous Distributed Penetration Testing AI Orchestration System**
 
-An intelligent security testing framework with 5 operational modes, 128+ specialized skills, and autonomous capability.
+RedForge is a production-grade autonomous security testing platform. It integrates reasoning LLMs, a distributed task queue, unified API Gateway, a React operations dashboard, and complete observability tracing.
 
-## Features
+---
 
-### Operational Modes
-- **Bug Bounty** - Automated vulnerability hunting
-- **CTF** - Capture The Flag competition assistant
-- **Learning** - Security skill development
-- **Coding** - Secure coding practice
-- **Android** - Mobile application testing
+## Technical Architecture Overview
 
-### Core Capabilities
-- **128+ Skill Files** - Dynamic skill-based guidance
-- **LangGraph Agent** - Hybrid goal/knowledge-based reasoning
-- **Session Memory** - RAG-powered context retention
-- **Tool Auto-Install** - Missing tool detection and installation
-- **Safety Engine** - Scope verification and ethical boundaries
-- **TUI Interface** - Keyboard-first Textual terminal UI with a fuzzy command palette
+* **React Operator Dashboard** (`dashboard/`): React + Vite + Tailwind dashboard.
+* **Unified API Gateway** (`src/redforge/api/`): FastAPI REST & WebSocket entry point.
+* **Distributed Engine** (`src/redforge/distributed/`): Priority queues (Redis, RabbitMQ) and automated worker pools.
+* **Observability Subsystem** (`src/redforge/observability/`): Prometheus scrape outputs, context logs, Tracer spans, and immutable cryptographic audit trails.
+* **Kernel & Core Execution**: Agent reasoning loop, planning engine, and tool executors.
 
-### Supported Platforms
-- Kali Linux, Debian, Ubuntu, Arch, Fedora
-- macOS, Windows (WSL)
+---
 
-## Installation
+## Features & Supported Tools
 
-```bash
-# Clone repository
-git clone https://github.com/redforge/redforge.git
-cd redforge
+* **Modes**: Bug Bounty, CTF Solver, Pentesting, Secure Coding, Mobile Android testing.
+* **Integrations**: Nmap, Subfinder, Nuclei, Ffuf, Nikto, Gobuster, and John the Ripper.
+* **Distributed Scheduling**: Dependency graphs with recursive cancellations.
+* **Autoscaling**: Automatic worker registry and heartbeat-based failure recovery.
+* **Cryptographic Trail**: Sequential SHA-256 hash chains verifying audit integrity.
 
-# Install
-pip install -e .
+---
 
-# Configure
-cp config.yaml.example config.yaml
-# Edit config.yaml with your LLM API keys
+## Installation & Deployment
 
-# Run
-redforge --help
-```
+Refer to the operational guides for details:
+
+* **Basic installation**: Read [INSTALL.md](file:///home/mahesh/RedForge/INSTALL.md)
+* **Production deployment**: Read [DEPLOYMENT.md](file:///home/mahesh/RedForge/DEPLOYMENT.md)
+* **API Documentation**: Read [API_REFERENCE.md](file:///home/mahesh/RedForge/API_REFERENCE.md)
+* **Security & Audits**: Read [SECURITY.md](file:///home/mahesh/RedForge/SECURITY.md)
+* **Developer Guidelines**: Read [CONTRIBUTING.md](file:///home/mahesh/RedForge/CONTRIBUTING.md)
+* **Plugin System**: Read [PLUGIN_GUIDE.md](file:///home/mahesh/RedForge/PLUGIN_GUIDE.md)
+
+---
 
 ## Quick Start
 
+### 1. Launch with Docker Compose
+To run RedForge instantly with Redis, RabbitMQ, and the worker pool:
 ```bash
-# Launch Textual TUI directly (default)
-redforge
-
-# Check system health
-redforge doctor
-
-# Run in headless mode for automation
-redforge run --target example.com --mode bugbounty
+docker compose -f docker/docker-compose.yml up --build -d
 ```
 
-## Configuration
-
-### LLM Provider (config.yaml)
-```yaml
-llm:
-  provider: gemini  # or: openai, anthropic, groq, ollama
-  model: gemini-3.5-flash
-  api_key: ${GEMINI_API_KEY}  # hosted providers also read standard env vars
-  base_url: http://localhost:11434  # for Ollama
-```
-
-### Safety Settings
-```yaml
-safety:
-  level: warn  # off, warn, strict
-  scope:
-    domains:
-      - example.com
-    ip_ranges:
-      - 192.168.1.0/24
-```
-
-## Usage
-
-### TUI Command Palette
-
-Run `redforge tui`, then type `/` to open the command palette instantly. The
-palette is populated from the command registry, so valid dynamically registered
-commands appear automatically.
-
-Each entry displays its command and description:
-
-```text
-/help       Show all available commands
-/mode       Change active mode
-/target     Set scan target
-/session    Manage sessions
-/report     Generate findings report
-```
-
-Type part of a command to filter it. Matching is fuzzy, so `/mo` finds `/mode`
-and `/mde` can also match `/mode`.
-
-| Key | Action |
-|-----|--------|
-| `Up` / `Down` | Move the highlighted selection |
-| `Tab` / `Shift+Tab` | Move forward or backward |
-| `Enter` | Insert the highlighted command into the input |
-| `Escape` | Close the palette without changing the current input |
-
-Selecting a command does not execute it. For example, selecting `/mode` inserts
-it into the editor. You can extend it to `/mode bugbounty`, then press `Enter`
-to execute.
-
-Command execution failures are shown in the TUI without terminating RedForge:
-
-```text
-Command Failed
-Reason: <error details>
-Suggested Fix: <recovery guidance>
-```
-
-### Keyboard Shortcuts
-
-| Key | Description |
-|-----|-------------|
-| `Ctrl+P` | Open Command Palette (fuzzy matching slash commands) |
-| `Ctrl+S` | Save active session state to database |
-| `Ctrl+R` | Open Reports Manager modal screen |
-| `Ctrl+F` | Open Findings viewer modal screen |
-| `Ctrl+M` | Open Memory search and stats modal screen |
-| `Ctrl+L` | Clear conversation terminal history |
-| `Ctrl+Q` | Quit TUI Application |
-| `Ctrl+B` | Toggle left sidebar visibility |
-| `Ctrl+K` | Cancel current executing agent task |
-| `Escape` | Focus input box |
-
-### Mode-Specific Features
-
-#### Bug Bounty Mode
-- Reconnaissance automation
-- Vulnerability scanning
-- CVE generation
-- Report generation (HackerOne, Bugcrowd formats)
-
-#### CTF Mode
-- Challenge categorization
-- Flag validation
-- Score tracking
-- Writeup generation
-
-#### Learning Mode
-- Topic-based learning paths
-- Progress tracking
-- Exercise generation
-
-## Architecture
-
-```
-RedForge/
-├── src/redforge/
-│   ├── contracts/     # Pydantic models shared across all systems
-│   ├── session/       # Session Manager with SQLite backend
-│   ├── memory/        # Memory Manager with Qdrant vector store
-│   ├── skills/        # Dynamic Skill Loader & Registry
-│   ├── intent/        # Intent Engine & Target Watcher
-│   ├── tools/         # Tool Executor & Schemas
-│   ├── verifier/      # Output Validator & Hallucination Guard
-│   ├── report/        # Report Engine & Formatter
-│   ├── core/          # Agent orchestration pipeline
-│   ├── llm/           # Optional LLM provider integrations
-│   ├── modes/         # Mode configs and registry
-│   ├── safety/        # Safety engine boundaries
-│   ├── platforms/     # Bug bounty platform integrations
-│   └── tui/           # Keyboard-first Textual terminal UI
-├── skills/            # Extracted skill registry and domains
-└── tests/             # Comprehensive unit & integration tests
-```
-
-## Skills Framework
-
-Skills are organized by category and dynamically loaded based on context:
-
-```
-skills/
-├── SYSTEM/            # Core agent skills
-├── AUTONOMY/         # Autonomy control skills
-├── MODES/
-│   ├── BUGBOUNTY/    # Bug bounty hunting skills
-│   ├── CTF/          # CTF competition skills
-│   ├── LEARNING/     # Learning resources
-│   ├── CODING/       # Secure coding
-│   └── ANDROID/      # Mobile testing
-├── TOOLS/            # Tool usage guides
-├── SAFETY/           # Safety guidelines
-└── LLM/              # LLM optimization
-```
-
-## Development
-
-### Setup Development Environment
+### 2. Verify Health
+Verify the gateway service is live:
 ```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate
-
-# Install with dev dependencies
-pip install -e ".[dev]"
-
-# Run tests
-pytest tests/ -v
-
-# Run linting
-ruff check src/
+curl http://localhost:8000/api/v1/health
 ```
 
-### Adding New Skills
-Create a new `.md` file in the appropriate category:
-```markdown
-# Category Skill: Feature Name
-
-## Purpose
-Brief description of the skill.
-
-## Framework
-Key concepts and approaches.
-
-## Examples
-Usage examples and patterns.
-```
-
-### Registering TUI Commands
-
-Use the command registry instead of adding commands directly to the palette:
-
-```python
-from redforge.tui.palette import CommandRegistry
-
-CommandRegistry.register(
-    "exploit_active",
-    "Trigger the active exploitation workflow",
-)
-```
-
-Command names and descriptions are validated before display. Invalid or
-duplicate entries are excluded from the palette.
-
-### Command Palette Tests
-
+### 3. Launch React Dashboard
+Start the local dashboard developer server:
 ```bash
-# Focused palette tests
-pytest -q tests/test_palette.py
-
-# Complete test suite
-pytest -q
+cd dashboard
+npm install
+npm run dev
 ```
-
-The focused suite covers opening, closing, fuzzy filtering, keyboard navigation,
-selection, input preservation, dynamic registration, and execution only after a
-separate `Enter` press.
-
-## Autonomy Levels
-
-| Level | Description |
-|-------|-------------|
-| MANUAL | Step-by-step approval (Safe Default) |
-| PARTIAL | Auto safe, confirm destructive |
-| FULL | Full autonomous (Requires consent) |
-
-## License
-
-MIT License - See [LICENSE](LICENSE)
-
-## Contributing
-
-Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Roadmap
-
-- [x] Core agent engine
-- [x] LangGraph integration
-- [x] 128+ skill files
-- [x] Tool auto-install
-- [x] Safety engine
-- [x] Mode implementations
-- [x] Bug bounty platform integration
-- [x] Web dashboard
-- [ ] Mobile TUI app
-- [ ] Plugin system
-- [ ] Team collaboration features
+Open `http://localhost:5173` in your browser.
