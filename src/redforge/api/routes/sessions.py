@@ -2,11 +2,11 @@
 Session routes — Phase 16: Unified API Gateway
 CRUD for RedForge sessions.
 """
+
 from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,6 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from ..contracts import (
     SessionCreateRequest,
     SessionUpdateRequest,
-    APIResponse,
 )
 from ..dependencies import get_current_auth, get_request_id, get_timer
 from ..exceptions import SessionNotFoundError
@@ -27,6 +26,7 @@ router = APIRouter(prefix="/sessions", tags=["Sessions"])
 def _get_service():
     try:
         from redforge.core.session import SessionService
+
         return SessionService()
     except Exception as exc:  # nosec B110 - session service failure is handled by returning None
         logger.debug("Failed to load SessionService: %s", exc)
@@ -78,7 +78,7 @@ async def list_sessions(
     auth=Depends(get_current_auth),
     request_id: str = Depends(get_request_id),
     timer=Depends(get_timer),
-    status: Optional[str] = Query(None, description="Filter by status: active, archived, completed"),
+    status: str | None = Query(None, description="Filter by status: active, archived, completed"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
@@ -92,7 +92,7 @@ async def list_sessions(
         if status:
             sessions = [s for s in sessions if s.get("status") == status]
         total = len(sessions)
-        page_sessions = sessions[offset: offset + page_size]
+        page_sessions = sessions[offset : offset + page_size]
         return success(
             {"sessions": page_sessions, "total": total, "page": page, "page_size": page_size},
             duration_ms=timer.elapsed_ms,
@@ -167,5 +167,9 @@ async def archive_session(
         try:
             svc.archive(session_id)
         except AttributeError as exc:  # nosec B110 - session archiver missing or unsupported
-            logger.debug("Archive method not supported on session service for session '%s': %s", session_id, exc)
+            logger.debug(
+                "Archive method not supported on session service for session '%s': %s",
+                session_id,
+                exc,
+            )
     return success({"archived": True, "session_id": session_id}, request_id=request_id)

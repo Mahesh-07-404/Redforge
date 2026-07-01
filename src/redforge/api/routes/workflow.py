@@ -1,21 +1,25 @@
 """
 Workflow routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Optional
-from uuid import uuid4
 from datetime import datetime
+from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Path
 
-from ..contracts import WorkflowStartRequest, WorkflowResponse, WorkflowListResponse, WorkflowStatusEnum
-from ..dependencies import get_current_auth, get_request_id, get_timer, ReadAuth
-from ..response import success, created
-
+from ..contracts import (
+    WorkflowListResponse,
+    WorkflowResponse,
+    WorkflowStartRequest,
+    WorkflowStatusEnum,
+)
+from ..dependencies import ReadAuth, get_current_auth, get_request_id, get_timer
+from ..response import created, success
 
 router = APIRouter(prefix="/workflows", tags=["Workflows"])
 
@@ -23,18 +27,24 @@ router = APIRouter(prefix="/workflows", tags=["Workflows"])
 def _get_workflow_engine():
     try:
         from redforge.workflow.engine import WorkflowEngine
+
         return WorkflowEngine()
-    except Exception as exc:  # nosec B110 - workflow engine loading failure is handled by returning None
+    except (
+        Exception
+    ) as exc:  # nosec B110 - workflow engine loading failure is handled by returning None
         logger.debug("Failed to load WorkflowEngine: %s", exc)
         return None
 
 
 @router.get("", summary="List available workflows")
-async def list_workflows(auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)):
+async def list_workflows(
+    auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
+):
     """List all registered workflow definitions."""
     workflows: list = []
     try:
         from redforge.workflow.registry import WorkflowRegistry
+
         registry = WorkflowRegistry()
         workflows = registry.list() if hasattr(registry, "list") else []
     except Exception as exc:  # nosec B110 - listing workflows is best-effort
@@ -54,7 +64,7 @@ async def start_workflow(
     run_id = str(uuid4())
     engine = _get_workflow_engine()
     status = WorkflowStatusEnum.pending
-    error: Optional[str] = None
+    error: str | None = None
 
     if engine:
         try:
@@ -91,6 +101,7 @@ async def get_workflow(
     info: dict = {"id": workflow_id}
     try:
         from redforge.workflow.registry import WorkflowRegistry
+
         registry = WorkflowRegistry()
         w = registry.get(workflow_id) if hasattr(registry, "get") else None
         if w:

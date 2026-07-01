@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import asyncio
-from typing import Dict, List, Optional
 from .contracts import TaskMessage, TaskResult, TaskStatus
+from .lease import LeaseManager
+from .load_balancer import LoadBalancer
 from .queue import BaseQueue
 from .registry import WorkerRegistry
-from .load_balancer import LoadBalancer
-from .lease import LeaseManager
-from .exceptions import TaskDispatchError
 
 
 class TaskDispatcher:
@@ -26,17 +23,17 @@ class TaskDispatcher:
         self.load_balancer = load_balancer
         self.lease_manager = lease_manager
         self.algorithm = algorithm
-        
+
         # Dead-letter queue (DLQ) for failed/unroutable tasks
-        self.dead_letter_queue: List[TaskMessage] = []
+        self.dead_letter_queue: list[TaskMessage] = []
         # Active local instances maps: worker_id -> Worker Object (if simulated locally)
-        self._worker_instances: Dict[str, Any] = {}
+        self._worker_instances: dict[str, Any] = {}
 
     def register_worker_instance(self, worker_id: str, instance: Any) -> None:
         """Register worker instance directly for dispatching tasks locally."""
         self._worker_instances[worker_id] = instance
 
-    async def dispatch(self) -> Optional[TaskResult]:
+    async def dispatch(self) -> TaskResult | None:
         """Pop a task, match to a worker, execute, manage lease, and return result."""
         task = await self.queue.pop()
         if not task:
@@ -61,7 +58,7 @@ class TaskDispatcher:
         self.lease_manager.acquire(task.task_id, worker.worker_id, task.timeout)
         task.status = TaskStatus.RUNNING
         task.lease_owner = worker.worker_id
-        
+
         # Execute (simulate dispatch to worker instance)
         worker_obj = self._worker_instances.get(worker.worker_id)
         if not worker_obj:

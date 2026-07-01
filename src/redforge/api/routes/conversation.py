@@ -1,18 +1,23 @@
 """
 Chat & Conversation routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 import logging
-from typing import List
 
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Path
 
-from ..contracts import ChatRequest, ChatResponse, ConversationMessage, ConversationHistoryResponse
+from ..contracts import (
+    ChatRequest,
+    ChatResponse,
+    ConversationHistoryResponse,
+    ConversationMessage,
+)
 from ..dependencies import get_current_auth, get_request_id, get_timer
-from ..response import success, no_content
+from ..response import no_content, success
 
 router = APIRouter(tags=["Chat & Conversation"])
 
@@ -20,6 +25,7 @@ router = APIRouter(tags=["Chat & Conversation"])
 def _run_chat(session_id: str, message: str) -> dict:
     try:
         from redforge.conversation.engine import ConversationEngine
+
         engine = ConversationEngine()
         result = engine.process(session_id=session_id, message=message)
         return result if isinstance(result, dict) else {"response": str(result)}
@@ -57,9 +63,10 @@ async def get_conversation(
     limit: int = 50,
 ):
     """Retrieve message history for a session."""
-    messages: List[dict] = []
+    messages: list[dict] = []
     try:
         from redforge.core.session import SessionService
+
         svc = SessionService()
         session = svc.load(session_id)
         if session and hasattr(session, "metadata"):
@@ -84,6 +91,7 @@ async def clear_conversation(
     """Clear all messages for a session."""
     try:
         from redforge.core.session import SessionService
+
         svc = SessionService()
         session = svc.load(session_id)
         if session and hasattr(session, "metadata"):

@@ -1,0 +1,19 @@
+default_language_version:
+  python: python3.12
+
+repos:
+  - repo: https://github.com/psf/black
+    rev: stable
+    hooks:
+      - id: black
+        language_version: python3.12
+  - repo: https://github.com/PyCQA/isort
+    rev: stable
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: stable
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]

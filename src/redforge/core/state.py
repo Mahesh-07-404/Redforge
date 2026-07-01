@@ -1,11 +1,11 @@
 """LangGraph-based agent state and schema"""
 
-from typing import Annotated, List, Dict, Any, Optional, Literal
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from typing import Any
+
 from pydantic import BaseModel, Field
-import operator
 
 
 class AutonomyLevel(str, Enum):
@@ -38,10 +38,10 @@ class TaskStatus(str, Enum):
 @dataclass
 class ToolCall:
     tool: str
-    args: Dict[str, Any]
-    result: Optional[str] = None
+    args: dict[str, Any]
+    result: str | None = None
     timestamp: datetime = field(default_factory=datetime.now)
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -49,10 +49,10 @@ class Task:
     id: str
     description: str
     status: TaskStatus = TaskStatus.PENDING
-    result: Optional[str] = None
-    subtasks: List["Task"] = field(default_factory=list)
+    result: str | None = None
+    subtasks: list["Task"] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
 
 @dataclass
@@ -63,12 +63,12 @@ class Finding:
     title: str
     description: str
     target: str
-    evidence: Optional[Dict[str, Any]] = None
-    cvss: Optional[float] = None
-    cwe: Optional[str] = None
+    evidence: dict[str, Any] | None = None
+    cvss: float | None = None
+    cwe: str | None = None
     created_at: datetime = field(default_factory=datetime.now)
-    tool: Optional[str] = None
-    command: Optional[str] = None
+    tool: str | None = None
+    command: str | None = None
     status: str = "VERIFIED"
 
 
@@ -80,49 +80,45 @@ class Message:
 
 
 class AgentState(BaseModel):
-    messages: List[Dict[str, Any]] = Field(default_factory=list)
-    target: Optional[str] = None
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+    target: str | None = None
     workflow_phase: WorkflowPhase = WorkflowPhase.PLAN
-    current_task: Optional[str] = None
-    tasks: List[Dict[str, Any]] = Field(default_factory=list)
-    findings: List[Dict[str, Any]] = Field(default_factory=list)
-    reports: List[Dict[str, Any]] = Field(default_factory=list)
-    tools_used: List[str] = Field(default_factory=list)
+    current_task: str | None = None
+    tasks: list[dict[str, Any]] = Field(default_factory=list)
+    findings: list[dict[str, Any]] = Field(default_factory=list)
+    reports: list[dict[str, Any]] = Field(default_factory=list)
+    tools_used: list[str] = Field(default_factory=list)
     iteration: int = 0
     total_tokens: int = 0
-    context: Dict[str, Any] = Field(default_factory=dict)
-    skills_loaded: List[str] = Field(default_factory=list)
+    context: dict[str, Any] = Field(default_factory=dict)
+    skills_loaded: list[str] = Field(default_factory=list)
     autonomy_level: AutonomyLevel = AutonomyLevel.MANUAL
     mode: AgentMode = AgentMode.GOAL_BASED
     loop_count: int = 0
-    last_state_hash: Optional[str] = None
-    pending_confirmation: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    workspace_id: Optional[str] = None
-    workspace_name: Optional[str] = None
-    active_mode: Optional[str] = None
-    intent: Optional[str] = None
+    last_state_hash: str | None = None
+    pending_confirmation: dict[str, Any] | None = None
+    error: str | None = None
+    workspace_id: str | None = None
+    workspace_name: str | None = None
+    active_mode: str | None = None
+    intent: str | None = None
 
 
 def create_initial_state(
     user_input: str,
-    target: Optional[str] = None,
-    workspace_id: Optional[str] = None,
-    workspace_name: Optional[str] = None,
+    target: str | None = None,
+    workspace_id: str | None = None,
+    workspace_name: str | None = None,
     autonomy_level: AutonomyLevel = AutonomyLevel.MANUAL,
     mode: AgentMode = AgentMode.GOAL_BASED,
-    active_mode: Optional[str] = None,
+    active_mode: str | None = None,
 ) -> AgentState:
     """Create initial agent state from user input"""
     if active_mode is None:
         active_mode = "bugbounty" if mode == AgentMode.GOAL_BASED else "learning"
 
     return AgentState(
-        messages=[{
-            "role": "user",
-            "content": user_input,
-            "timestamp": datetime.now().isoformat()
-        }],
+        messages=[{"role": "user", "content": user_input, "timestamp": datetime.now().isoformat()}],
         target=target,
         workspace_id=workspace_id,
         workspace_name=workspace_name,
@@ -134,6 +130,6 @@ def create_initial_state(
             "target": target,
             "workspace_id": workspace_id,
             "workspace_name": workspace_name,
-            "started_at": datetime.now().isoformat()
-        }
+            "started_at": datetime.now().isoformat(),
+        },
     )

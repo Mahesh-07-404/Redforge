@@ -1,5 +1,6 @@
-from .server import MCPServer
 from .client import MCPClient
+from .server import MCPServer
+
 
 class MCPManager:
     def __init__(self):

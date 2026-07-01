@@ -1,5 +1,6 @@
 from typing import Any
 
+
 class PluginSandbox:
     def __init__(self, granted_permissions: list[str]):
         self.granted_permissions = granted_permissions

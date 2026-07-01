@@ -2,12 +2,13 @@
 Middleware — Phase 16: Unified API Gateway
 Request pipeline: auth injection, rate limiting, logging, timing, tracing, security headers.
 """
+
 from __future__ import annotations
 
 import logging
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +28,10 @@ from .security import (
     extract_bearer_token,
 )
 
-
 # ---------------------------------------------------------------------------
 # Request ID / Trace ID injection
 # ---------------------------------------------------------------------------
+
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Attaches a unique request_id and trace_id to every request."""
@@ -51,6 +52,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 # Security headers
 # ---------------------------------------------------------------------------
 
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Injects security headers into every response."""
 
@@ -64,6 +66,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 # ---------------------------------------------------------------------------
 # Request timing
 # ---------------------------------------------------------------------------
+
 
 class TimingMiddleware(BaseHTTPMiddleware):
     """Measures and exposes request processing time."""
@@ -81,6 +84,7 @@ class TimingMiddleware(BaseHTTPMiddleware):
 # ---------------------------------------------------------------------------
 # Structured logging
 # ---------------------------------------------------------------------------
+
 
 class LoggingMiddleware(BaseHTTPMiddleware):
     """Structured per-request logging."""
@@ -104,7 +108,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             _log_request(request, 500, elapsed_ms, request_id, trace_id, error=str(exc))
             raise
 
-    
+
 def _log_request(
     request: Request,
     status_code: int,
@@ -115,25 +119,32 @@ def _log_request(
 ) -> None:
     try:
         from loguru import logger
+
         level = "ERROR" if status_code >= 500 else "WARNING" if status_code >= 400 else "INFO"
-        logger.log(level, {
-            "event": "http_request",
-            "method": request.method,
-            "path": request.url.path,
-            "status": status_code,
-            "duration_ms": round(elapsed_ms, 2),
-            "request_id": request_id,
-            "trace_id": trace_id,
-            "client": (request.client.host if request.client else "unknown"),
-            "error": error,
-        })
-    except Exception as exc:  # nosec B110 - request logging failure must not crash request lifecycle
+        logger.log(
+            level,
+            {
+                "event": "http_request",
+                "method": request.method,
+                "path": request.url.path,
+                "status": status_code,
+                "duration_ms": round(elapsed_ms, 2),
+                "request_id": request_id,
+                "trace_id": trace_id,
+                "client": (request.client.host if request.client else "unknown"),
+                "error": error,
+            },
+        )
+    except (
+        Exception
+    ) as exc:  # nosec B110 - request logging failure must not crash request lifecycle
         logger.debug("Request logger failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------
 # Rate limiting middleware
 # ---------------------------------------------------------------------------
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Per-IP token-bucket rate limiting."""
@@ -149,7 +160,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if request.url.path in self.EXEMPT_PATHS:
             return await call_next(request)
 
-        identifier = (request.client.host if request.client else "unknown")
+        identifier = request.client.host if request.client else "unknown"
         limiter = get_rate_limiter()
         try:
             limiter.check(identifier, endpoint=request.url.path)
@@ -166,19 +177,29 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 # Authentication middleware
 # ---------------------------------------------------------------------------
 
+
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     """Validates Bearer token or API key and attaches auth_info to request.state."""
 
     EXEMPT_PATHS = {
-        "/health", "/live", "/ready", "/version", "/metrics",
-        "/docs", "/redoc", "/openapi.json",
+        "/health",
+        "/live",
+        "/ready",
+        "/version",
+        "/metrics",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
         "/api/v1/auth/token",
     }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         cfg = get_api_config()
         if not cfg.auth.enabled or request.url.path in self.EXEMPT_PATHS:
-            request.state.auth_info = {"authenticated": False, "scopes": ["read", "write", "execute", "report", "admin"]}
+            request.state.auth_info = {
+                "authenticated": False,
+                "scopes": ["read", "write", "execute", "report", "admin"],
+            }
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
@@ -212,6 +233,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 # Payload size guard middleware
 # ---------------------------------------------------------------------------
 
+
 class PayloadSizeMiddleware(BaseHTTPMiddleware):
     """Rejects oversized request bodies early."""
 
@@ -230,6 +252,7 @@ class PayloadSizeMiddleware(BaseHTTPMiddleware):
 # Global exception handler
 # ---------------------------------------------------------------------------
 
+
 async def api_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     trace_id = getattr(request.state, "trace_id", str(uuid.uuid4()))
     if isinstance(exc, APIError):
@@ -240,6 +263,7 @@ async def api_exception_handler(request: Request, exc: Exception) -> JSONRespons
         )
     # Unexpected
     from .exceptions import InternalError
+
     err = InternalError(message=str(exc), trace_id=trace_id)
     return JSONResponse(status_code=500, content=err.to_dict())
 
@@ -247,6 +271,7 @@ async def api_exception_handler(request: Request, exc: Exception) -> JSONRespons
 # ---------------------------------------------------------------------------
 # Middleware registration factory
 # ---------------------------------------------------------------------------
+
 
 def register_middleware(app: FastAPI) -> None:
     """Register all middleware in correct order (last-added = outermost)."""

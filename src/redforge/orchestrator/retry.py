@@ -1,5 +1,7 @@
 import asyncio
-from typing import Callable, Any
+from collections.abc import Callable
+from typing import Any
+
 
 class AgentRetryStrategy:
     def __init__(self, max_attempts: int = 3):

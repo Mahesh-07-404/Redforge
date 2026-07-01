@@ -2,19 +2,18 @@
 API Server — Phase 16: Unified API Gateway
 Entry point for running the server with uvicorn.
 """
+
 from __future__ import annotations
 
-import signal
 import sys
-from typing import Optional
 
 from .app import create_app
 from .config import get_api_config
 
 
 def run(
-    host: Optional[str] = None,
-    port: Optional[int] = None,
+    host: str | None = None,
+    port: int | None = None,
     reload: bool = False,
     log_level: str = "info",
 ) -> None:
@@ -23,8 +22,7 @@ def run(
         import uvicorn
     except ImportError:
         print(
-            "uvicorn is required to run the API server.\n"
-            "Install with: pip install 'redforge[web]'",
+            "uvicorn is required to run the API server.\nInstall with: pip install 'redforge[web]'",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -41,9 +39,9 @@ def run(
 ║         Phase 16: Unified API Gateway                ║
 ╠══════════════════════════════════════════════════════╣
 ║  Host:    http://{_host}:{_port:<36}║
-║  Docs:    http://{_host}:{_port}/docs{' ' * 30}║
-║  ReDoc:   http://{_host}:{_port}/redoc{' ' * 29}║
-║  OpenAPI: http://{_host}:{_port}/openapi.json{' ' * 22}║
+║  Docs:    http://{_host}:{_port}/docs{" " * 30}║
+║  ReDoc:   http://{_host}:{_port}/redoc{" " * 29}║
+║  OpenAPI: http://{_host}:{_port}/openapi.json{" " * 22}║
 ╚══════════════════════════════════════════════════════╝
     """.strip())
 

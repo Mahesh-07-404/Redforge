@@ -1,9 +1,9 @@
 """
 Execution routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
-from datetime import datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends
@@ -34,9 +34,10 @@ async def run_tool(
     findings: list = []
 
     try:
-        from redforge.contracts.tool import ToolCall
         from redforge.contracts.intent import RiskLevel
+        from redforge.contracts.tool import ToolCall
         from redforge.tools.runner import ToolRunner
+
         tool_call = ToolCall(
             tool_name=body.tool,
             command=body.command,
@@ -44,7 +45,7 @@ async def run_tool(
             timeout_seconds=body.timeout or 60,
             risk_level=RiskLevel.LOW,
             session_id=body.session_id,
-            approved=True
+            approved=True,
         )
         runner = ToolRunner()
         result = runner.run(tool_call)

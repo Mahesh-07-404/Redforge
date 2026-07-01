@@ -1,13 +1,15 @@
 """Groq LLM provider"""
 
-from typing import List, Optional, AsyncIterator, Dict, Any
-from redforge.providers.base import LLMProvider, Message, ChatResponse
+from collections.abc import AsyncIterator
+from typing import Any
+
+from redforge.providers.base import ChatResponse, LLMProvider, Message
 from redforge.providers.catalog import DEFAULT_MODELS, FALLBACK_MODELS, resolve_api_key
 
 
 class GroqProvider(LLMProvider):
     """Groq API provider (fast inference)"""
-    
+
     def __init__(
         self,
         model: str = DEFAULT_MODELS["groq"],
@@ -15,7 +17,7 @@ class GroqProvider(LLMProvider):
         temperature: float = 0.7,
         max_tokens: int = 4096,
         base_url: str = "https://api.groq.com/openai/v1",
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             model=model,
@@ -23,48 +25,46 @@ class GroqProvider(LLMProvider):
             base_url=base_url,
             temperature=temperature,
             max_tokens=max_tokens,
-            **kwargs
+            **kwargs,
         )
         self._client = None
-    
+
     @property
     def client(self):
         if self._client is None:
             from openai import AsyncOpenAI
-            self._client = AsyncOpenAI(
-                api_key=self.api_key,
-                base_url=self.base_url
-            )
+
+            self._client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
         return self._client
-    
+
     async def chat(
         self,
-        messages: List[Message],
-        tools: Optional[List[Dict]] = None,
-        tool_choice: Optional[str] = None,
-        **kwargs
+        messages: list[Message],
+        tools: list[dict] | None = None,
+        tool_choice: str | None = None,
+        **kwargs,
     ) -> ChatResponse:
         """Send a chat request to Groq"""
         groq_messages = [self._convert_message(m) for m in messages]
-        
+
         request_params = {
             "model": self.model,
             "messages": groq_messages,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
-        
+
         if tools:
             request_params["tools"] = tools
             if tool_choice:
                 request_params["tool_choice"] = tool_choice
-        
+
         try:
             response = await self.client.chat.completions.create(**request_params)
-            
+
             choice = response.choices[0]
             content = choice.message.content or ""
-            
+
             return ChatResponse(
                 content=content,
                 model=response.model,
@@ -74,20 +74,17 @@ class GroqProvider(LLMProvider):
                     "completion_tokens": response.usage.completion_tokens,
                     "total_tokens": response.usage.total_tokens,
                 },
-                raw_response=response.model_dump()
+                raw_response=response.model_dump(),
             )
         except Exception as e:
             raise RuntimeError(f"Groq request failed: {e}")
-    
+
     async def chat_stream(
-        self,
-        messages: List[Message],
-        tools: Optional[List[Dict]] = None,
-        **kwargs
+        self, messages: list[Message], tools: list[dict] | None = None, **kwargs
     ) -> AsyncIterator[str]:
         """Stream chat response from Groq"""
         groq_messages = [self._convert_message(m) for m in messages]
-        
+
         request_params = {
             "model": self.model,
             "messages": groq_messages,
@@ -95,10 +92,10 @@ class GroqProvider(LLMProvider):
             "max_tokens": self.max_tokens,
             "stream": True,
         }
-        
+
         if tools:
             request_params["tools"] = tools
-        
+
         try:
             stream = await self.client.chat.completions.create(**request_params)
             async for chunk in stream:
@@ -107,32 +104,29 @@ class GroqProvider(LLMProvider):
                     yield content
         except Exception as e:
             raise RuntimeError(f"Groq stream failed: {e}")
-    
+
     def is_available(self) -> bool:
         """Check if Groq API key is configured"""
         return bool(self.api_key)
-    
-    async def list_models(self) -> List[str]:
+
+    async def list_models(self) -> list[str]:
         """List available Groq models"""
         try:
             models = await self.client.models.list()
             return [m.id for m in models.data]
         except Exception:
             return FALLBACK_MODELS["groq"]
-    
+
     def supports_tools(self) -> bool:
         """Groq supports function calling"""
         return True
-    
+
     def supports_streaming(self) -> bool:
         return True
-    
-    def _convert_message(self, message: Message) -> Dict[str, Any]:
+
+    def _convert_message(self, message: Message) -> dict[str, Any]:
         """Convert Message to Groq format"""
-        msg = {
-            "role": message.role,
-            "content": message.content
-        }
+        msg = {"role": message.role, "content": message.content}
         if message.name:
             msg["name"] = message.name
         if message.tool_call_id:

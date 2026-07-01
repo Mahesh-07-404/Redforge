@@ -1,11 +1,15 @@
 from .base import BaseToolOutput
-from .nmap import NmapScanResult, NmapHostResult, NmapPort
+from .ffuf import FfufMatch, FfufResult
+from .nmap import NmapHostResult, NmapPort, NmapScanResult
 from .sqlmap import SqlmapResult, SqlmapVulnerability
-from .ffuf import FfufResult, FfufMatch
 
 __all__ = [
     "BaseToolOutput",
-    "NmapScanResult", "NmapHostResult", "NmapPort",
-    "SqlmapResult", "SqlmapVulnerability",
-    "FfufResult", "FfufMatch"
+    "NmapScanResult",
+    "NmapHostResult",
+    "NmapPort",
+    "SqlmapResult",
+    "SqlmapVulnerability",
+    "FfufResult",
+    "FfufMatch",
 ]

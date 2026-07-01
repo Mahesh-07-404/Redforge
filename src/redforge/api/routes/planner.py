@@ -1,6 +1,7 @@
 """
 Planner routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -29,8 +30,11 @@ async def create_plan(
 
     try:
         from redforge.planner.engine import PlannerEngine
+
         engine = PlannerEngine()
-        plan = engine.create_plan(session_id=body.session_id, intent=body.intent, context=body.context)
+        plan = engine.create_plan(
+            session_id=body.session_id, intent=body.intent, context=body.context
+        )
         if hasattr(plan, "phases"):
             phases = [p if isinstance(p, dict) else vars(p) for p in plan.phases]
         if hasattr(plan, "summary"):

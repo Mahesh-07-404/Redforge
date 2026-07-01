@@ -1,14 +1,15 @@
 import re
-from typing import List, Dict, Any
+from typing import Any
 
-def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
+
+def parse_tool_calls(text: str) -> list[dict[str, Any]]:
     """
     Detects TOOL: directives in the LLM response.
     """
     # Strip markdown code blocks if the LLM wrongly wrapped the TOOL block
     text = re.sub(r"```[a-zA-Z]*", "", text)
     text = text.replace("```", "")
-    
+
     calls = []
     blocks = re.split(r"TOOL:\s*", text, flags=re.IGNORECASE)
 
@@ -17,9 +18,9 @@ def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
         if not lines:
             continue
 
-        tool_name = lines[0].strip().strip('`').lower()
-        params: Dict[str, str] = {}
-        code_lines: List[str] = []
+        tool_name = lines[0].strip().strip("`").lower()
+        params: dict[str, str] = {}
+        code_lines: list[str] = []
         in_code = False
 
         for line in lines[1:]:
@@ -28,7 +29,9 @@ def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
                 in_code = True
                 continue
             if in_code:
-                if re.match(r"^(TOOL:|COMMAND:|TARGET:|FLAGS:|ARGS:)", line_stripped, re.IGNORECASE):
+                if re.match(
+                    r"^(TOOL:|COMMAND:|TARGET:|FLAGS:|ARGS:)", line_stripped, re.IGNORECASE
+                ):
                     in_code = False
                 else:
                     code_lines.append(line)
@@ -36,11 +39,11 @@ def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
             m = re.match(r"^([A-Z]+):\s*(.*)", line_stripped, re.IGNORECASE)
             if m:
                 key = m.group(1).lower()
-                val = m.group(2).strip().strip('`')
+                val = m.group(2).strip().strip("`")
                 params[key] = val
 
         if code_lines:
-            params["code"] = "\n".join(code_lines).strip('`\n')
+            params["code"] = "\n".join(code_lines).strip("`\n")
 
         if tool_name:
             calls.append({"tool": tool_name, **params})

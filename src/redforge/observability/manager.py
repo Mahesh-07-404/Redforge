@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional
+from .alerts import AlertsEngine
+from .audit import AuditLogger
+from .events import EventBus
+from .health import HealthMonitor
 from .logger import StructuredLogger
 from .metrics import MetricsCollector
-from .tracing import Tracer
-from .audit import AuditLogger
 from .profiler import Profiler
-from .alerts import AlertsEngine
-from .health import HealthMonitor
-from .events import EventBus
+from .tracing import Tracer
 
 
 class ObservabilityManager:
@@ -31,7 +30,7 @@ class ObservabilityManager:
     def _register_default_checkers(self) -> None:
         """Register default resource checks on initialization."""
         from .contracts import ComponentHealth, HealthState
-        
+
         # CPU Health Check
         def check_cpu() -> ComponentHealth:
             status = self.health._get_system_resources()
@@ -46,7 +45,7 @@ class ObservabilityManager:
                 message=msg,
                 latency_ms=0.0,
             )
-            
+
         # Memory Health Check
         def check_memory() -> ComponentHealth:
             status = self.health._get_system_resources()

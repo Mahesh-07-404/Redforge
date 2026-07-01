@@ -2,10 +2,10 @@
 API Config — Phase 16: Unified API Gateway
 All API-level configuration with safe defaults.
 """
+
 from __future__ import annotations
 
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
 
@@ -29,15 +29,15 @@ class RateLimitConfig(BaseModel):
 
 class CORSConfig(BaseModel):
     enabled: bool = True
-    allow_origins: List[str] = ["*"]
-    allow_methods: List[str] = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
-    allow_headers: List[str] = ["*"]
+    allow_origins: list[str] = ["*"]
+    allow_methods: list[str] = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+    allow_headers: list[str] = ["*"]
     allow_credentials: bool = False
     max_age: int = 600
 
 
 class AuthConfig(BaseModel):
-    enabled: bool = False           # disabled for local single-user by default
+    enabled: bool = False  # disabled for local single-user by default
     jwt: JWTConfig = JWTConfig()
     api_keys_enabled: bool = True
     session_tokens_enabled: bool = True
@@ -48,9 +48,9 @@ class AuthConfig(BaseModel):
 class WebSocketConfig(BaseModel):
     enabled: bool = True
     max_connections: int = 100
-    ping_interval: int = 30         # seconds
+    ping_interval: int = 30  # seconds
     ping_timeout: int = 10
-    max_message_size: int = 1_048_576   # 1 MB
+    max_message_size: int = 1_048_576  # 1 MB
 
 
 class ObservabilityConfig(BaseModel):
@@ -91,7 +91,7 @@ class APIConfig(BaseSettings):
     # Request pipeline
     request_id_header: str = "X-Request-ID"
     trace_id_header: str = "X-Trace-ID"
-    max_request_body_bytes: int = 10_485_760    # 10 MB
+    max_request_body_bytes: int = 10_485_760  # 10 MB
 
     # Response
     include_process_time: bool = True
@@ -103,7 +103,7 @@ class APIConfig(BaseSettings):
 
 
 # Singleton
-_api_config: Optional[APIConfig] = None
+_api_config: APIConfig | None = None
 
 
 def get_api_config() -> APIConfig:

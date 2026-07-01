@@ -1,10 +1,10 @@
-from typing import Dict, List
 from .contracts import PluginMetadata
+
 
 class PluginRegistry:
     def __init__(self):
-        self.plugins: Dict[str, PluginMetadata] = {}
-        self.enabled_states: Dict[str, bool] = {}
+        self.plugins: dict[str, PluginMetadata] = {}
+        self.enabled_states: dict[str, bool] = {}
 
     def register(self, metadata: PluginMetadata):
         self.plugins[metadata.id] = metadata
@@ -25,5 +25,5 @@ class PluginRegistry:
     def get_plugin(self, plugin_id: str) -> PluginMetadata:
         return self.plugins.get(plugin_id)
 
-    def list_plugins(self) -> List[PluginMetadata]:
+    def list_plugins(self) -> list[PluginMetadata]:
         return list(self.plugins.values())

@@ -2,9 +2,10 @@
 API Exceptions — Phase 16: Unified API Gateway
 Typed exception hierarchy with unified error responses.
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import uuid4
 
 
@@ -17,16 +18,16 @@ class APIError(Exception):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-        trace_id: Optional[str] = None,
+        message: str | None = None,
+        details: dict[str, Any] | None = None,
+        trace_id: str | None = None,
     ) -> None:
         super().__init__(message or self.message)
         self.detail_message = message or self.message
         self.details = details or {}
         self.trace_id = trace_id or str(uuid4())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "error_code": self.error_code,
             "message": self.detail_message,
@@ -38,6 +39,7 @@ class APIError(Exception):
 # ---------------------------------------------------------------------------
 # 4xx Client Errors
 # ---------------------------------------------------------------------------
+
 
 class BadRequestError(APIError):
     status_code = 400
@@ -85,6 +87,7 @@ class RateLimitError(APIError):
 # 5xx Server Errors
 # ---------------------------------------------------------------------------
 
+
 class InternalError(APIError):
     status_code = 500
     error_code = "INTERNAL_ERROR"
@@ -106,6 +109,7 @@ class TimeoutError(APIError):
 # ---------------------------------------------------------------------------
 # Domain-specific errors
 # ---------------------------------------------------------------------------
+
 
 class SessionNotFoundError(NotFoundError):
     error_code = "SESSION_NOT_FOUND"

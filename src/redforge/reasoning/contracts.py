@@ -1,5 +1,5 @@
-from typing import List, Optional
 from pydantic import BaseModel
+
 
 class Goal(BaseModel):
     id: str
@@ -7,8 +7,9 @@ class Goal(BaseModel):
     status: str
     created_at: str
 
+
 class ReasoningDecision(BaseModel):
     action: str
     reason: str
-    next_task_id: Optional[str] = None
-    strategy: Optional[str] = None
+    next_task_id: str | None = None
+    strategy: str | None = None

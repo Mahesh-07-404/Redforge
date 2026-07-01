@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from enum import Enum
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
 import time
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class LogLevel(str, Enum):
@@ -37,30 +38,30 @@ class LogEntry(BaseModel):
     log_level: LogLevel = LogLevel.INFO
     component: str
     message: str
-    request_id: Optional[str] = None
-    session_id: Optional[str] = None
-    workflow_id: Optional[str] = None
-    execution_id: Optional[str] = None
-    duration: Optional[float] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    request_id: str | None = None
+    session_id: str | None = None
+    workflow_id: str | None = None
+    execution_id: str | None = None
+    duration: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class MetricRecord(BaseModel):
     name: str
     value: float
-    labels: Dict[str, str] = Field(default_factory=dict)
+    labels: dict[str, str] = Field(default_factory=dict)
     timestamp: float = Field(default_factory=time.time)
 
 
 class TraceSpan(BaseModel):
     trace_id: str
     span_id: str
-    parent_span_id: Optional[str] = None
+    parent_span_id: str | None = None
     name: str
     start_time: float = Field(default_factory=time.time)
-    end_time: Optional[float] = None
-    duration_ms: Optional[float] = None
-    attributes: Dict[str, Any] = Field(default_factory=dict)
+    end_time: float | None = None
+    duration_ms: float | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
 
 
 class AuditEntry(BaseModel):
@@ -70,7 +71,7 @@ class AuditEntry(BaseModel):
     action: str
     status: AuditStatus
     timestamp: float = Field(default_factory=time.time)
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)
     signature: str = ""  # SHA-256 hash verifying immutability
 
 
@@ -85,13 +86,13 @@ class SystemResourceUsage(BaseModel):
 class ComponentHealth(BaseModel):
     name: str
     state: HealthState
-    message: Optional[str] = None
-    latency_ms: Optional[float] = None
+    message: str | None = None
+    latency_ms: float | None = None
 
 
 class HealthStatus(BaseModel):
     overall_state: HealthState
-    components: List[ComponentHealth] = Field(default_factory=list)
+    components: list[ComponentHealth] = Field(default_factory=list)
     resources: SystemResourceUsage
     timestamp: float = Field(default_factory=time.time)
 
@@ -104,4 +105,4 @@ class AlertRecord(BaseModel):
     source: str
     timestamp: float = Field(default_factory=time.time)
     resolved: bool = False
-    resolved_at: Optional[float] = None
+    resolved_at: float | None = None

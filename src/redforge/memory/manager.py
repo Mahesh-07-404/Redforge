@@ -1,7 +1,7 @@
-from .vector_store import QdrantAdapter
+from ..contracts.memory import ContextBudget, ContextBundle, MemoryEntry
 from .context_budget import ContextBudgetManager
-from ..contracts.memory import MemoryEntry, ContextBundle, ContextBudget
-from typing import List, Optional
+from .vector_store import QdrantAdapter
+
 
 class MemoryManager:
     def __init__(self, persist_dir: str = "./data"):
@@ -12,7 +12,7 @@ class MemoryManager:
         collection = "redforge_longterm" if long_term else f"redforge_{session_id[:8]}"
         self.adapter.store(collection, entry)
 
-    def retrieve(self, session_id: str, query: str, top_k: int = 5) -> List[MemoryEntry]:
+    def retrieve(self, session_id: str, query: str, top_k: int = 5) -> list[MemoryEntry]:
         ephemeral = self.adapter.retrieve(f"redforge_{session_id[:8]}", query, top_k)
         longterm = self.adapter.retrieve("redforge_longterm", query, top_k)
         # simple dedup and truncation
@@ -22,9 +22,9 @@ class MemoryManager:
     def flush_session(self, session_id: str) -> None:
         self.adapter.drop_collection(f"redforge_{session_id[:8]}")
 
-    def build_context(self, intent: str, skills: List[str]) -> ContextBundle:
+    def build_context(self, intent: str, skills: list[str]) -> ContextBundle:
         budget = self.budget_manager.get_budget()
-        content = "\n".join(skills)[:budget.system_prompt]
+        content = "\n".join(skills)[: budget.system_prompt]
         return ContextBundle(content=content, total_tokens=len(content.split()))
 
     def get_budget(self) -> ContextBudget:
@@ -35,21 +35,31 @@ class MemoryManager:
         parts = [f"- {r.content[:200]}..." for r in results]
         return "\n".join(parts)
 
-    def add_finding(self, session_id: str, finding_type: str, title: str, description: str, severity: str, target: str) -> None:
+    def add_finding(
+        self,
+        session_id: str,
+        finding_type: str,
+        title: str,
+        description: str,
+        severity: str,
+        target: str,
+    ) -> None:
         import uuid
+
         entry = MemoryEntry(
             id=str(uuid.uuid4()),
             content=f"Finding: {title}\nType: {finding_type}\nSeverity: {severity}\n{description}",
-            metadata={"type": "finding", "severity": severity, "target": target}
+            metadata={"type": "finding", "severity": severity, "target": target},
         )
         self.store(session_id, entry, long_term=True)
 
     def add_session(self, session_id: str, user_input: str, response: str) -> None:
         import uuid
+
         entry = MemoryEntry(
             id=str(uuid.uuid4()),
             content=f"User: {user_input}\nAssistant: {response}",
-            metadata={"type": "session"}
+            metadata={"type": "session"},
         )
         self.store(session_id, entry)
 

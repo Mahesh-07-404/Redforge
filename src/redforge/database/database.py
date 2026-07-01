@@ -1,18 +1,19 @@
 """SQLite-based persistence for RedForge sessions, messages, findings, and tasks."""
 
-import sqlite3
 import json
 import logging
-from pathlib import Path
+import sqlite3
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
+
 
 class DatabaseService:
     """Manages SQLite database for session tracking, message history, findings, and tasks."""
 
-    def __init__(self, db_path: Optional[str] = None) -> None:
+    def __init__(self, db_path: str | None = None) -> None:
         if db_path is None:
             db_path = str(Path.cwd() / "workspaces" / "redforge.db")
         self.db_path = db_path
@@ -91,8 +92,8 @@ class DatabaseService:
         mode: str = "bugbounty",
         autonomy: str = "manual",
         model: str = "",
-        target: Optional[str] = None
-    ) -> Dict[str, Any]:
+        target: str | None = None,
+    ) -> dict[str, Any]:
         """Create a new session in SQLite."""
         now = datetime.now().isoformat()
         with self._get_connection() as conn:
@@ -101,7 +102,7 @@ class DatabaseService:
                 INSERT OR REPLACE INTO sessions (id, name, created_at, last_accessed, target, mode, autonomy, model)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (session_id, name, now, now, target, mode, autonomy, model)
+                (session_id, name, now, now, target, mode, autonomy, model),
             )
         return {
             "id": session_id,
@@ -111,16 +112,18 @@ class DatabaseService:
             "target": target,
             "mode": mode,
             "autonomy": autonomy,
-            "model": model
+            "model": model,
         }
 
-    def load_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def load_session(self, session_id: str) -> dict[str, Any] | None:
         """Load session metadata and update last accessed timestamp."""
         now = datetime.now().isoformat()
         with self._get_connection() as conn:
             row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
             if row:
-                conn.execute("UPDATE sessions SET last_accessed = ? WHERE id = ?", (now, session_id))
+                conn.execute(
+                    "UPDATE sessions SET last_accessed = ? WHERE id = ?", (now, session_id)
+                )
                 return dict(row)
         return None
 
@@ -131,7 +134,7 @@ class DatabaseService:
         mode: str,
         autonomy: str,
         model: str,
-        target: Optional[str]
+        target: str | None,
     ) -> None:
         """Update/save details for an existing session."""
         now = datetime.now().isoformat()
@@ -142,7 +145,7 @@ class DatabaseService:
                 SET name = ?, mode = ?, autonomy = ?, model = ?, target = ?, last_accessed = ?
                 WHERE id = ?
                 """,
-                (name, mode, autonomy, model, target, now, session_id)
+                (name, mode, autonomy, model, target, now, session_id),
             )
 
     def delete_session(self, session_id: str) -> bool:
@@ -151,7 +154,7 @@ class DatabaseService:
             cursor = conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
             return cursor.rowcount > 0
 
-    def list_sessions(self) -> List[Dict[str, Any]]:
+    def list_sessions(self) -> list[dict[str, Any]]:
         """List all tracked sessions ordered by last accessed."""
         with self._get_connection() as conn:
             rows = conn.execute("SELECT * FROM sessions ORDER BY last_accessed DESC").fetchall()
@@ -167,11 +170,12 @@ class DatabaseService:
         severity: str = "",
         status: str = "",
         duration_s: float = 0.0,
-        timestamp: Optional[float] = None
+        timestamp: float | None = None,
     ) -> None:
         """Add a message exchange row."""
         if timestamp is None:
             import time
+
             timestamp = time.time()
         with self._get_connection() as conn:
             conn.execute(
@@ -179,15 +183,24 @@ class DatabaseService:
                 INSERT INTO messages (session_id, role, content, tool_name, command, severity, status, duration_s, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (session_id, role, content, tool_name, command, severity, status, duration_s, timestamp)
+                (
+                    session_id,
+                    role,
+                    content,
+                    tool_name,
+                    command,
+                    severity,
+                    status,
+                    duration_s,
+                    timestamp,
+                ),
             )
 
-    def get_messages(self, session_id: str) -> List[Dict[str, Any]]:
+    def get_messages(self, session_id: str) -> list[dict[str, Any]]:
         """Retrieve all messages for a session ordered by creation."""
         with self._get_connection() as conn:
             rows = conn.execute(
-                "SELECT * FROM messages WHERE session_id = ? ORDER BY id ASC",
-                (session_id,)
+                "SELECT * FROM messages WHERE session_id = ? ORDER BY id ASC", (session_id,)
             ).fetchall()
             return [dict(r) for r in rows]
 
@@ -200,8 +213,8 @@ class DatabaseService:
         description: str,
         severity: str,
         target: str = "",
-        evidence: Optional[Dict[str, Any]] = None,
-        timestamp: Optional[str] = None
+        evidence: dict[str, Any] | None = None,
+        timestamp: str | None = None,
     ) -> None:
         """Add a security finding."""
         if timestamp is None:
@@ -213,15 +226,14 @@ class DatabaseService:
                 INSERT OR REPLACE INTO findings (id, session_id, type, title, description, severity, target, evidence, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (id, session_id, type, title, description, severity, target, ev_str, timestamp)
+                (id, session_id, type, title, description, severity, target, ev_str, timestamp),
             )
 
-    def get_findings(self, session_id: str) -> List[Dict[str, Any]]:
+    def get_findings(self, session_id: str) -> list[dict[str, Any]]:
         """Retrieve all findings for a session."""
         with self._get_connection() as conn:
             rows = conn.execute(
-                "SELECT * FROM findings WHERE session_id = ? ORDER BY timestamp DESC",
-                (session_id,)
+                "SELECT * FROM findings WHERE session_id = ? ORDER BY timestamp DESC", (session_id,)
             ).fetchall()
             res = []
             for r in rows:
@@ -239,7 +251,7 @@ class DatabaseService:
         id: str,
         description: str,
         status: str,
-        created_at: Optional[str] = None
+        created_at: str | None = None,
     ) -> None:
         """Add a task tracking entry."""
         if created_at is None:
@@ -250,35 +262,30 @@ class DatabaseService:
                 INSERT OR REPLACE INTO tasks (id, session_id, description, status, created_at)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (id, session_id, description, status, created_at)
+                (id, session_id, description, status, created_at),
             )
 
     def update_task(
-        self,
-        session_id: str,
-        id: str,
-        status: str,
-        completed_at: Optional[str] = None
+        self, session_id: str, id: str, status: str, completed_at: str | None = None
     ) -> None:
         """Update a task's status."""
         with self._get_connection() as conn:
             if completed_at:
                 conn.execute(
                     "UPDATE tasks SET status = ?, completed_at = ? WHERE id = ? AND session_id = ?",
-                    (status, completed_at, id, session_id)
+                    (status, completed_at, id, session_id),
                 )
             else:
                 conn.execute(
                     "UPDATE tasks SET status = ? WHERE id = ? AND session_id = ?",
-                    (status, id, session_id)
+                    (status, id, session_id),
                 )
 
-    def get_tasks(self, session_id: str) -> List[Dict[str, Any]]:
+    def get_tasks(self, session_id: str) -> list[dict[str, Any]]:
         """Retrieve all tasks for a session."""
         with self._get_connection() as conn:
             rows = conn.execute(
-                "SELECT * FROM tasks WHERE session_id = ? ORDER BY created_at ASC",
-                (session_id,)
+                "SELECT * FROM tasks WHERE session_id = ? ORDER BY created_at ASC", (session_id,)
             ).fetchall()
             return [dict(r) for r in rows]
 

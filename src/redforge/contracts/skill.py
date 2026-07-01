@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class SkillRecord(BaseModel):
     id: str
     path: str
@@ -9,10 +10,12 @@ class SkillRecord(BaseModel):
     mode: list[str]
     embedding_id: str | None
 
+
 class SkillQuery(BaseModel):
     intent: str
     mode: str
     k: int = 5
+
 
 class SkillBundle(BaseModel):
     skills: list[str]

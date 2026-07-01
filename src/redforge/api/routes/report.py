@@ -1,6 +1,7 @@
 """
 Report routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 import logging
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, Path
 from fastapi.responses import PlainTextResponse
 
-from ..contracts import ReportRequest, ReportResponse, ReportFormatEnum
+from ..contracts import ReportRequest, ReportResponse
 from ..dependencies import get_current_auth, get_request_id, get_timer
 from ..response import success
 
@@ -35,6 +36,7 @@ async def generate_report(
 
     try:
         from redforge.reports.engine import ReportEngine
+
         engine = ReportEngine()
         report = engine.generate(
             session_id=body.session_id,
@@ -75,6 +77,7 @@ async def get_markdown_report(
     content = f"# RedForge Security Report\n\nSession: {session_id}\n\n*No findings recorded.*"
     try:
         from redforge.reports.engine import ReportEngine
+
         engine = ReportEngine()
         result = engine.generate(session_id=session_id, format="markdown")
         if isinstance(result, str):

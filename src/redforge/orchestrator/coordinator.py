@@ -1,13 +1,13 @@
-from typing import List, Tuple
-from .agent_registry import AgentRegistry
 from ..agents.base import BaseAgent
 from ..planner.plan import Plan
+from .agent_registry import AgentRegistry
+
 
 class AgentCoordinator:
     def __init__(self, registry: AgentRegistry):
         self.registry = registry
 
-    def select_agents_for_plan(self, plan: Plan) -> List[Tuple[BaseAgent, Plan]]:
+    def select_agents_for_plan(self, plan: Plan) -> list[tuple[BaseAgent, Plan]]:
         assignments = []
         for task in plan.ordered_tasks:
             assigned = False

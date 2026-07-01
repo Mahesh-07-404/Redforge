@@ -1,16 +1,22 @@
 """
 Memory routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 import logging
+
 from fastapi import APIRouter, Depends
 
 logger = logging.getLogger(__name__)
 
-from ..contracts import MemoryStoreRequest, MemoryQueryRequest, MemoryQueryResponse, MemoryEntry
+from ..contracts import (
+    MemoryQueryRequest,
+    MemoryQueryResponse,
+    MemoryStoreRequest,
+)
 from ..dependencies import get_current_auth, get_request_id, get_timer
-from ..response import success, no_content
+from ..response import no_content, success
 
 router = APIRouter(prefix="/memory", tags=["Memory"])
 
@@ -25,13 +31,16 @@ async def store_memory(
     """Store a text entry in session memory."""
     stored = False
     try:
-        from redforge.memory.manager import MemoryManager
         from redforge.contracts.memory import MemoryEntry as ContractEntry
+        from redforge.memory.manager import MemoryManager
+
         mgr = MemoryManager()
-        entry = ContractEntry(content=body.content, session_id=body.session_id, metadata=body.metadata)
+        entry = ContractEntry(
+            content=body.content, session_id=body.session_id, metadata=body.metadata
+        )
         mgr.store(session_id=body.session_id, entry=entry)
         stored = True
-    except Exception as exc:
+    except Exception:
         stored = False
 
     return success(
@@ -52,6 +61,7 @@ async def query_memory(
     results: list = []
     try:
         from redforge.memory.manager import MemoryManager
+
         mgr = MemoryManager()
         entries = mgr.retrieve(session_id=body.session_id, query=body.query, top_k=body.top_k)
         for e in entries:
@@ -79,6 +89,7 @@ async def flush_memory(session_id: str, auth=Depends(get_current_auth)):
     """Remove all short-term memory entries for a session."""
     try:
         from redforge.memory.manager import MemoryManager
+
         mgr = MemoryManager()
         mgr.flush_session(session_id)
     except Exception as exc:  # nosec B110 - memory flush is best-effort

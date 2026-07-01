@@ -18,6 +18,7 @@ def __getattr__(name: str):
 
     if name == "RedForgeAgent":
         from .factory import create_redforge_agent
+
         return create_redforge_agent
 
     if name in {"AgentState", "AutonomyLevel", "AgentMode"}:
@@ -45,6 +46,7 @@ def __getattr__(name: str):
         return SkillLoader
 
     raise AttributeError(name)
+
 
 __all__ = [
     "Settings",

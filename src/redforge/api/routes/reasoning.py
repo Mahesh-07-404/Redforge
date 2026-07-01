@@ -1,6 +1,7 @@
 """
 Reasoning routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -31,6 +32,7 @@ async def decide(
 
     try:
         from redforge.reasoning.engine import ReasoningEngine
+
         engine = ReasoningEngine()
         result = engine.reason(
             goal=body.goal,

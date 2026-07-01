@@ -2,6 +2,7 @@
 System routes — Phase 16: Unified API Gateway
 Auth endpoints, API key management, system info.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -13,7 +14,13 @@ from ..contracts import (
     TokenRequest,
     TokenResponse,
 )
-from ..dependencies import get_current_auth, get_request_id, get_timer, AdminAuth, ReadAuth
+from ..dependencies import (
+    AdminAuth,
+    ReadAuth,
+    get_current_auth,
+    get_request_id,
+    get_timer,
+)
 from ..exceptions import AuthenticationError
 from ..response import created, no_content, success
 
@@ -28,7 +35,9 @@ auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @auth_router.post("/token", summary="Issue a JWT access token")
-async def issue_token(body: TokenRequest, request_id: str = Depends(get_request_id), timer=Depends(get_timer)):
+async def issue_token(
+    body: TokenRequest, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
+):
     """
     Issue a JWT access token.
     In production, validate credentials against a user store.
@@ -66,11 +75,15 @@ async def create_api_key(
 
 
 @auth_router.get("/api-keys", summary="List API keys")
-async def list_api_keys(auth_info: AdminAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)):
+async def list_api_keys(
+    auth_info: AdminAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
+):
     """List all API keys (admin only, API key values are not returned)."""
     auth = get_auth_service()
     keys = auth.list_api_keys()
-    return success({"api_keys": keys, "total": len(keys)}, duration_ms=timer.elapsed_ms, request_id=request_id)
+    return success(
+        {"api_keys": keys, "total": len(keys)}, duration_ms=timer.elapsed_ms, request_id=request_id
+    )
 
 
 @auth_router.delete("/api-keys/{key_id}", status_code=204, summary="Revoke an API key")
@@ -85,18 +98,28 @@ async def revoke_api_key(key_id: str, auth_info=Depends(get_current_auth)):
 # System info
 # ---------------------------------------------------------------------------
 
+
 @router.get("/info", summary="System information")
-async def system_info(auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)):
+async def system_info(
+    auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
+):
     """Return runtime and configuration metadata."""
-    import sys, platform
+    import platform
+    import sys
+
     from ..config import get_api_config
+
     cfg = get_api_config()
-    return success({
-        "version": "2.0.0",
-        "phase": "Phase 16 — Unified API Gateway",
-        "python": sys.version,
-        "platform": platform.platform(),
-        "auth_enabled": cfg.auth.enabled,
-        "rate_limit_enabled": cfg.rate_limit.enabled,
-        "websocket_enabled": cfg.websocket.enabled,
-    }, duration_ms=timer.elapsed_ms, request_id=request_id)
+    return success(
+        {
+            "version": "2.0.0",
+            "phase": "Phase 16 — Unified API Gateway",
+            "python": sys.version,
+            "platform": platform.platform(),
+            "auth_enabled": cfg.auth.enabled,
+            "rate_limit_enabled": cfg.rate_limit.enabled,
+            "websocket_enabled": cfg.websocket.enabled,
+        },
+        duration_ms=timer.elapsed_ms,
+        request_id=request_id,
+    )

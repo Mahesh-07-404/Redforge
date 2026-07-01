@@ -1,13 +1,16 @@
-from typing import Dict, Any, Optional
+from typing import Any
+
 from pydantic import BaseModel
+
 
 class MCPTool(BaseModel):
     name: str
     description: str
-    input_schema: Dict[str, Any] = {}
+    input_schema: dict[str, Any] = {}
+
 
 class MCPResource(BaseModel):
     uri: str
     name: str
     description: str
-    mime_type: Optional[str] = None
+    mime_type: str | None = None

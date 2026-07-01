@@ -1,5 +1,5 @@
-from typing import List
 from pydantic import BaseModel
+
 
 class PluginMetadata(BaseModel):
     id: str
@@ -8,5 +8,5 @@ class PluginMetadata(BaseModel):
     description: str
     author: str
     plugin_type: str
-    dependencies: List[str] = []
-    permissions: List[str] = []
+    dependencies: list[str] = []
+    permissions: list[str] = []

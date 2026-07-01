@@ -1,18 +1,18 @@
 """
 Plugin routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Path
 
-from ..contracts import PluginInstallRequest, PluginListResponse, PluginResponse
-from ..dependencies import get_current_auth, get_request_id, get_timer, ReadAuth
-from ..response import success, no_content
+from ..contracts import PluginInstallRequest, PluginListResponse
+from ..dependencies import ReadAuth, get_current_auth, get_request_id, get_timer
+from ..response import no_content, success
 
 router = APIRouter(prefix="/plugins", tags=["Plugins"])
 
@@ -20,6 +20,7 @@ router = APIRouter(prefix="/plugins", tags=["Plugins"])
 def _get_manager():
     try:
         from redforge.plugins.manager import PluginManager
+
         return PluginManager()
     except Exception as exc:  # nosec B110 - plugin manager failure is handled by returning None
         logger.debug("Failed to load PluginManager: %s", exc)
@@ -27,7 +28,9 @@ def _get_manager():
 
 
 @router.get("", summary="List installed plugins")
-async def list_plugins(auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)):
+async def list_plugins(
+    auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)
+):
     """List all installed plugins with their status."""
     plugins: list = []
     mgr = _get_manager()

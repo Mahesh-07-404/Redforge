@@ -1,15 +1,16 @@
-import asyncio
-from typing import List
-from .contracts import AgentTaskResult
-from .dispatcher import AgentDispatcher
 from ..agents.base import BaseAgent
 from ..planner.plan import Plan
+from .contracts import AgentTaskResult
+from .dispatcher import AgentDispatcher
+
 
 class AgentScheduler:
     def __init__(self):
         self.dispatcher = AgentDispatcher()
 
-    async def schedule_agents(self, assignments: List[tuple[BaseAgent, Plan]]) -> List[AgentTaskResult]:
+    async def schedule_agents(
+        self, assignments: list[tuple[BaseAgent, Plan]]
+    ) -> list[AgentTaskResult]:
         results = []
         for agent, plan in assignments:
             res = await self.dispatcher.dispatch(agent, plan)

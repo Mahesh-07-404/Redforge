@@ -1,19 +1,20 @@
-from typing import Set, List, Any
+from typing import Any
+
 
 class WorldState:
     def __init__(self):
-        self.hosts: Set[str] = set()
-        self.ports: Set[int] = set()
-        self.services: Set[str] = set()
-        self.findings: Set[str] = set()
-        self.cves: Set[str] = set()
-        self.urls: Set[str] = set()
-        self.technologies: Set[str] = set()
-        self.endpoints: Set[str] = set()
-        self.credentials: Set[str] = set()
-        self.evidence: Set[str] = set()
+        self.hosts: set[str] = set()
+        self.ports: set[int] = set()
+        self.services: set[str] = set()
+        self.findings: set[str] = set()
+        self.cves: set[str] = set()
+        self.urls: set[str] = set()
+        self.technologies: set[str] = set()
+        self.endpoints: set[str] = set()
+        self.credentials: set[str] = set()
+        self.evidence: set[str] = set()
 
-    def update_from_entities(self, entities: List[Any]):
+    def update_from_entities(self, entities: list[Any]):
         for e in entities:
             val = e.value
             if e.entity_type == "Host":

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Callable, Coroutine, Optional
+from collections.abc import Callable, Coroutine
+
 from .registry import WorkerRegistry
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ class HeartbeatMonitor:
         self.registry = registry
         self.recovery_callback = recovery_callback
         self.check_interval = check_interval
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._running = False
 
     async def start(self) -> None:

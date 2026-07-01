@@ -2,6 +2,7 @@
 Health routes — Phase 16: Unified API Gateway
 /health  /ready  /live  /version  /metrics
 """
+
 from __future__ import annotations
 
 import platform
@@ -9,7 +10,7 @@ import time
 from datetime import datetime
 
 import psutil
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from ..contracts import (
     HealthResponse,
@@ -74,6 +75,7 @@ async def readiness():
     # Check session DB
     try:
         from redforge.core.session import SessionService
+
         svc = SessionService()
         svc.list_sessions()
         checks["session_db"] = True
@@ -91,6 +93,7 @@ async def readiness():
     )
     status_code = 200 if ready else 503
     from fastapi.responses import JSONResponse
+
     return JSONResponse(status_code=status_code, content=payload.model_dump())
 
 

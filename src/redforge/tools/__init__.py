@@ -1,21 +1,22 @@
-from .exceptions import ToolRegistryError, ToolNotFoundError, UnsupportedPlatformError
+import logging
+import platform
+import shutil
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Optional
+
 from .capabilities import Capability
-from .platform import PlatformInfo, detect_platform
-from .tool import Tool
 from .discovery import ToolDiscovery
-from .validator import ToolValidator
+from .exceptions import ToolNotFoundError, ToolRegistryError, UnsupportedPlatformError
 from .installer import ToolInstaller
+from .platform import PlatformInfo, detect_platform
 from .registry import ToolRegistry
 from .resolver import ToolResolver
-
-from enum import Enum
-from typing import Optional, List, Dict
-from dataclasses import dataclass, field
-import shutil
-import platform
-import logging
+from .tool import Tool
+from .validator import ToolValidator
 
 logger = logging.getLogger(__name__)
+
 
 class Platform(Enum):
     KALI = "kali"
@@ -26,13 +27,15 @@ class Platform(Enum):
     MACOS = "macos"
     WINDOWS = "windows"
 
+
 @dataclass
 class ToolStatus:
     name: str
     installed: bool
-    version: Optional[str] = None
-    path: Optional[str] = None
+    version: str | None = None
+    path: str | None = None
     auto_install: bool = True
+
 
 class PlatformDetector:
     @staticmethod
@@ -75,12 +78,13 @@ class PlatformDetector:
             return "choco"
         return "apt"
 
+
 class ToolManager:
     def __init__(self, auto_install: bool = True):
         self.platform = PlatformDetector.detect()
         self.package_manager = PlatformDetector.get_package_manager()
         self.auto_install = auto_install
-        self.installed_tools: Dict[str, ToolStatus] = {}
+        self.installed_tools: dict[str, ToolStatus] = {}
         self._scan_installed()
 
     def _scan_installed(self):
@@ -89,7 +93,11 @@ class ToolManager:
             self.installed_tools[name] = status
 
     def _check_tool(self, tool: Tool) -> ToolStatus:
-        binary_name = tool.binary if hasattr(tool, "binary") and tool.binary else (tool.command.split()[0] if hasattr(tool, "command") and tool.command else "nmap")
+        binary_name = (
+            tool.binary
+            if hasattr(tool, "binary") and tool.binary
+            else (tool.command.split()[0] if hasattr(tool, "command") and tool.command else "nmap")
+        )
         path = shutil.which(binary_name)
         if path:
             return ToolStatus(name=tool.name, installed=True, version="1.0.0", path=path)
@@ -105,10 +113,10 @@ class ToolManager:
         self.installed_tools[name] = status
         return status
 
-    def check_tools(self, names: List[str]) -> Dict[str, ToolStatus]:
+    def check_tools(self, names: list[str]) -> dict[str, ToolStatus]:
         return {name: self.check_tool(name) for name in names}
 
-    def get_missing_tools(self, names: List[str]) -> List[Tool]:
+    def get_missing_tools(self, names: list[str]) -> list[Tool]:
         missing = []
         for name in names:
             status = self.check_tool(name)
@@ -124,7 +132,9 @@ class ToolManager:
             return False, f"Unknown tool: {name}"
         return True, f"Mock install plan generated for {name}"
 
-    def install_missing(self, names: List[str], required_only: bool = True) -> Dict[str, tuple[bool, str]]:
+    def install_missing(
+        self, names: list[str], required_only: bool = True
+    ) -> dict[str, tuple[bool, str]]:
         return {name: (True, f"Plan generated for {name}") for name in names}
 
     def get_status_report(self) -> dict:
@@ -137,5 +147,5 @@ class ToolManager:
             "total_tools": total,
             "installed": installed,
             "missing": missing,
-            "by_category": {}
+            "by_category": {},
         }

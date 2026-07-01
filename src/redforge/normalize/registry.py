@@ -1,22 +1,43 @@
-from typing import Dict
 from .mapper import (
-    BaseMapper, SubfinderMapper, AssetfinderMapper, AmassMapper,
-    HttpxMapper, KatanaMapper, GAUMapper, WaybackurlsMapper,
-    NmapMapper, NaabuMapper, NucleiMapper, DNSXMapper,
-    FFUFMapper, FeroxbusterMapper, GobusterMapper
+    AmassMapper,
+    AssetfinderMapper,
+    BaseMapper,
+    DNSXMapper,
+    FeroxbusterMapper,
+    FFUFMapper,
+    GAUMapper,
+    GobusterMapper,
+    HttpxMapper,
+    KatanaMapper,
+    NaabuMapper,
+    NmapMapper,
+    NucleiMapper,
+    SubfinderMapper,
+    WaybackurlsMapper,
 )
+
 
 class MapperRegistry:
     def __init__(self):
-        self._mappers: Dict[str, BaseMapper] = {}
+        self._mappers: dict[str, BaseMapper] = {}
         self._initialize_mappers()
 
     def _initialize_mappers(self):
         mappers_list = [
-            SubfinderMapper(), AssetfinderMapper(), AmassMapper(),
-            HttpxMapper(), KatanaMapper(), GAUMapper(), WaybackurlsMapper(),
-            NmapMapper(), NaabuMapper(), NucleiMapper(), DNSXMapper(),
-            FFUFMapper(), FeroxbusterMapper(), GobusterMapper()
+            SubfinderMapper(),
+            AssetfinderMapper(),
+            AmassMapper(),
+            HttpxMapper(),
+            KatanaMapper(),
+            GAUMapper(),
+            WaybackurlsMapper(),
+            NmapMapper(),
+            NaabuMapper(),
+            NucleiMapper(),
+            DNSXMapper(),
+            FFUFMapper(),
+            FeroxbusterMapper(),
+            GobusterMapper(),
         ]
         for m in mappers_list:
             self.register_mapper(m)

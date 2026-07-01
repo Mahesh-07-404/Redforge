@@ -1,17 +1,18 @@
 import logging
-from typing import Callable, Dict, List
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
+
 class PluginHooks:
     def __init__(self):
-        self.hooks: Dict[str, List[Callable]] = {
+        self.hooks: dict[str, list[Callable]] = {
             "before_plan": [],
             "after_plan": [],
             "before_execution": [],
             "after_execution": [],
             "before_report": [],
-            "after_report": []
+            "after_report": [],
         }
 
     def register_hook(self, hook_name: str, callback: Callable):
@@ -24,4 +25,6 @@ class PluginHooks:
                 try:
                     cb(*args, **kwargs)
                 except Exception as exc:  # nosec B110 - isolated hook; must not crash hook dispatch
-                    logger.warning("Plugin hook callback raised an error (hook=%s): %s", hook_name, exc)
+                    logger.warning(
+                        "Plugin hook callback raised an error (hook=%s): %s", hook_name, exc
+                    )

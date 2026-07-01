@@ -1,10 +1,10 @@
-from typing import Dict
-from .contracts import MCPTool, MCPResource
+from .contracts import MCPResource, MCPTool
+
 
 class MCPRegistry:
     def __init__(self):
-        self.tools: Dict[str, MCPTool] = {}
-        self.resources: Dict[str, MCPResource] = {}
+        self.tools: dict[str, MCPTool] = {}
+        self.resources: dict[str, MCPResource] = {}
 
     def register_tool(self, tool: MCPTool):
         self.tools[tool.name] = tool

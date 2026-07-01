@@ -1,18 +1,22 @@
 """Skill indexing system for agent knowledge retrieval"""
 
+import hashlib
+import json
 import logging
 import os
-import json
-import hashlib
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-from redforge.memory.vector import VectorStore, MemoryEntry, SearchResult, create_vector_store
+from redforge.memory.vector import (
+    MemoryEntry,
+    SearchResult,
+    create_vector_store,
+)
 
 
 class SkillCategory(str, Enum):
@@ -35,84 +39,92 @@ class SkillEntry:
     path: str
     content: str
     category: str
-    mode: Optional[str] = None
+    mode: str | None = None
     difficulty: str = "intermediate"
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     summary: str = ""
 
 
 class SkillIndexer:
     """Indexes skill files for semantic retrieval"""
-    
+
     def __init__(
         self,
-        skills_dir: Optional[str] = None,
+        skills_dir: str | None = None,
         persist_dir: str = "./workspaces",
-        vector_db: str = "simple"
+        vector_db: str = "simple",
     ):
         if skills_dir:
             self.skills_dir = Path(skills_dir)
         else:
             self.skills_dir = Path(__file__).parent.parent.parent / "skills"
-        
+
         self.persist_dir = Path(persist_dir)
         self.persist_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.vector_store = create_vector_store(
             vector_db=vector_db,
             persist_dir=str(self.persist_dir / "skills_index"),
-            collection_name="skills"
+            collection_name="skills",
         )
-        
-        self._skills_index: Dict[str, SkillEntry] = {}
+
+        self._skills_index: dict[str, SkillEntry] = {}
         self._index_file = self.persist_dir / "skills_index" / "skills_manifest.json"
         self._load_manifest()
-    
+
     def _load_manifest(self) -> None:
         """Load skill manifest"""
         if self._index_file.exists():
             try:
-                with open(self._index_file, "r") as f:
+                with open(self._index_file) as f:
                     data = json.load(f)
                     for skill_data in data.get("skills", []):
                         skill = SkillEntry(**skill_data)
                         self._skills_index[skill.path] = skill
-            except (OSError, ValueError, TypeError) as exc:  # nosec B110 - best-effort manifest load
+            except (
+                OSError,
+                ValueError,
+                TypeError,
+            ) as exc:  # nosec B110 - best-effort manifest load
                 logger.debug("Failed to load skills manifest from '%s': %s", self._index_file, exc)
-    
+
     def _save_manifest(self) -> None:
         """Save skill manifest"""
         self._index_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self._index_file, "w") as f:
-            json.dump({
-                "skills": [
-                    {
-                        "name": s.name,
-                        "path": s.path,
-                        "content": s.content,
-                        "category": s.category,
-                        "mode": s.mode,
-                        "difficulty": s.difficulty,
-                        "tags": s.tags,
-                        "summary": s.summary
-                    }
-                    for s in self._skills_index.values()
-                ],
-                "last_updated": datetime.now().isoformat()
-            }, f, indent=2)
-    
+            json.dump(
+                {
+                    "skills": [
+                        {
+                            "name": s.name,
+                            "path": s.path,
+                            "content": s.content,
+                            "category": s.category,
+                            "mode": s.mode,
+                            "difficulty": s.difficulty,
+                            "tags": s.tags,
+                            "summary": s.summary,
+                        }
+                        for s in self._skills_index.values()
+                    ],
+                    "last_updated": datetime.now().isoformat(),
+                },
+                f,
+                indent=2,
+            )
+
     def index_skills(self) -> int:
         """Index all skill files"""
         if not self.skills_dir.exists():
             return 0
-        
+
         self._skills_index.clear()
         entries = []
         count = 0
-        
+
         for root, dirs, files in os.walk(self.skills_dir):
             root_path = Path(root)
-            
+
             for file in files:
                 if file.endswith((".md", ".txt")):
                     file_path = root_path / file
@@ -120,7 +132,7 @@ class SkillIndexer:
                         skill = self._parse_skill_file(file_path, root_path)
                         if skill:
                             self._skills_index[skill.path] = skill
-                            
+
                             entry = MemoryEntry(
                                 id=hashlib.md5(skill.path.encode()).hexdigest(),
                                 content=skill.content,
@@ -129,37 +141,37 @@ class SkillIndexer:
                                     "category": skill.category,
                                     "mode": skill.mode,
                                     "difficulty": skill.difficulty,
-                                    "tags": skill.tags
+                                    "tags": skill.tags,
                                 },
-                                entry_type="skill"
+                                entry_type="skill",
                             )
                             entries.append(entry)
                             count += 1
                     except Exception as e:
                         print(f"Error indexing {file_path}: {e}")
-        
+
         if entries:
             self.vector_store.add(entries)
-        
+
         self._save_manifest()
         return count
-    
-    def _parse_skill_file(self, file_path: Path, base_path: Path) -> Optional[SkillEntry]:
+
+    def _parse_skill_file(self, file_path: Path, base_path: Path) -> SkillEntry | None:
         """Parse a skill file"""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
-            
+
             relative_path = str(file_path.relative_to(base_path))
             parts = relative_path.split(os.sep)
-            
+
             category = parts[0] if len(parts) > 1 else "general"
             mode = parts[1] if len(parts) > 2 else None
-            
+
             name = file_path.stem.replace("_", " ").replace("-", " ").title()
-            
+
             summary = content[:200].replace("\n", " ").strip()
-            
+
             tags = []
             if "sql" in content.lower():
                 tags.append("sql")
@@ -171,13 +183,15 @@ class SkillIndexer:
                 tags.append("recon")
             if "privesc" in content.lower():
                 tags.append("privesc")
-            
+
             difficulty = "intermediate"
-            if any(word in content.lower() for word in ["basic", "beginner", "intro", "fundamentals"]):
+            if any(
+                word in content.lower() for word in ["basic", "beginner", "intro", "fundamentals"]
+            ):
                 difficulty = "beginner"
             elif any(word in content.lower() for word in ["advanced", "expert", "complex"]):
                 difficulty = "advanced"
-            
+
             return SkillEntry(
                 name=name,
                 path=relative_path,
@@ -186,22 +200,22 @@ class SkillIndexer:
                 mode=mode,
                 difficulty=difficulty,
                 tags=tags,
-                summary=summary
+                summary=summary,
             )
         except Exception as e:
             print(f"Error parsing {file_path}: {e}")
             return None
-    
+
     def search_skills(
         self,
         query: str,
-        category: Optional[str] = None,
-        mode: Optional[str] = None,
-        limit: int = 10
-    ) -> List[SearchResult]:
+        category: str | None = None,
+        mode: str | None = None,
+        limit: int = 10,
+    ) -> list[SearchResult]:
         """Search skills by query"""
         results = self.vector_store.search(query, limit=limit)
-        
+
         if category or mode:
             filtered = []
             for result in results:
@@ -211,73 +225,62 @@ class SkillIndexer:
                     continue
                 filtered.append(result)
             return filtered
-        
+
         return results
-    
-    def get_skills_by_category(self, category: str) -> List[SkillEntry]:
+
+    def get_skills_by_category(self, category: str) -> list[SkillEntry]:
         """Get all skills in a category"""
-        return [
-            s for s in self._skills_index.values()
-            if s.category.lower() == category.lower()
-        ]
-    
-    def get_skills_by_mode(self, mode: str) -> List[SkillEntry]:
+        return [s for s in self._skills_index.values() if s.category.lower() == category.lower()]
+
+    def get_skills_by_mode(self, mode: str) -> list[SkillEntry]:
         """Get all skills for a mode"""
-        return [
-            s for s in self._skills_index.values()
-            if s.mode and s.mode.lower() == mode.lower()
-        ]
-    
-    def get_context_for_task(
-        self,
-        task: str,
-        mode: Optional[str] = None,
-        max_skills: int = 5
-    ) -> str:
+        return [s for s in self._skills_index.values() if s.mode and s.mode.lower() == mode.lower()]
+
+    def get_context_for_task(self, task: str, mode: str | None = None, max_skills: int = 5) -> str:
         """Get relevant skill context for a task"""
         results = self.search_skills(task, mode=mode, limit=max_skills)
-        
+
         context_parts = ["## Relevant Skills\n"]
-        
+
         for result in results:
             skill = self._skills_index.get(result.metadata.get("name", ""))
             if skill:
                 context_parts.append(f"### {skill.name} ({skill.category})\n")
                 context_parts.append(f"{skill.content[:500]}...\n\n")
-        
+
         return "\n".join(context_parts)
-    
-    def get_all_skills(self) -> List[SkillEntry]:
+
+    def get_all_skills(self) -> list[SkillEntry]:
         """Get all indexed skills"""
         return list(self._skills_index.values())
-    
-    def get_stats(self) -> Dict[str, Any]:
+
+    def get_stats(self) -> dict[str, Any]:
         """Get indexing statistics"""
         categories = {}
         modes = {}
-        
+
         for skill in self._skills_index.values():
             categories[skill.category] = categories.get(skill.category, 0) + 1
             if skill.mode:
                 modes[skill.mode] = modes.get(skill.mode, 0) + 1
-        
+
         return {
             "total_skills": len(self._skills_index),
             "categories": categories,
             "modes": modes,
             "indexed_entries": len(self.vector_store.list_entries()),
             "vector_store_available": self.vector_store.is_available,
-            "skills_dir": str(self.skills_dir)
+            "skills_dir": str(self.skills_dir),
         }
-    
+
     def create_default_skills(self) -> int:
         """Create default skill files if none exist"""
         if self.skills_dir.exists() and any(self.skills_dir.rglob("*.md")):
             return 0
-        
+
         self.skills_dir.mkdir(parents=True, exist_ok=True)
         count = 0
-        
+
         default_skills = {
             "SYSTEM/01_prompt.md": """# RedForge System Prompt
 
@@ -355,13 +358,13 @@ subfinder, amass, naabu, nmap, ffuf
 4. Look for business logic flaws
 """,
         }
-        
+
         for path, content in default_skills.items():
             file_path = self.skills_dir / path
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             with open(file_path, "w") as f:
                 f.write(content)
             count += 1
-        
+
         return count

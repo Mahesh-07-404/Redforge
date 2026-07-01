@@ -1,18 +1,18 @@
-from typing import Dict, List, Set
 from .task import Task
+
 
 class TaskGraph:
     def __init__(self):
-        self.tasks: Dict[str, Task] = {}
+        self.tasks: dict[str, Task] = {}
 
     def add_task(self, task: Task):
         self.tasks[task.id] = task
 
-    def get_ordered_tasks(self) -> List[Task]:
+    def get_ordered_tasks(self) -> list[Task]:
         # Topological sort
-        visited: Set[str] = set()
-        temp: Set[str] = set()
-        order: List[str] = []
+        visited: set[str] = set()
+        temp: set[str] = set()
+        order: list[str] = []
 
         def visit(node: str):
             if node in temp:

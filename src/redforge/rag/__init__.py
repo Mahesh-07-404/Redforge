@@ -1,28 +1,45 @@
-from .contracts import Chunk, RAGQuery, RAGResult, RAGContext
-from .exceptions import RAGError, ChunkError, EmbedError, RetrievalError
+from .cache import RAGCache
+from .chunker import ChunkEngine
+from .context_builder import ContextBuilder
+from .contracts import Chunk, RAGContext, RAGQuery, RAGResult
 from .embedder import (
-    EmbeddingProvider, MockEmbedder, OpenAIEmbedder, GeminiEmbedder,
-    OllamaEmbedder, SentenceTransformersEmbedder, FastEmbedEmbedder
+    EmbeddingProvider,
+    FastEmbedEmbedder,
+    GeminiEmbedder,
+    MockEmbedder,
+    OllamaEmbedder,
+    OpenAIEmbedder,
+    SentenceTransformersEmbedder,
+)
+from .engine import RAGEngine
+from .exceptions import ChunkError, EmbedError, RAGError, RetrievalError
+from .hybrid_search import HybridSearch
+from .knowledge_base import KnowledgeBase
+from .manager import RAGManager
+from .pipeline import RAGPipeline
+from .reranker import Reranker
+from .retriever import Retriever
+from .sources import (
+    DocumentationProvider,
+    EntityMemoryProvider,
+    EvidenceStoreProvider,
+    MarkdownSkillsProvider,
+    MemorySourceProvider,
+    ReportsProvider,
+    SessionMemoryProvider,
+    SourceProvider,
+    TimelineMemoryProvider,
 )
 from .vector_store import (
-    VectorStore, MemoryVectorStore, SQLiteVectorStore, QdrantVectorStore,
-    FAISSVectorStore, ChromaVectorStore, PineconeVectorStore, WeaviateVectorStore
+    ChromaVectorStore,
+    FAISSVectorStore,
+    MemoryVectorStore,
+    PineconeVectorStore,
+    QdrantVectorStore,
+    SQLiteVectorStore,
+    VectorStore,
+    WeaviateVectorStore,
 )
-from .chunker import ChunkEngine
-from .sources import (
-    SourceProvider, MemorySourceProvider, SessionMemoryProvider,
-    EntityMemoryProvider, TimelineMemoryProvider, EvidenceStoreProvider,
-    ReportsProvider, MarkdownSkillsProvider, DocumentationProvider
-)
-from .knowledge_base import KnowledgeBase
-from .reranker import Reranker
-from .hybrid_search import HybridSearch
-from .context_builder import ContextBuilder
-from .cache import RAGCache
-from .engine import RAGEngine
-from .manager import RAGManager
-from .retriever import Retriever
-from .pipeline import RAGPipeline
 
 __all__ = [
     "Chunk",
@@ -66,5 +83,5 @@ __all__ = [
     "RAGEngine",
     "RAGManager",
     "Retriever",
-    "RAGPipeline"
+    "RAGPipeline",
 ]

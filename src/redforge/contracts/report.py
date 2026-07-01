@@ -1,6 +1,8 @@
 from datetime import datetime
 from enum import Enum
+
 from pydantic import BaseModel
+
 
 class Severity(str, Enum):
     CRITICAL = "critical"
@@ -9,11 +11,13 @@ class Severity(str, Enum):
     LOW = "low"
     INFO = "info"
 
+
 class Evidence(BaseModel):
     tool_name: str
     command: list[str]
     raw_output_excerpt: str
     verified: bool
+
 
 class Finding(BaseModel):
     id: str
@@ -28,9 +32,11 @@ class Finding(BaseModel):
     created_at: datetime
     target: str
 
+
 class ReportRequest(BaseModel):
     session_id: str
     format: str
+
 
 class Report(BaseModel):
     content: str
