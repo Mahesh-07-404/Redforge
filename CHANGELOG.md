@@ -2,6 +2,21 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [2.0.0-phase-17] - 2026-07-01
+
+### Added
+* **React Operator Dashboard** in `dashboard/` — clean React 19 + TypeScript + Vite + Tailwind CSS dashboard communicating exclusively with the API Gateway.
+* **Overview Page**: System metrics, active sessions list, active workflow run logs, and recent vulnerabilities summaries.
+* **AI Copilot Terminal**: WebSocket-based chatbot interface with word-by-word streaming token outputs, scroll management, and markdown previews.
+* **Workflow Launcher**: Run multi-stage security templates and monitor active progressions (Recon, Scan, Exploit, etc.) via `/ws/workflow`.
+* **Sessions Panel**: Initialize session target, scope variables, switch active context selection, and manage session deletions.
+* **Direct Tool Runner**: Execute commands (Nmap, Subfinder, Nuclei) and stream live subprocess outputs in a simulated shell.
+* **Report Compiler**: Generate JSON/SARIF/Markdown files, preview outputs, configure evidence scopes, and trigger local downloads.
+* **Memory Note Manager**: Store notes in Short Term/Long Term RAG indexes, query logs, and clear active session memory.
+* **Plugins Console**: Toggle hook settings, install custom plugins, and list extensions.
+* **System Settings**: Modify backend target URLs, load JWT session tokens, authorize static API keys, and swap Light/Dark themes.
+* **Vitest Suite**: Unit tests covering API service request wraps and WebSocket connection parameters.
+
 ## [2.0.0-phase-16] - 2026-07-01
 
 ### Added

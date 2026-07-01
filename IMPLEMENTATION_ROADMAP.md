@@ -30,6 +30,7 @@ Phase 6 → Surfaces: Terminal + REST API + SDK
 Phase 7 → Hardening: Shim removal + CI enforcement
 ...
 Phase 16 → Unified API Gateway: FastAPI REST & WebSockets
+Phase 17 → React Dashboard: React Operations Interface
 ```
 
 ---
@@ -1691,6 +1692,71 @@ src/redforge/api/
 
 ---
 
+## Phase 17 — React Dashboard
+
+**Git tag**: `v2.0.0-phase-17`
+
+### Objective
+
+Build a modern, responsive web dashboard for RedForge that communicates exclusively with the API Gateway. Do NOT access internal Python modules directly.
+
+---
+
+### Files Created
+
+```
+dashboard/
+  tsconfig.json
+  vite.config.ts
+  index.html
+  src/
+    main.tsx
+    App.tsx
+    index.css
+    types/
+      index.ts
+    contexts/
+      SettingsContext.tsx
+      SessionContext.tsx
+    services/
+      api.ts
+      api.test.ts
+    layouts/
+      DashboardLayout.tsx
+    pages/
+      Overview.tsx
+      Chat.tsx
+      Workflows.tsx
+      Sessions.tsx
+      Reports.tsx
+      Evidence.tsx
+      Memory.tsx
+      Plugins.tsx
+      Settings.tsx
+```
+
+---
+
+### Key Features Implemented
+
+* **Overview & Metrics**: Dashboard summary displaying active target specs, workflow progress states, vulnerability breakdown charts, and telemetry.
+* **WebSocket Streaming AI Chat**: Token-by-token message streaming chatbot interface using `/ws/chat`.
+* **Workflow Template Launcher**: Run templates and monitor stages dynamically using `/ws/workflow`.
+* **Tool Scanner Terminal**: Run specific tools and stream live stdout/stderr lines in a custom console using `/ws/execution`.
+* **Report Preview & Export**: Compile markdown, html, json, and pdf formats and trigger local downloads.
+* **Settings & Auth**: Save custom gateway base URLs, store JWT tokens or API key authentication scopes, and swap Light/Dark mode themes.
+
+---
+
+### Acceptance Criteria
+
+- [ ] All Vitest unit tests pass cleanly (`npm test`)
+- [ ] UI is responsive and styled using Tailwind CSS layers
+- [ ] Dashboard communicates only with REST APIs and WebSockets (no Python module imports)
+- [ ] Git tag `v2.0.0-phase-17` is applied
+
+---
+
 ## Phase Summary Table
 
 | Phase | Name | Layers Touched | New Files | Modified | Deleted | Risk |
@@ -1704,12 +1770,11 @@ src/redforge/api/
 | 6 | Surfaces | New surfaces/ package | 8 | 2 | 0 | Low |
 | 7 | Hardening | All (deletions only) | 3 | 9 | 26 | High |
 | 16 | Unified API Gateway | API Gateway REST/WS | 28 | 6 | 0 | Low |
+| 17 | React Dashboard | Frontend Web UI | 22 | 4 | 0 | Low |
 
-**Total new modules**: 71  
+**Total new modules**: 93  
 **Total deleted files**: 26 (all shims or dead code)  
 **No-return point**: Phase 7 (shim removal). All phases before it are reversible.
-
----
 
 ## Parallel Work Opportunities
 

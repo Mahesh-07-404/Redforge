@@ -4,6 +4,13 @@ This document describes the architectural layout of RedForge.
 
 ## Architectural Layers
 
+### 17. React Operator Dashboard (`dashboard/`) — Phase 17
+A modern, single-page operations interface built with React, Vite, and Tailwind CSS. It communicates exclusively with the Unified API Gateway over HTTP/REST and WebSockets.
+* **`layouts/DashboardLayout.tsx`**: Embeds sidebar navigation panels, active session switcher, API connection status monitors, and light/dark theme toggles.
+* **`pages/`**: Includes Overview metrics, AI streaming chat terminal, modular workflow triggers, report preview, live terminal tool runner, memory notes repository, and plugin toggling controls.
+* **`services/api.ts`**: Client SDK wrapping fetch requests and WebSocket initializations. Tested under `services/api.test.ts`.
+* **`contexts/`**: Shared settings context (CORS API URLs, JWT keys, user themes) and sessions context (active session states).
+
 ### 16. Unified API Gateway (`src/redforge/api/`) — Phase 16
 The **only public entry point** into RedForge. Every external client (CLI, React Dashboard, VS Code Extension, MCP Clients, Mobile App) communicates exclusively through this gateway. Zero business logic lives here — it delegates to internal engines.
 
