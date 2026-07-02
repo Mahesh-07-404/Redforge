@@ -235,9 +235,12 @@ class QdrantVectorStore(VectorStore):
 
             # Fallback embedding to match Qdrant size 384
             # We repeat the md5 hash values to fill 384 dimensions
+            # fmt: off
             base = [
-                float(c) / 255.0 for c in hashlib.md5(texts[0].encode()).digest()
+                float(c) / 255.0
+                for c in hashlib.md5(texts[0].encode()).digest()
             ]  # 16 floats
+            # fmt: on
             full = base * 24  # 16 * 24 = 384
             return [full for _ in texts]
         except Exception:

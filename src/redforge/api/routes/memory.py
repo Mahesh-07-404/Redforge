@@ -39,9 +39,7 @@ async def store_memory(
         mgr = MemoryManager()
         metadata = dict(body.metadata or {})
         metadata["tier"] = body.tier
-        entry = ContractEntry(
-            id=str(uuid.uuid4()), content=body.content, metadata=metadata
-        )
+        entry = ContractEntry(id=str(uuid.uuid4()), content=body.content, metadata=metadata)
         mgr.store(session_id=body.session_id, entry=entry, long_term=(body.tier == "long"))
         stored = True
     except Exception:
