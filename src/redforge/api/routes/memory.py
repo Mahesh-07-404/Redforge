@@ -31,14 +31,18 @@ async def store_memory(
     """Store a text entry in session memory."""
     stored = False
     try:
+        import uuid
+
         from redforge.contracts.memory import MemoryEntry as ContractEntry
         from redforge.memory.manager import MemoryManager
 
         mgr = MemoryManager()
+        metadata = dict(body.metadata or {})
+        metadata["tier"] = body.tier
         entry = ContractEntry(
-            content=body.content, session_id=body.session_id, metadata=body.metadata
+            id=str(uuid.uuid4()), content=body.content, metadata=metadata
         )
-        mgr.store(session_id=body.session_id, entry=entry)
+        mgr.store(session_id=body.session_id, entry=entry, long_term=(body.tier == "long"))
         stored = True
     except Exception:
         stored = False
@@ -71,6 +75,8 @@ async def query_memory(
                 d = vars(e)
             else:
                 d = dict(e)
+            meta_dict = d.get("metadata") or {}
+            d["tier"] = meta_dict.get("tier", "short") if isinstance(meta_dict, dict) else "short"
             results.append(d)
     except Exception as exc:  # nosec B110 - memory query is best-effort
         logger.warning("Failed to query session memory for session '%s': %s", body.session_id, exc)

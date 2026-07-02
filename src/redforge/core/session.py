@@ -106,7 +106,7 @@ class SessionService:
                 target_str = target["value"]
                 meta["target"] = target
             else:
-                target_str = str(target)
+                target_str = target
 
         meta_str = json.dumps(meta)
 
@@ -199,7 +199,7 @@ class SessionService:
                 session.target = new_target["value"]
                 session.metadata["target"] = new_target
             else:
-                session.target = str(new_target) if new_target is not None else None
+                session.target = new_target
             self.save(session)
 
     def archive(self, session_id: str) -> None:

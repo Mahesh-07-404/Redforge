@@ -114,7 +114,8 @@ class DistributedCoordinator:
             # Wait for backoff delay before pushing back
             async def re_push():
                 await asyncio.sleep(delay)
-                await self.queue.push(task)
+                if task is not None:
+                    await self.queue.push(task)
 
             asyncio.create_task(re_push())
         else:

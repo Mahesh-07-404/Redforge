@@ -5,7 +5,7 @@ Workflow routes — Phase 16: Unified API Gateway
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Path
@@ -82,7 +82,7 @@ async def start_workflow(
         run_id=run_id,
         status=status,
         session_id=body.session_id,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         error=error,
     )
     return created(payload.model_dump(), duration_ms=timer.elapsed_ms, request_id=request_id)

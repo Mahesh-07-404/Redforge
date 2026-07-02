@@ -5,7 +5,7 @@ Report routes — Phase 16: Unified API Gateway
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Path
@@ -63,7 +63,7 @@ async def generate_report(
         content=content,
         finding_count=finding_count,
         severity_summary=severity_summary,
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(timezone.utc),
     )
     return success(payload.model_dump(), duration_ms=timer.elapsed_ms, request_id=request_id)
 

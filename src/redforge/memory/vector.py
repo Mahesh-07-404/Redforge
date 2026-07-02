@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +194,7 @@ class QdrantVectorStore(VectorStore):
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
     ):
         super().__init__(persist_dir, collection_name)
+        self.client: Any = None
 
         try:
             from qdrant_client import QdrantClient
@@ -222,18 +223,20 @@ class QdrantVectorStore(VectorStore):
         try:
             from sentence_transformers import SentenceTransformer
 
-            if self._embedding_function is None:
-                self._embedding_function = SentenceTransformer(self._embedding_model)
+            emb_func = self._embedding_function
+            if emb_func is None:
+                emb_func = SentenceTransformer(self._embedding_model)
+                self._embedding_function = emb_func
 
-            embeddings = self._embedding_function.encode(texts)
-            return embeddings.tolist()
+            embeddings = emb_func.encode(texts)
+            return cast(list[list[float]], embeddings.tolist())
         except ImportError:
             import hashlib
 
             # Fallback embedding to match Qdrant size 384
             # We repeat the md5 hash values to fill 384 dimensions
             base = [
-                float(ord(c)) / 255.0 for c in hashlib.md5(texts[0].encode()).digest()
+                float(c) / 255.0 for c in hashlib.md5(texts[0].encode()).digest()
             ]  # 16 floats
             full = base * 24  # 16 * 24 = 384
             return [full for _ in texts]
@@ -296,7 +299,7 @@ class QdrantVectorStore(VectorStore):
 
         query_filter = None
         if filter_dict:
-            conditions = [
+            conditions: list[Any] = [
                 FieldCondition(key=k, match=MatchValue(value=v)) for k, v in filter_dict.items()
             ]
             query_filter = Filter(must=conditions)
@@ -374,7 +377,7 @@ class QdrantVectorStore(VectorStore):
 
         query_filter = None
         if filter_dict:
-            conditions = [
+            conditions: list[Any] = [
                 FieldCondition(key=k, match=MatchValue(value=v)) for k, v in filter_dict.items()
             ]
             query_filter = Filter(must=conditions)

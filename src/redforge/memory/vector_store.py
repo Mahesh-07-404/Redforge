@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import Any, cast
 
 from ..contracts.memory import MemoryEntry
 
@@ -73,7 +74,7 @@ class QdrantAdapter:
         if collection_name not in collections:
             self.client.create_collection(
                 collection_name=collection_name,
-                vectors_config=VectorParams(size=384, distance=Distance.COSINE),
+                vectors_config=cast(Any, VectorParams)(size=384, distance=Distance.COSINE),
             )
 
     def store(self, collection_name: str, entry: MemoryEntry):
@@ -115,7 +116,7 @@ class QdrantAdapter:
         payload = {"content": entry.content, **(entry.metadata or {})}
         self.client.upsert(
             collection_name=collection_name,
-            points=[PointStruct(id=entry_id, vector=vector, payload=payload)],
+            points=[cast(Any, PointStruct)(id=entry_id, vector=vector, payload=payload)],
         )
 
     def retrieve(self, collection_name: str, query: str, top_k: int = 5) -> list[MemoryEntry]:
@@ -166,12 +167,12 @@ class QdrantAdapter:
         )
         hits = response.points
 
-        results = []
+        query_results = []
         for hit in hits:
             payload = hit.payload or {}
             content = payload.pop("content", "")
-            results.append(MemoryEntry(id=str(hit.id), content=content, metadata=payload))
-        return results
+            query_results.append(MemoryEntry(id=str(hit.id), content=content, metadata=payload))
+        return query_results
 
     def drop_collection(self, collection_name: str):
         if not HAS_QDRANT:

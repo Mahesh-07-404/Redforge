@@ -39,7 +39,7 @@ class HostDiscoveryMapper(BaseMapper):
         ref: EvidenceReference,
         meta: dict[str, Any],
     ) -> list[NormalizedEntity]:
-        entities = []
+        entities: list[NormalizedEntity] = []
         hosts = parsed_content.get("subdomains", [])
         if not hosts and raw_content:
             hosts = [
@@ -86,7 +86,7 @@ class HttpxMapper(BaseMapper):
         ref: EvidenceReference,
         meta: dict[str, Any],
     ) -> list[NormalizedEntity]:
-        entities = []
+        entities: list[NormalizedEntity] = []
         urls = parsed_content.get("urls", [])
         if not urls and raw_content:
             urls = [
@@ -131,7 +131,7 @@ class URLDiscoveryMapper(BaseMapper):
         ref: EvidenceReference,
         meta: dict[str, Any],
     ) -> list[NormalizedEntity]:
-        entities = []
+        entities: list[NormalizedEntity] = []
         urls = [
             line.strip() for line in raw_content.splitlines() if line.strip().startswith("http")
         ]
@@ -171,7 +171,7 @@ class PortScanMapper(BaseMapper):
         ref: EvidenceReference,
         meta: dict[str, Any],
     ) -> list[NormalizedEntity]:
-        entities = []
+        entities: list[NormalizedEntity] = []
         ports = parsed_content.get("ports", [])
         for p in ports:
             port_val = str(p.get("port"))
@@ -223,8 +223,8 @@ class NucleiMapper(BaseMapper):
         ref: EvidenceReference,
         meta: dict[str, Any],
     ) -> list[NormalizedEntity]:
-        entities = []
-        findings = []
+        entities: list[NormalizedEntity] = []
+        findings: list[dict[str, Any]] = []
         for line in raw_content.splitlines():
             try:
                 findings.append(json.loads(line))
@@ -247,8 +247,8 @@ class NucleiMapper(BaseMapper):
 
         for f in findings:
             info = f.get("info", {})
-            name = info.get("name", "Vulnerability")
-            sev = info.get("severity", "info")
+            name = str(info.get("name", "Vulnerability"))
+            sev = str(info.get("severity", "info"))
             finding_ent = FindingEntity(
                 id=f"finding_{name.lower().replace(' ', '_')}",
                 value=name,
@@ -267,10 +267,11 @@ class NucleiMapper(BaseMapper):
             if isinstance(classification, dict):
                 cve = classification.get("cve-id")
             if cve:
+                cve_str = str(cve)
                 entities.append(
                     CVEEntity(
-                        id=f"cve_{cve.lower()}",
-                        value=cve,
+                        id=f"cve_{cve_str.lower()}",
+                        value=cve_str,
                         source_tool=self.tool_name,
                         session_id=meta["session_id"],
                         execution_id=meta["execution_id"],
@@ -292,7 +293,7 @@ class DNSXMapper(BaseMapper):
         ref: EvidenceReference,
         meta: dict[str, Any],
     ) -> list[NormalizedEntity]:
-        entities = []
+        entities: list[NormalizedEntity] = []
         for line in raw_content.splitlines():
             line_str = line.strip()
             if line_str and not line_str.startswith("["):
@@ -319,7 +320,7 @@ class WebContentMapper(BaseMapper):
         ref: EvidenceReference,
         meta: dict[str, Any],
     ) -> list[NormalizedEntity]:
-        entities = []
+        entities: list[NormalizedEntity] = []
         for line in raw_content.splitlines():
             line_str = line.strip()
             if (
