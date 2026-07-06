@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 class ToolService:
     """Service to handle tool availability, execution routing, and automated installation."""
 
-    def __init__(self):
-        self.executor = ToolExecutor()
-        self.registry = ToolRegistry()
-        self.installer = ToolInstaller()
+    def __init__(self) -> None:
+        self.executor: ToolExecutor = ToolExecutor()
+        self.registry: ToolRegistry = ToolRegistry()
+        self.installer: ToolInstaller = ToolInstaller()
 
     def execute(self, tool_call: ToolCall) -> ToolResult:
         """Route and execute a tool call."""

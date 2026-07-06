@@ -107,11 +107,13 @@ class DistributedWorker:
 
     async def _run_executor_fn(self, task: TaskMessage) -> TaskResult:
         # Run executor_fn (which can be a sync or async function)
+        from typing import cast
+
         if inspect.iscoroutinefunction(self.executor_fn):
-            return await self.executor_fn(task)
+            return cast(TaskResult, await self.executor_fn(task))
         else:
             # Run in executor thread pool if it's blocking sync
-            return await asyncio.to_thread(self.executor_fn, task)
+            return cast(TaskResult, await asyncio.to_thread(self.executor_fn, task))
 
     def _default_execute(self, task: TaskMessage) -> TaskResult:
         """Fallback mock tool executor."""

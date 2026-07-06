@@ -4,9 +4,9 @@ from .runner import ToolRunner
 
 
 class ToolExecutor:
-    def __init__(self):
-        self.runner = ToolRunner()
-        self.registry = ToolRegistry()
+    def __init__(self) -> None:
+        self.runner: ToolRunner = ToolRunner()
+        self.registry: ToolRegistry = ToolRegistry()
 
     def execute(self, tool_call: ToolCall) -> ToolResult:
         if not tool_call.approved:
