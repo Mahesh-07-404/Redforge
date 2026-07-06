@@ -74,16 +74,8 @@ class Pipeline:
         session = self.session_manager.load(session_id)
         if not session:
             # Auto-create the session if it doesn't exist
-            m = (
-                mode.value
-                if hasattr(mode, "value")
-                else (mode if mode else "bugbounty")
-            )
-            t = (
-                target.value
-                if hasattr(target, "value")
-                else (target if target else None)
-            )
+            m = mode.value if hasattr(mode, "value") else (mode if mode else "bugbounty")
+            t = target.value if hasattr(target, "value") else (target if target else None)
             a = (
                 autonomy.value
                 if hasattr(autonomy, "value")

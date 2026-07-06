@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
-
 import asyncio
 from abc import ABC, abstractmethod
+from typing import Any
 
 from .contracts import TaskMessage, TaskStatus
 from .exceptions import QueueError

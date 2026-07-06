@@ -9,7 +9,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable
-from typing import Any, cast
+from typing import cast
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
