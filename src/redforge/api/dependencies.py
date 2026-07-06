@@ -6,7 +6,7 @@ Reusable Depends() callables for auth, pagination, rate-limit checks, session lo
 from __future__ import annotations
 
 import time
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from fastapi import Depends, Query, Request
 
@@ -30,7 +30,7 @@ async def get_current_auth(request: Request) -> dict[str, Any]:
         if cfg.auth.enabled:
             raise AuthenticationError()
         return {"authenticated": False, "scopes": ["read", "write", "execute", "report", "admin"]}
-    return auth_info
+    return cast(dict[str, Any], auth_info)
 
 
 AuthInfo = Annotated[dict[str, Any], Depends(get_current_auth)]

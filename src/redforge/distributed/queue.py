@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import asyncio
 from abc import ABC, abstractmethod
 
@@ -107,7 +109,7 @@ class RedisQueue(BaseQueue):
         self.host = host
         self.port = port
         self.db = db
-        self._redis = None
+        self._redis: Any = None
         self._in_memory_fallback = InMemoryQueue()
         self._use_fallback = True
 
@@ -197,7 +199,7 @@ class RedisQueue(BaseQueue):
             return await self._in_memory_fallback.size()
 
         try:
-            return await self._redis.zcard("rf:queue")
+            return int(await self._redis.zcard("rf:queue"))
         except Exception as exc:
             raise QueueError(f"Redis size failed: {exc}") from exc
 

@@ -6,7 +6,7 @@ class OutputParser:
     @staticmethod
     def parse(tool_name: str, raw_output: str) -> dict[str, Any]:
         tool_lower = tool_name.lower().strip()
-        structured = {}
+        structured: dict[str, Any] = {}
 
         if not raw_output:
             return structured

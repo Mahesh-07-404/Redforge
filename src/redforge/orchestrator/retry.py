@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 from collections.abc import Callable
 from typing import Any
 
@@ -13,11 +14,13 @@ class AgentRetryStrategy:
         while attempts < self.max_attempts:
             try:
                 # Resolve both async and sync action calls
-                if asyncio.iscoroutinefunction(action):
+                if inspect.iscoroutinefunction(action):
                     return await action()
                 else:
                     return action()
             except Exception as e:
                 attempts += 1
                 last_exception = e
-        raise last_exception
+        if last_exception is not None:
+            raise last_exception
+        raise Exception("Retry strategy failed without exception")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from .contracts import TaskMessage, TaskResult, TaskStatus
 from .lease import LeaseManager
@@ -72,7 +72,7 @@ class TaskDispatcher:
             # Let worker run task
             result = await worker_obj.execute_task(task)
             self.lease_manager.release(task.task_id)
-            return result
+            return cast(TaskResult, result)
         except Exception as exc:
             self.lease_manager.release(task.task_id)
             return TaskResult(

@@ -1,3 +1,5 @@
+from typing import cast
+
 from .cache import RAGCache
 from .context_builder import ContextBuilder
 from .contracts import Chunk, RAGContext, RAGQuery
@@ -31,7 +33,7 @@ class RAGEngine:
         cache_key = f"query_{rag_query.session_id}_{rag_query.query_text}_{token_limit}"
         cached = self.cache.get(cache_key)
         if cached:
-            return cached
+            return cast(RAGContext, cached)
 
         results = await self.hybrid_search.search(rag_query, all_chunks)
         reranked = Reranker.rerank(results, rag_query.query_text, rag_query.session_id)

@@ -22,7 +22,7 @@ class MapperRegistry:
         self._mappers: dict[str, BaseMapper] = {}
         self._initialize_mappers()
 
-    def _initialize_mappers(self):
+    def _initialize_mappers(self) -> None:
         mappers_list = [
             SubfinderMapper(),
             AssetfinderMapper(),
@@ -42,8 +42,8 @@ class MapperRegistry:
         for m in mappers_list:
             self.register_mapper(m)
 
-    def register_mapper(self, mapper: BaseMapper):
+    def register_mapper(self, mapper: BaseMapper) -> None:
         self._mappers[mapper.tool_name.lower()] = mapper
 
-    def get_mapper(self, tool_name: str) -> BaseMapper:
+    def get_mapper(self, tool_name: str) -> BaseMapper | None:
         return self._mappers.get(tool_name.lower())

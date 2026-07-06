@@ -7,10 +7,10 @@ from typing import Any
 from .contracts import LogEntry, LogLevel
 
 # Context Variables for tracing request contexts across tasks
-context_request_id = contextvars.ContextVar("request_id", default=None)
-context_session_id = contextvars.ContextVar("session_id", default=None)
-context_workflow_id = contextvars.ContextVar("workflow_id", default=None)
-context_execution_id = contextvars.ContextVar("execution_id", default=None)
+context_request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
+context_session_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("session_id", default=None)
+context_workflow_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("workflow_id", default=None)
+context_execution_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("execution_id", default=None)
 
 
 class StructuredLogger:

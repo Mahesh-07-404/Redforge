@@ -127,7 +127,7 @@ class BugBountyMode(BaseMode):
 
     def execute(self, task: str, context: dict[str, Any]) -> dict[str, Any]:
         """Execute bug bounty task"""
-        results = {"task": task, "findings": [], "recon": {}, "exploits": []}
+        results: dict[str, Any] = {"task": task, "findings": [], "recon": {}, "exploits": []}
 
         # Route to appropriate handler
         task_lower = task.lower()
@@ -151,7 +151,7 @@ class BugBountyMode(BaseMode):
         """Run reconnaissance"""
         target = context.get("target", "")
 
-        recon_results = {"subdomains": [], "ports": [], "technologies": [], "endpoints": []}
+        recon_results: dict[str, Any] = {"subdomains": [], "ports": [], "technologies": [], "endpoints": []}
 
         # Check for tools
         if self.tool_manager:
@@ -165,7 +165,7 @@ class BugBountyMode(BaseMode):
 
     def _run_scan(self, task: str, context: dict[str, Any]) -> list[Finding]:
         """Run vulnerability scan"""
-        findings = []
+        findings: list[Finding] = []
 
         # Basic vulnerability checks
         # In production, would use actual scanners

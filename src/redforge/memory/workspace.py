@@ -5,7 +5,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 
 @dataclass
@@ -74,7 +74,7 @@ class WorkspaceManager:
         meta_file = self._get_metadata_file(workspace_id)
         if meta_file.exists():
             with open(meta_file) as f:
-                return json.load(f)
+                return cast(dict[str, Any], json.load(f))
         return None
 
     def _save_metadata(self, workspace: Workspace) -> None:

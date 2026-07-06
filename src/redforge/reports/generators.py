@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -113,7 +113,7 @@ class CVEGenerator:
 
         # Impact score
         if base_impact <= 0:
-            impact_score = 0
+            impact_score = 0.0
         else:
             impact_score = min(10, 10.41 * (1 - (1 - base_impact) * scope_multipliers[scope]))
 
@@ -166,7 +166,7 @@ class CVEGenerator:
         if format == "json":
             return json.dumps([self._cve_to_dict(c) for c in self.cves.values()], indent=2)
         elif format == "yaml":
-            return yaml.dump([self._cve_to_dict(c) for c in self.cves.values()])
+            return cast(str, yaml.dump([self._cve_to_dict(c) for c in self.cves.values()]))
         return str(self.cves)
 
     def _cve_to_dict(self, cve: CVE) -> dict:
@@ -196,7 +196,7 @@ class ReportGenerator:
     TEMPLATES_DIR = Path(__file__).parent.parent.parent.parent / "templates"
 
     def __init__(self):
-        self.report = None
+        self.report: Report | None = None
 
     def create_report(self, data: dict[str, Any], session_target: str | None = None) -> Report:
         """Create a new report"""
@@ -219,7 +219,7 @@ class ReportGenerator:
                     continue
                 raise ValueError(f"Report target contains forbidden placeholder '{ph}'")
 
-        self.report = Report(
+        report = Report(
             title=data.get("title", "Security Assessment Report"),
             target=target,
             author=data.get("author", "RedForge"),
@@ -229,7 +229,8 @@ class ReportGenerator:
             methodology=data.get("methodology", ""),
             limitations=data.get("limitations", ""),
         )
-        return self.report
+        self.report = report
+        return report
 
     def generate_markdown(self) -> str:
         """Generate Markdown report"""
@@ -493,7 +494,7 @@ Example:
 
             json_match = re.search(r"\[.*\]", response, re.DOTALL)
             if json_match:
-                return json.loads(json_match.group())
+                return cast(list[dict[Any, Any]], json.loads(json_match.group()))
         except (json.JSONDecodeError, AttributeError):
             pass  # nosec B110 - LLM JSON parse is best-effort; caller receives error dict if parsing fails
 
@@ -509,7 +510,7 @@ class Workflow:
 
     def execute(self, context: dict[str, Any], tool_manager, safety_engine) -> dict[str, Any]:
         """Execute workflow"""
-        results = {"workflow": self.name, "steps_executed": 0, "results": [], "success": True}
+        results: dict[str, Any] = {"workflow": self.name, "steps_executed": 0, "results": [], "success": True}
 
         for i, step in enumerate(self.steps):
             step_result = self._execute_step(step, context, tool_manager, safety_engine)

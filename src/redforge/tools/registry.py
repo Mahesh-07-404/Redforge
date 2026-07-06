@@ -5,9 +5,11 @@ from .tool import Tool
 
 
 class ToolRegistry:
+    TOOLS: dict[str, Tool] = {}
+
     def __init__(self):
         self._cache: dict[str, Tool] = {}
-        self._tools = self._initialize_tools()
+        self._tools: dict[str, Tool] = self._initialize_tools()
 
     def _initialize_tools(self) -> dict[str, Tool]:
         tools_dict = {

@@ -9,7 +9,8 @@ import hashlib
 import hmac
 import secrets
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Any, cast
 from uuid import uuid4
 
 from .config import get_api_config
@@ -119,7 +120,7 @@ class _TokenStore:
             token_id = payload["jti"]
             if token_id not in self._tokens:
                 raise TokenInvalidError("Token has been revoked")
-            return payload
+            return cast(dict[str, Any], payload)
         except TokenInvalidError:
             raise
         except Exception as exc:
@@ -148,9 +149,9 @@ class _TokenStore:
             "name": name,
             "key_hash": key_hash,
             "scopes": scopes,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "expires_at": (
-                (datetime.utcnow() + timedelta(days=expires_days)).isoformat()
+                (datetime.now(timezone.utc) + timedelta(days=expires_days)).isoformat()
                 if expires_days
                 else None
             ),
@@ -165,7 +166,7 @@ class _TokenStore:
         if not record or not record["enabled"]:
             raise ApiKeyInvalidError()
         if record["expires_at"]:
-            if datetime.fromisoformat(record["expires_at"]) < datetime.utcnow():
+            if datetime.fromisoformat(record["expires_at"]) < datetime.now(timezone.utc):
                 raise ApiKeyInvalidError("API key has expired")
         return record
 

@@ -9,6 +9,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable
+from typing import Any, cast
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,7 +43,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         trace_id = request.headers.get(cfg.trace_id_header, str(uuid.uuid4()))
         request.state.request_id = request_id
         request.state.trace_id = trace_id
-        response = await call_next(request)
+        response = cast(Response, await call_next(request))
         response.headers[cfg.request_id_header] = request_id
         response.headers[cfg.trace_id_header] = trace_id
         return response
@@ -57,7 +58,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Injects security headers into every response."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        response = await call_next(request)
+        response = cast(Response, await call_next(request))
         for header, value in SECURITY_HEADERS.items():
             response.headers[header] = value
         return response
@@ -74,7 +75,7 @@ class TimingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         cfg = get_api_config()
         start = time.perf_counter()
-        response = await call_next(request)
+        response = cast(Response, await call_next(request))
         if cfg.include_process_time:
             elapsed_ms = (time.perf_counter() - start) * 1000
             response.headers[cfg.process_time_header] = f"{elapsed_ms:.2f}ms"
@@ -92,14 +93,14 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         cfg = get_api_config()
         if not cfg.observability.structured_logging:
-            return await call_next(request)
+            return cast(Response, await call_next(request))
 
         start = time.perf_counter()
         request_id = getattr(request.state, "request_id", "-")
         trace_id = getattr(request.state, "trace_id", "-")
 
         try:
-            response = await call_next(request)
+            response = cast(Response, await call_next(request))
             elapsed_ms = (time.perf_counter() - start) * 1000
             _log_request(request, response.status_code, elapsed_ms, request_id, trace_id)
             return response
@@ -154,11 +155,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         cfg = get_api_config()
         if not cfg.rate_limit.enabled:
-            return await call_next(request)
+            return cast(Response, await call_next(request))
 
         # Skip health probes
         if request.url.path in self.EXEMPT_PATHS:
-            return await call_next(request)
+            return cast(Response, await call_next(request))
 
         identifier = request.client.host if request.client else "unknown"
         limiter = get_rate_limiter()
@@ -170,7 +171,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 content=exc.to_dict(),
                 headers={"Retry-After": str(int(exc.details.get("retry_after", 60)))},
             )
-        return await call_next(request)
+        return cast(Response, await call_next(request))
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +201,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 "authenticated": False,
                 "scopes": ["read", "write", "execute", "report", "admin"],
             }
-            return await call_next(request)
+            return cast(Response, await call_next(request))
 
         auth_header = request.headers.get("Authorization")
         api_key_header = request.headers.get("X-API-Key")
@@ -226,7 +227,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             )
 
         request.state.auth_info = auth_info
-        return await call_next(request)
+        return cast(Response, await call_next(request))
 
 
 # ---------------------------------------------------------------------------
@@ -245,7 +246,7 @@ class PayloadSizeMiddleware(BaseHTTPMiddleware):
                 check_content_length(int(content_length), cfg.max_request_body_bytes)
             except Exception as exc:
                 return JSONResponse(status_code=413, content={"error": str(exc)})
-        return await call_next(request)
+        return cast(Response, await call_next(request))
 
 
 # ---------------------------------------------------------------------------

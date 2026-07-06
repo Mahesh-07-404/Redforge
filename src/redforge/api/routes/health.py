@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import platform
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import psutil
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 from ..contracts import (
     HealthResponse,
@@ -44,15 +45,15 @@ def increment(key: str, value: float = 1.0) -> None:
 
 
 @router.get("/health", response_model=None, summary="Health check")
-async def health() -> dict:
+async def health() -> JSONResponse:
     """Basic health check. Always returns 200 while the process is alive."""
     payload = HealthResponse(
         status="healthy",
         version="2.0.0",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         uptime_seconds=time.monotonic() - _START_TIME,
     )
-    return success(payload.model_dump()).body.decode()  # type: ignore[attr-defined]
+    return success(payload.model_dump())
 
 
 @router.get("/health", include_in_schema=False)

@@ -256,8 +256,8 @@ class SkillIndexer:
 
     def get_stats(self) -> dict[str, Any]:
         """Get indexing statistics"""
-        categories = {}
-        modes = {}
+        categories: dict[str, int] = {}
+        modes: dict[str, int] = {}
 
         for skill in self._skills_index.values():
             categories[skill.category] = categories.get(skill.category, 0) + 1

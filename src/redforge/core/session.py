@@ -244,7 +244,7 @@ class TargetStateMachine:
     """Manages the current state machine of the testing target."""
 
     def __init__(self):
-        self._state = TargetState(target=None, changed=False)
+        self._state: TargetState = TargetState(target=None, changed=False)
 
     def set(self, target_str: str) -> TargetState:
         self._state.target = target_str

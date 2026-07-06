@@ -4,7 +4,7 @@ from .contracts import Finding
 class CorrelationEngine:
     @staticmethod
     def correlate_findings(findings: list[Finding]) -> list[Finding]:
-        correlated = []
+        correlated: list[Finding] = []
         for f in findings:
             existing = next((c for c in correlated if c.cve == f.cve and f.cve is not None), None)
             if existing:

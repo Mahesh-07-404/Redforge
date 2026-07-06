@@ -6,7 +6,7 @@ from ..providers import get_llm
 from ..reports.engine import ReportEngine
 from ..skills.loader import DynamicSkillLoader
 from ..skills.registry import SkillRegistry
-from ..tools.executor import ToolExecutor
+from ..tools.manager import ToolService as ToolExecutor
 from .agent import RedForgeAgent
 from .intent import IntentService as IntentEngine
 from .intent import TargetWatcher

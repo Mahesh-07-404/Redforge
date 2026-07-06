@@ -17,7 +17,7 @@ class WorkflowEngine:
         self.events = WorkflowEvents()
 
     async def execute_workflow(
-        self, workflow_id: str, target: str, context: dict[str, Any] = None
+        self, workflow_id: str, target: str, context: dict[str, Any] | None = None
     ) -> WorkflowState:
         if context is None:
             context = {}

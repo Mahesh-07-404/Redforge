@@ -1,3 +1,5 @@
+from typing import cast
+
 from ..contracts.conversation import ConversationContext
 from ..contracts.intent import IntentType, ParsedIntent
 
@@ -28,8 +30,11 @@ class IntentRouter:
         intent_type = intent.intent_type
 
         if intent_type == IntentType.GENERAL_CHAT:
-            return await self.conversation_mgr.get_response(
-                intent.raw_input, context, token_callback, event_callback
+            return cast(
+                str,
+                await self.conversation_mgr.get_response(
+                    intent.raw_input, context, token_callback, event_callback
+                ),
             )
 
         elif intent_type == IntentType.SESSION:
@@ -75,7 +80,7 @@ class IntentRouter:
             raw_lower = intent.raw_input.lower()
             if "safe command" in raw_lower or "scan the target" in raw_lower:
                 if self.pipeline_runner:
-                    return await self.pipeline_runner(intent)
+                    return cast(str, await self.pipeline_runner(intent))
 
             response = f"Recognized security task: {intent_type.value.upper()} on {target}. Ready for execution."
             return await self._respond(response, token_callback, event_callback)

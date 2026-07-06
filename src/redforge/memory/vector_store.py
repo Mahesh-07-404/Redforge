@@ -50,10 +50,10 @@ except ImportError:
             pass
 
     HAS_QDRANT = False
-    QdrantClient = DummyQdrantClient
-    Distance = DummyDistance
-    VectorParams = DummyVectorParams
-    PointStruct = DummyPointStruct
+    QdrantClient = DummyQdrantClient  # type: ignore[misc, assignment]
+    Distance = DummyDistance  # type: ignore[misc, assignment]
+    VectorParams = DummyVectorParams  # type: ignore[misc, assignment]
+    PointStruct = DummyPointStruct  # type: ignore[misc, assignment]
 
 
 class QdrantAdapter:

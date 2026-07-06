@@ -8,8 +8,8 @@ from typing import Any
 from .contracts import TraceSpan
 
 # Context variables to preserve active trace and parent span across async calls
-active_trace_id = contextvars.ContextVar("active_trace_id", default=None)
-active_parent_span_id = contextvars.ContextVar("active_parent_span_id", default=None)
+active_trace_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("active_trace_id", default=None)
+active_parent_span_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("active_parent_span_id", default=None)
 
 
 class Tracer:
@@ -48,17 +48,17 @@ class TraceSpanContext:
         self.attributes = attributes or {}
 
         self.span_id = str(uuid.uuid4())
-        self.trace_id = active_trace_id.get()
-        if not self.trace_id:
-            # Generate new trace root ID
-            self.trace_id = str(uuid.uuid4())
+        tid = active_trace_id.get()
+        if not tid:
+            tid = str(uuid.uuid4())
+        self.trace_id = tid
 
         self.parent_span_id = active_parent_span_id.get()
         self.span: TraceSpan | None = None
 
         # Save context tokens for restoration
-        self._trace_token = None
-        self._parent_token = None
+        self._trace_token: contextvars.Token[str | None] | None = None
+        self._parent_token: contextvars.Token[str | None] | None = None
 
     def __enter__(self) -> TraceSpan:
         # Bind this span as the parent for subsequent child spans

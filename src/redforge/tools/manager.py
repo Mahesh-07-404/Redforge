@@ -21,20 +21,18 @@ class ToolService:
     def execute(self, tool_call: ToolCall) -> ToolResult:
         """Route and execute a tool call."""
         if not self.installer.is_installed(tool_call.tool_name):
-            # Attempt to auto-install if missing and requested
-            installed = self.installer.install(tool_call.tool_name)
-            if not installed:
-                return ToolResult(
-                    tool_name=tool_call.tool_name,
-                    command=tool_call.command,
-                    exit_code=-1,
-                    stdout="",
-                    stderr="",
-                    parsed_output={},
-                    execution_time_ms=0,
-                    timed_out=False,
-                    error=f"Tool '{tool_call.tool_name}' is not installed on this system.",
-                )
+            # ToolInstaller only generates plans; it never executes installs.
+            return ToolResult(
+                tool_name=tool_call.tool_name,
+                command=tool_call.command,
+                exit_code=-1,
+                stdout="",
+                stderr="",
+                parsed_output={},
+                execution_time_ms=0,
+                timed_out=False,
+                error=f"Tool '{tool_call.tool_name}' is not installed on this system.",
+            )
 
         return self.executor.execute(tool_call)
 

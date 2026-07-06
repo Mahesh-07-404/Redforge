@@ -125,7 +125,8 @@ class LegacyStrategy(IntentClassificationStrategy):
 class IntentParser:
     """Parses user input to extract intent type, risk, and target."""
 
-    def __init__(self, strategies: list[IntentClassificationStrategy] = None):
+    def __init__(self, strategies: list[IntentClassificationStrategy] | None = None):
+        self.strategies: list[IntentClassificationStrategy]
         if strategies is None:
             self.strategies = [
                 GeneralChatStrategy(),
@@ -203,7 +204,7 @@ class TargetWatcher:
 
     def check(self, intent: ParsedIntent) -> ParsedIntent:
         current_state = self.state_machine.get()
-        if intent.target and (current_state.target != intent.target):
+        if current_state is not None and intent.target and (current_state.target != intent.target):
             intent.target_changed = True
             self.state_machine.set(intent.target)
         return intent

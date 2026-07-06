@@ -61,7 +61,7 @@ class Report:
 
 
 class BasePlatform(ABC):
-    def __init__(self, api_key: str, config: dict[str, Any] = None):
+    def __init__(self, api_key: str, config: dict[str, Any] | None = None):
         self.api_key = api_key
         self.config = config or {}
         self.session = requests.Session()
@@ -89,7 +89,7 @@ class BasePlatform(ABC):
 class HackerOneAPI(BasePlatform):
     BASE_URL = "https://api.hackerone.com/v1"
 
-    def __init__(self, api_key: str, api_secret: str = None, config: dict = None):
+    def __init__(self, api_key: str, api_secret: str | None = None, config: dict | None = None):
         super().__init__(api_key, config)
         self.api_secret = api_secret
         self.session.headers["Authorization"] = f"Bearer {api_key}:{api_secret}"
@@ -283,7 +283,9 @@ class PlatformManager:
 
     def add_platform(self, platform: Platform, api_key: str, **config):
         if platform == Platform.HACKERONE:
-            self.platforms[platform] = HackerOneAPI(api_key, config.get("api_secret"), config)
+            api_secret = config.get("api_secret")
+            sec_str = str(api_secret) if api_secret is not None else None
+            self.platforms[platform] = HackerOneAPI(api_key, sec_str, config)
         elif platform == Platform.BUGCROWD:
             self.platforms[platform] = BugcrowdAPI(api_key, config)
         else:
@@ -298,33 +300,33 @@ class PlatformManager:
         else:
             logger.error(f"Platform {platform} not configured")
 
-    def get_programs(self, platform: Platform = None) -> list[Program]:
+    def get_programs(self, platform: Platform | None = None) -> list[Program]:
         p = platform or self.active_platform
         if not p or p not in self.platforms:
             return []
         return self.platforms[p].get_programs()
 
-    def get_program(self, handle: str, platform: Platform = None) -> Program | None:
+    def get_program(self, handle: str, platform: Platform | None = None) -> Program | None:
         p = platform or self.active_platform
         if not p or p not in self.platforms:
             return None
         return self.platforms[p].get_program(handle)
 
     def submit_report(
-        self, program_handle: str, submission: Submission, platform: Platform = None
+        self, program_handle: str, submission: Submission, platform: Platform | None = None
     ) -> dict[str, Any]:
         p = platform or self.active_platform
         if not p or p not in self.platforms:
             return {"success": False, "error": "No platform configured"}
         return self.platforms[p].submit_report(program_handle, submission)
 
-    def get_reports(self, program_handle: str = None, platform: Platform = None) -> list[Report]:
+    def get_reports(self, program_handle: str | None = None, platform: Platform | None = None) -> list[Report]:
         p = platform or self.active_platform
         if not p or p not in self.platforms:
             return []
         return self.platforms[p].get_reports(program_handle or "")
 
-    def search_programs(self, target: str, platform: Platform = None) -> list[Program]:
+    def search_programs(self, target: str, platform: Platform | None = None) -> list[Program]:
         results = []
         platforms_to_search = [platform] if platform else self.platforms.keys()
         for p in platforms_to_search:

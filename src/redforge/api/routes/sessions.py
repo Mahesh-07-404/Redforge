@@ -6,6 +6,7 @@ CRUD for RedForge sessions.
 from __future__ import annotations
 
 import logging
+from typing import Any, cast
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Path, Query
@@ -47,7 +48,7 @@ def _to_response(session) -> dict:
         v = d.get(k)
         if isinstance(v, datetime):
             d[k] = v.isoformat()
-    return d
+    return cast(dict[str, Any], d)
 
 
 @router.post("", status_code=201, summary="Create a new session")

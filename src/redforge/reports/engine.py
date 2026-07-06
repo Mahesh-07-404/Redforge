@@ -73,11 +73,11 @@ class ReportFormatter:
 class ReportService:
     """Core reporting service for RedForge."""
 
-    def __init__(self):
-        self.collector = ReportCollector()
-        self.formatter = ReportFormatter()
+    def __init__(self) -> None:
+        self.collector: ReportCollector = ReportCollector()
+        self.formatter: ReportFormatter = ReportFormatter()
 
-    def add_finding(self, verified_result: VerifiedResult, session_id: str):
+    def add_finding(self, verified_result: VerifiedResult, session_id: str) -> None:
         self.collector.add_from_verified(verified_result, session_id)
 
     def get_findings(self, session_id: str) -> list[Finding]:

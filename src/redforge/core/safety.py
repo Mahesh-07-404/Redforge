@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -249,7 +250,7 @@ class SafetyService:
         return None
 
     def check_data_exposure(
-        self, data: str, pii_patterns: list[str] | None = None
+        self, data: str, pii_patterns: list[str | tuple[str, str]] | None = None
     ) -> list[SafetyViolation]:
         """Check for sensitive data exposure"""
         violations = []
@@ -262,7 +263,15 @@ class SafetyService:
             (r"sk-[a-zA-Z0-9]{20,}", "Secret key detected"),
         ]
 
-        patterns = pii_patterns or default_patterns
+        if pii_patterns:
+            patterns = []
+            for item in pii_patterns:
+                if isinstance(item, tuple):
+                    patterns.append(item)
+                else:
+                    patterns.append((item, "Sensitive data detected"))
+        else:
+            patterns = default_patterns
 
         for pattern, description in patterns:
             matches = re.findall(pattern, data, re.IGNORECASE)
@@ -321,7 +330,7 @@ class SafetyService:
 
     def get_violations_summary(self) -> dict:
         """Get summary of all violations"""
-        summary = {
+        summary: dict[str, Any] = {
             "total": len(self.violations),
             "by_type": {},
             "by_severity": {"critical": 0, "high": 0, "medium": 0, "low": 0},
