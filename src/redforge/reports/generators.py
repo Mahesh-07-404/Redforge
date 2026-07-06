@@ -510,7 +510,12 @@ class Workflow:
 
     def execute(self, context: dict[str, Any], tool_manager, safety_engine) -> dict[str, Any]:
         """Execute workflow"""
-        results: dict[str, Any] = {"workflow": self.name, "steps_executed": 0, "results": [], "success": True}
+        results: dict[str, Any] = {
+            "workflow": self.name,
+            "steps_executed": 0,
+            "results": [],
+            "success": True,
+        }
 
         for i, step in enumerate(self.steps):
             step_result = self._execute_step(step, context, tool_manager, safety_engine)

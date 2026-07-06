@@ -8,8 +8,12 @@ from typing import Any
 from .contracts import TraceSpan
 
 # Context variables to preserve active trace and parent span across async calls
-active_trace_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("active_trace_id", default=None)
-active_parent_span_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("active_parent_span_id", default=None)
+active_trace_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "active_trace_id", default=None
+)
+active_parent_span_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "active_parent_span_id", default=None
+)
 
 
 class Tracer:

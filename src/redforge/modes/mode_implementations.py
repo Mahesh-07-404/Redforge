@@ -151,7 +151,12 @@ class BugBountyMode(BaseMode):
         """Run reconnaissance"""
         target = context.get("target", "")
 
-        recon_results: dict[str, Any] = {"subdomains": [], "ports": [], "technologies": [], "endpoints": []}
+        recon_results: dict[str, Any] = {
+            "subdomains": [],
+            "ports": [],
+            "technologies": [],
+            "endpoints": [],
+        }
 
         # Check for tools
         if self.tool_manager:

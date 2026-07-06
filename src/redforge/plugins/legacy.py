@@ -320,7 +320,9 @@ class PlatformManager:
             return {"success": False, "error": "No platform configured"}
         return self.platforms[p].submit_report(program_handle, submission)
 
-    def get_reports(self, program_handle: str | None = None, platform: Platform | None = None) -> list[Report]:
+    def get_reports(
+        self, program_handle: str | None = None, platform: Platform | None = None
+    ) -> list[Report]:
         p = platform or self.active_platform
         if not p or p not in self.platforms:
             return []

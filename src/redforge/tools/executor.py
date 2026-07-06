@@ -1,4 +1,3 @@
-
 from ..contracts.tool import ToolCall, ToolResult
 from .registry import ToolRegistry
 from .runner import ToolRunner
