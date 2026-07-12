@@ -45,7 +45,7 @@ async def issue_token(body: TokenRequest, request_id: RequestID, timer: Timer):
         raise AuthenticationError("Username and password are required")
     auth = get_auth_service()
     token = auth.create_token(subject=body.username)
-    payload = TokenResponse(access_token=token, token_type="bearer")
+    payload = TokenResponse(access_token=token, token_type="bearer")  # nosec B106
     return success(payload.model_dump(), duration_ms=timer.elapsed_ms, request_id=request_id)
 
 

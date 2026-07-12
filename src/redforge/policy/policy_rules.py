@@ -1,5 +1,5 @@
 class PolicyRules:
-    PROHIBITED_TARGETS = ["localhost", "127.0.0.1", "0.0.0.0", "::1"]
+    PROHIBITED_TARGETS = ["localhost", "127.0.0.1", "0.0.0.0", "::1"]  # nosec B104
 
     TOOL_RISK_MAP = {
         "nmap": "MEDIUM",

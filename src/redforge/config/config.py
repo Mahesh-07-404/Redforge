@@ -89,8 +89,8 @@ class ToolsConfig(BaseModel):
 
 
 class IntegrationsConfig(BaseModel):
-    hackerone: dict[str, Any] = Field(default_factory=lambda: {"api_token": "", "enabled": False})
-    bugcrowd: dict[str, Any] = Field(default_factory=lambda: {"api_key": "", "enabled": False})
+    hackerone: dict[str, Any] = Field(default_factory=lambda: {"api_token": "", "enabled": False})  # nosec B105
+    bugcrowd: dict[str, Any] = Field(default_factory=lambda: {"api_key": "", "enabled": False})  # nosec B105
     openbugbounty: dict[str, Any] = Field(default_factory=lambda: {"enabled": False})
 
 
