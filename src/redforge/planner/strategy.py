@@ -269,7 +269,8 @@ class LearningStrategy(PlanningStrategy):
         )
 
     def create_plan(self, context: PlannerContext) -> Plan:
-        assert context.intent is not None
+        if context.intent is None:
+            raise ValueError("context.intent is not None")
         graph = TaskGraph()
 
         topic = (

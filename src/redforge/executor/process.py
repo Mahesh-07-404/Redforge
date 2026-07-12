@@ -1,4 +1,4 @@
-import subprocess
+import subprocess  # nosec B404
 
 
 class ProcessManager:
@@ -13,7 +13,7 @@ class ProcessManager:
         if sys.platform == "win32":
             creationflags = subprocess.CREATE_NO_WINDOW
 
-        self.process = subprocess.Popen(
+        self.process = subprocess.Popen(  # nosec B603
             self.command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

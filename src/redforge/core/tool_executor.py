@@ -123,7 +123,7 @@ class ToolExecutor:
             tool_name="bash",
             timeout=timeout or self.timeout_default,
             cwd=cwd,
-            shell=True,
+            shell=True,  # nosec B604
         )
         await self._emit_result(call_id, result)
         return result
@@ -188,8 +188,14 @@ class ToolExecutor:
                 await self._emit_result(call_id, result)
                 return result
 
+        args = ["curl", "-sL", "--max-time", str(timeout)]
+        if headers:
+            for k, v in headers.items():
+                args.extend(["-H", f"{k}: {v}"])
+        args.append(url)
+
         result = await self._run_subprocess(
-            cmd, tool_name="http_get", timeout=timeout + 5, shell=True
+            args, tool_name="http_get", timeout=timeout + 5, shell=False
         )
         await self._emit_result(call_id, result)
         return result
@@ -218,7 +224,9 @@ class ToolExecutor:
                 await self._emit_result(call_id, result)
                 return result
 
-        result = await self._run_subprocess(cmd, tool_name="nmap", timeout=timeout, shell=True)
+        import shlex
+        args = ["nmap"] + shlex.split(flags) + [target]
+        result = await self._run_subprocess(args, tool_name="nmap", timeout=timeout, shell=False)
         await self._emit_result(call_id, result)
         return result
 
@@ -238,7 +246,22 @@ class ToolExecutor:
             await self._emit_result(call_id, result)
             return result
 
-        result = await self._run_subprocess(cmd, tool_name="ffuf", timeout=timeout, shell=True)
+        args = [
+            "ffuf",
+            "-u",
+            f"{url}/FUZZ",
+            "-w",
+            wordlist,
+            "-e",
+            extensions,
+            "-mc",
+            "200,301,302,403",
+            "-t",
+            "40",
+            "-timeout",
+            "5",
+        ]
+        result = await self._run_subprocess(args, tool_name="ffuf", timeout=timeout, shell=False)
         await self._emit_result(call_id, result)
         return result
 
@@ -249,19 +272,25 @@ class ToolExecutor:
             # fall back to curl + headers
             cmd = f'curl -sI --max-time 10 "{url}"'
             await self._emit("tool_start", call_id=call_id, tool="whatweb(curl)", command=cmd)
+            args = ["curl", "-sI", "--max-time", "10", url]
             result = await self._run_subprocess(
-                cmd, tool_name="whatweb(curl)", timeout=20, shell=True
+                args, tool_name="whatweb(curl)", timeout=20, shell=False
             )
             await self._emit_result(call_id, result)
             return result
         cmd = f'whatweb -a 3 "{url}"'
         await self._emit("tool_start", call_id=call_id, tool="whatweb", command=cmd)
-        result = await self._run_subprocess(cmd, tool_name="whatweb", timeout=timeout, shell=True)
+        args = ["whatweb", "-a", "3", url]
+        result = await self._run_subprocess(args, tool_name="whatweb", timeout=timeout, shell=False)
         await self._emit_result(call_id, result)
         return result
 
     async def dns_enum(self, domain: str, timeout: int = 30) -> ToolResult:
         """Run basic DNS enumeration."""
+        import re
+        if not re.match(r"^[a-zA-Z0-9_\.\-]+$", domain):
+            raise ValueError(f"Invalid domain name: {domain}")
+
         cmd = (
             f"echo '=== A ===' && dig +short A {domain} ; "
             f"echo '=== MX ===' && dig +short MX {domain} ; "
@@ -270,7 +299,9 @@ class ToolExecutor:
         )
         call_id = self._next_call_id()
         await self._emit("tool_start", call_id=call_id, tool="dns_enum", command=cmd)
-        result = await self._run_subprocess(cmd, tool_name="dns_enum", timeout=timeout, shell=True)
+        result = await self._run_subprocess(
+            cmd, tool_name="dns_enum", timeout=timeout, shell=True  # nosec B604
+        )
         await self._emit_result(call_id, result)
         return result
 
@@ -279,7 +310,8 @@ class ToolExecutor:
         cmd = f"whois {target}"
         call_id = self._next_call_id()
         await self._emit("tool_start", call_id=call_id, tool="whois", command=cmd)
-        result = await self._run_subprocess(cmd, tool_name="whois", timeout=timeout, shell=True)
+        args = ["whois", target]
+        result = await self._run_subprocess(args, tool_name="whois", timeout=timeout, shell=False)
         await self._emit_result(call_id, result)
         return result
 
@@ -292,7 +324,7 @@ class ToolExecutor:
         cmd,
         tool_name: str,
         timeout: int,
-        shell: bool = True,
+        shell: bool = False,
         cwd: str | None = None,
     ) -> ToolResult:
         t0 = time.monotonic()

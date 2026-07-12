@@ -58,11 +58,11 @@ class LoopDetector:
                 state_subset[key] = state_subset[key][-3:]
 
         state_str = json.dumps(state_subset, sort_keys=True, default=str)
-        return hashlib.md5(state_str.encode()).hexdigest()
+        return hashlib.md5(state_str.encode(), usedforsecurity=False).hexdigest()
 
     def compute_action_hash(self, action: str) -> str:
         """Compute a hash of an action"""
-        return hashlib.md5(action.encode()).hexdigest()
+        return hashlib.md5(action.encode(), usedforsecurity=False).hexdigest()
 
     def record_state(self, state: dict[str, Any]) -> None:
         """Record current state for loop detection"""

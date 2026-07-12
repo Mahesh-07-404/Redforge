@@ -118,7 +118,7 @@ class SimpleVectorStore(VectorStore):
     def add(self, entries: list[MemoryEntry]) -> list[str]:
         ids = []
         for entry in entries:
-            entry_id = entry.id or hashlib.md5(entry.content.encode()).hexdigest()
+            entry_id = entry.id or hashlib.md5(entry.content.encode(), usedforsecurity=False).hexdigest()
             entry.id = entry_id
             self._entries[entry_id] = entry
             ids.append(entry_id)
@@ -238,7 +238,7 @@ class QdrantVectorStore(VectorStore):
             # fmt: off
             base = [
                 float(c) / 255.0
-                for c in hashlib.md5(texts[0].encode()).digest()
+                for c in hashlib.md5(texts[0].encode(), usedforsecurity=False).digest()
             ]  # 16 floats
             # fmt: on
             full = base * 24  # 16 * 24 = 384
@@ -268,7 +268,7 @@ class QdrantVectorStore(VectorStore):
                 entry_uuid = str(uuid.UUID(entry.id))
             except (ValueError, TypeError, AttributeError):
                 # If not a valid UUID, generate one based on the ID or content
-                hash_id = hashlib.md5((entry.id or entry.content).encode()).hexdigest()
+                hash_id = hashlib.md5((entry.id or entry.content).encode(), usedforsecurity=False).hexdigest()
                 entry_uuid = str(uuid.UUID(hash_id))
 
             entry.id = entry_uuid

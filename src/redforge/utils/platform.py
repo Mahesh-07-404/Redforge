@@ -1,7 +1,7 @@
 """Cross-platform detection and package management utilities"""
 
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 from dataclasses import dataclass
 from enum import Enum
@@ -153,7 +153,8 @@ def detect_platform() -> PlatformInfo:
         pkg_cmd = "brew"
         os_name = "macOS"
         try:
-            result = subprocess.run(["sw_vers", "-productVersion"], capture_output=True, text=True)
+            sw_vers_path = shutil.which("sw_vers") or "/usr/bin/sw_vers"
+            result = subprocess.run([sw_vers_path, "-productVersion"], capture_output=True, text=True)  # nosec B603 B607
             os_version = result.stdout.strip()
         except (
             OSError,
@@ -237,7 +238,8 @@ def check_command_exists(command: str) -> bool:
 
     if sys.platform == "win32":
         try:
-            result = subprocess.run(f"where {command}", shell=True, capture_output=True)
+            where_path = shutil.which("where") or "C:\\Windows\\System32\\where.exe"
+            result = subprocess.run([where_path, command], capture_output=True)  # nosec B603 B607
             return result.returncode == 0
         except (
             OSError,
@@ -256,7 +258,8 @@ def check_tool_available(tool: str) -> tuple[bool, str | None]:
 
     if sys.platform == "win32":
         try:
-            result = subprocess.run(f"where {tool}", shell=True, capture_output=True, text=True)
+            where_path = shutil.which("where") or "C:\\Windows\\System32\\where.exe"
+            result = subprocess.run([where_path, tool], capture_output=True, text=True)  # nosec B603 B607
             if result.returncode == 0:
                 return True, result.stdout.strip().split("\n")[0]
         except (
@@ -274,7 +277,7 @@ def get_tool_version(tool: str) -> str | None:
 
     for flag in version_flags:
         try:
-            result = subprocess.run([tool, flag], capture_output=True, text=True, timeout=5)
+            result = subprocess.run([tool, flag], capture_output=True, text=True, timeout=5)  # nosec B603
             if result.returncode == 0:
                 output = result.stdout + result.stderr
                 return output.strip().split("\n")[0]
@@ -293,6 +296,10 @@ def install_package(package: str, platform_info: PlatformInfo | None = None) -> 
 
     if pm == PackageManager.NONE:
         return False, "No package manager available"
+
+    import re
+    if not re.match(r"^[a-zA-Z0-9_.\-/@:]+$", package):
+        return False, f"Invalid package name: {package}"
 
     try:
         if pm == PackageManager.APT:
@@ -314,7 +321,7 @@ def install_package(package: str, platform_info: PlatformInfo | None = None) -> 
         else:
             return False, f"Unknown package manager: {pm}"
 
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)  # nosec B602
 
         if result.returncode == 0:
             return True, f"Successfully installed {package}"

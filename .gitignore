@@ -73,3 +73,13 @@ data/sessions.db
 __pycache__/
 .pytest_cache/
 *.pyc
+
+# Environments and API keys
+.env
+.env.*
+!.env.example
+config.yml
+credentials.json
+*.pem
+*.key
+*.p12

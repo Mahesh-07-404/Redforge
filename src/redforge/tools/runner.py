@@ -1,4 +1,4 @@
-import subprocess
+import subprocess  # nosec B404
 import time
 
 from ..contracts.tool import ToolCall, ToolResult
@@ -8,7 +8,7 @@ class ToolRunner:
     def run(self, tool_call: ToolCall) -> ToolResult:
         start = time.time()
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # nosec B603
                 tool_call.command, capture_output=True, text=True, timeout=tool_call.timeout_seconds
             )
             duration = int((time.time() - start) * 1000)
