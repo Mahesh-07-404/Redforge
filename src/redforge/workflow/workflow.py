@@ -1,9 +1,9 @@
-from typing import List
 from .contracts import WorkflowDefinition, WorkflowStage
+
 
 class BuiltInWorkflows:
     @staticmethod
-    def get_defaults() -> List[WorkflowDefinition]:
+    def get_defaults() -> list[WorkflowDefinition]:
         return [
             WorkflowDefinition(
                 id="passive_recon",
@@ -17,9 +17,9 @@ class BuiltInWorkflows:
                         agent="recon_agent",
                         planner_strategy="passive",
                         required_tools=["subfinder"],
-                        policy_level="low"
+                        policy_level="low",
                     )
-                ]
+                ],
             ),
             WorkflowDefinition(
                 id="active_recon",
@@ -33,9 +33,9 @@ class BuiltInWorkflows:
                         agent="network_agent",
                         planner_strategy="active",
                         required_tools=["nmap"],
-                        policy_level="medium"
+                        policy_level="medium",
                     )
-                ]
+                ],
             ),
             WorkflowDefinition(
                 id="web_pentest",
@@ -49,9 +49,9 @@ class BuiltInWorkflows:
                         agent="web_agent",
                         planner_strategy="web",
                         required_tools=["httpx", "nuclei"],
-                        policy_level="medium"
+                        policy_level="medium",
                     )
-                ]
+                ],
             ),
             WorkflowDefinition(
                 id="bug_bounty",
@@ -65,9 +65,9 @@ class BuiltInWorkflows:
                         agent="bugbounty_agent",
                         planner_strategy="bugbounty",
                         required_tools=["subfinder", "httpx"],
-                        policy_level="medium"
+                        policy_level="medium",
                     )
-                ]
+                ],
             ),
             WorkflowDefinition(
                 id="ctf",
@@ -81,9 +81,9 @@ class BuiltInWorkflows:
                         agent="ctf_agent",
                         planner_strategy="ctf",
                         required_tools=["john"],
-                        policy_level="low"
+                        policy_level="low",
                     )
-                ]
+                ],
             ),
             WorkflowDefinition(
                 id="learning",
@@ -96,9 +96,9 @@ class BuiltInWorkflows:
                         name="Explain concept",
                         agent="learning_agent",
                         planner_strategy="explain",
-                        policy_level="low"
+                        policy_level="low",
                     )
-                ]
+                ],
             ),
             WorkflowDefinition(
                 id="report_generation",
@@ -111,9 +111,9 @@ class BuiltInWorkflows:
                         name="Generate findings report",
                         agent="report_agent",
                         planner_strategy="report",
-                        policy_level="low"
+                        policy_level="low",
                     )
-                ]
+                ],
             ),
             WorkflowDefinition(
                 id="research",
@@ -126,8 +126,8 @@ class BuiltInWorkflows:
                         name="Research CVE details",
                         agent="research_agent",
                         planner_strategy="research",
-                        policy_level="low"
+                        policy_level="low",
                     )
-                ]
-            )
+                ],
+            ),
         ]

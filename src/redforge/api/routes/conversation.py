@@ -1,18 +1,23 @@
 """
 Chat & Conversation routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 import logging
-from typing import List
+
+from fastapi import APIRouter, Path
+
+from ..contracts import (
+    ChatRequest,
+    ChatResponse,
+    ConversationHistoryResponse,
+    ConversationMessage,
+)
+from ..dependencies import AuthInfo, RequestID, Timer
+from ..response import no_content, success
 
 logger = logging.getLogger(__name__)
-
-from fastapi import APIRouter, Depends, Path
-
-from ..contracts import ChatRequest, ChatResponse, ConversationMessage, ConversationHistoryResponse
-from ..dependencies import get_current_auth, get_request_id, get_timer
-from ..response import success, no_content
 
 router = APIRouter(tags=["Chat & Conversation"])
 
@@ -20,6 +25,7 @@ router = APIRouter(tags=["Chat & Conversation"])
 def _run_chat(session_id: str, message: str) -> dict:
     try:
         from redforge.conversation.engine import ConversationEngine
+
         engine = ConversationEngine()
         result = engine.process(session_id=session_id, message=message)
         return result if isinstance(result, dict) else {"response": str(result)}
@@ -30,9 +36,9 @@ def _run_chat(session_id: str, message: str) -> dict:
 @router.post("/chat", summary="Send a chat message (non-streaming)")
 async def chat(
     body: ChatRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Send a message to RedForge. For streaming, use /ws/chat."""
     session_id = body.session_id or "default"
@@ -50,16 +56,17 @@ async def chat(
 
 @router.get("/conversations/{session_id}", summary="Get conversation history")
 async def get_conversation(
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
     session_id: str = Path(..., description="Session ID"),
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
     limit: int = 50,
 ):
     """Retrieve message history for a session."""
-    messages: List[dict] = []
+    messages: list[dict] = []
     try:
         from redforge.core.session import SessionService
+
         svc = SessionService()
         session = svc.load(session_id)
         if session and hasattr(session, "metadata"):
@@ -78,12 +85,13 @@ async def get_conversation(
 
 @router.delete("/conversations/{session_id}", status_code=204, summary="Clear conversation history")
 async def clear_conversation(
+    auth: AuthInfo,
     session_id: str = Path(..., description="Session ID"),
-    auth=Depends(get_current_auth),
 ):
     """Clear all messages for a session."""
     try:
         from redforge.core.session import SessionService
+
         svc = SessionService()
         session = svc.load(session_id)
         if session and hasattr(session, "metadata"):

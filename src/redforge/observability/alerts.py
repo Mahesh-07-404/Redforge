@@ -3,20 +3,21 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
+
 from .contracts import AlertRecord, AlertSeverity
+from .logger import StructuredLogger
 
 logger = logging.getLogger(__name__)
-from .logger import StructuredLogger
 
 
 class AlertsEngine:
     """Dispatches alerts and tracks warning states across subsystems."""
 
-    def __init__(self, logger: Optional[StructuredLogger] = None) -> None:
+    def __init__(self, logger: StructuredLogger | None = None) -> None:
         self.logger = logger or StructuredLogger("alerts")
-        self._alerts: Dict[str, AlertRecord] = {}
-        self._handlers: List[Callable[[AlertRecord], None]] = []
+        self._alerts: dict[str, AlertRecord] = {}
+        self._handlers: list[Callable[[AlertRecord], None]] = []
 
     def register_handler(self, handler: Callable[[AlertRecord], None]) -> None:
         """Register custom alert callback handler."""
@@ -39,9 +40,9 @@ class AlertsEngine:
             source=source,
             timestamp=time.time(),
         )
-        
+
         self._alerts[alert_id] = alert
-        
+
         # Log structured warning/error
         log_msg = f"[{severity.value.upper()}] {title} - {message} (Source: {source})"
         if severity == AlertSeverity.CRITICAL:
@@ -50,14 +51,14 @@ class AlertsEngine:
             self.logger.warning(log_msg, alert_id=alert_id, source=source)
         else:
             self.logger.info(log_msg, alert_id=alert_id, source=source)
-            
+
         # Dispatch to custom handler callbacks
         for handler in self._handlers:
             try:
                 handler(alert)
             except Exception as exc:  # nosec B110 - isolated handler; must not crash alert dispatch
                 logger.warning("Alert handler raised an error (alert_id=%s): %s", alert_id, exc)
-                
+
         return alert
 
     def resolve(self, alert_id: str) -> None:
@@ -68,11 +69,11 @@ class AlertsEngine:
             alert.resolved_at = time.time()
             self.logger.info(f"Alert resolved: {alert.title}", alert_id=alert_id)
 
-    def list_active(self) -> List[AlertRecord]:
+    def list_active(self) -> list[AlertRecord]:
         """List active unresolved alerts."""
         return [a for a in self._alerts.values() if not a.resolved]
 
-    def list_all(self) -> List[AlertRecord]:
+    def list_all(self) -> list[AlertRecord]:
         """List all triggered alerts (both active and resolved)."""
         return list(self._alerts.values())
 

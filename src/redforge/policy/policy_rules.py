@@ -1,6 +1,6 @@
 class PolicyRules:
     PROHIBITED_TARGETS = ["localhost", "127.0.0.1", "0.0.0.0", "::1"]
-    
+
     TOOL_RISK_MAP = {
         "nmap": "MEDIUM",
         "masscan": "HIGH",
@@ -21,5 +21,5 @@ class PolicyRules:
         "burpsuite": "HIGH",
         "dnsx": "LOW",
         "gau": "LOW",
-        "waybackurls": "LOW"
+        "waybackurls": "LOW",
     }

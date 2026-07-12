@@ -1,11 +1,12 @@
 from ..contracts.tool import ToolCall, ToolResult
-from .runner import ToolRunner
 from .registry import ToolRegistry
+from .runner import ToolRunner
+
 
 class ToolExecutor:
-    def __init__(self):
-        self.runner = ToolRunner()
-        self.registry = ToolRegistry()
+    def __init__(self) -> None:
+        self.runner: ToolRunner = ToolRunner()
+        self.registry: ToolRegistry = ToolRegistry()
 
     def execute(self, tool_call: ToolCall) -> ToolResult:
         if not tool_call.approved:
@@ -18,9 +19,9 @@ class ToolExecutor:
                 parsed_output={},
                 execution_time_ms=0,
                 timed_out=False,
-                error="Execution denied by autonomy controller"
+                error="Execution denied by autonomy controller",
             )
-        
+
         return self.runner.run(tool_call)
 
     def is_available(self, tool_name: str) -> bool:

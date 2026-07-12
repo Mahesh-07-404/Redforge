@@ -2,28 +2,27 @@
 FastAPI Dependencies — Phase 16: Unified API Gateway
 Reusable Depends() callables for auth, pagination, rate-limit checks, session lookup.
 """
+
 from __future__ import annotations
 
 import time
-from typing import Annotated, Any, Dict, Optional
+from typing import Annotated, Any, cast
 
-from fastapi import Depends, Header, HTTPException, Query, Request
+from fastapi import Depends, Query, Request
 
 from .auth import get_auth_service
 from .config import get_api_config
 from .exceptions import (
     AuthenticationError,
-    NotFoundError,
     SessionNotFoundError,
 )
-from .rate_limit import get_rate_limiter
-
 
 # ---------------------------------------------------------------------------
 # Auth dependencies
 # ---------------------------------------------------------------------------
 
-async def get_current_auth(request: Request) -> Dict[str, Any]:
+
+async def get_current_auth(request: Request) -> dict[str, Any]:
     """Return auth_info attached by AuthenticationMiddleware."""
     auth_info = getattr(request.state, "auth_info", None)
     if auth_info is None:
@@ -31,25 +30,28 @@ async def get_current_auth(request: Request) -> Dict[str, Any]:
         if cfg.auth.enabled:
             raise AuthenticationError()
         return {"authenticated": False, "scopes": ["read", "write", "execute", "report", "admin"]}
-    return auth_info
+    return cast(dict[str, Any], auth_info)
 
 
-async def require_read(auth: Dict = Depends(get_current_auth)) -> Dict:
+AuthInfo = Annotated[dict[str, Any], Depends(get_current_auth)]
+
+
+async def require_read(auth: AuthInfo) -> dict[str, Any]:
     get_auth_service().check_scope(auth, "read")
     return auth
 
 
-async def require_write(auth: Dict = Depends(get_current_auth)) -> Dict:
+async def require_write(auth: AuthInfo) -> dict[str, Any]:
     get_auth_service().check_scope(auth, "write")
     return auth
 
 
-async def require_execute(auth: Dict = Depends(get_current_auth)) -> Dict:
+async def require_execute(auth: AuthInfo) -> dict[str, Any]:
     get_auth_service().check_scope(auth, "execute")
     return auth
 
 
-async def require_admin(auth: Dict = Depends(get_current_auth)) -> Dict:
+async def require_admin(auth: AuthInfo) -> dict[str, Any]:
     get_auth_service().check_scope(auth, "admin")
     return auth
 
@@ -57,6 +59,7 @@ async def require_admin(auth: Dict = Depends(get_current_auth)) -> Dict:
 # ---------------------------------------------------------------------------
 # Pagination dependency
 # ---------------------------------------------------------------------------
+
 
 class PaginationParams:
     def __init__(
@@ -73,6 +76,7 @@ class PaginationParams:
 # Request ID / Trace ID
 # ---------------------------------------------------------------------------
 
+
 async def get_request_id(request: Request) -> str:
     return getattr(request.state, "request_id", "unknown")
 
@@ -84,6 +88,7 @@ async def get_trace_id(request: Request) -> str:
 # ---------------------------------------------------------------------------
 # Request timing helper
 # ---------------------------------------------------------------------------
+
 
 class RequestTimer:
     def __init__(self) -> None:
@@ -102,7 +107,8 @@ async def get_timer() -> RequestTimer:
 # Session lookup dependency
 # ---------------------------------------------------------------------------
 
-async def get_session_or_404(session_id: str) -> Dict[str, Any]:
+
+async def get_session_or_404(session_id: str) -> dict[str, Any]:
     """
     Lightweight session existence check.
     Routes that need the full Session object import the session service directly.
@@ -111,6 +117,7 @@ async def get_session_or_404(session_id: str) -> Dict[str, Any]:
     # Delegate to internal session service
     try:
         from redforge.core.session import SessionService
+
         svc = SessionService()
         session = svc.load(session_id)
         if session is None:
@@ -127,13 +134,16 @@ async def get_session_or_404(session_id: str) -> Dict[str, Any]:
 # Workflow existence check
 # ---------------------------------------------------------------------------
 
-async def get_workflow_or_404(workflow_id: str) -> Dict[str, Any]:
+
+async def get_workflow_or_404(workflow_id: str) -> dict[str, Any]:
     try:
         from redforge.workflow.registry import WorkflowRegistry
+
         registry = WorkflowRegistry()
         workflow = registry.get(workflow_id)
         if workflow is None:
             from .exceptions import WorkflowNotFoundError
+
             raise WorkflowNotFoundError(f"Workflow '{workflow_id}' not found")
         return workflow if isinstance(workflow, dict) else {"id": workflow_id}
     except Exception:
@@ -144,11 +154,10 @@ async def get_workflow_or_404(workflow_id: str) -> Dict[str, Any]:
 # Common type aliases
 # ---------------------------------------------------------------------------
 
-AuthInfo = Annotated[Dict[str, Any], Depends(get_current_auth)]
-ReadAuth = Annotated[Dict[str, Any], Depends(require_read)]
-WriteAuth = Annotated[Dict[str, Any], Depends(require_write)]
-ExecuteAuth = Annotated[Dict[str, Any], Depends(require_execute)]
-AdminAuth = Annotated[Dict[str, Any], Depends(require_admin)]
+ReadAuth = Annotated[dict[str, Any], Depends(require_read)]
+WriteAuth = Annotated[dict[str, Any], Depends(require_write)]
+ExecuteAuth = Annotated[dict[str, Any], Depends(require_execute)]
+AdminAuth = Annotated[dict[str, Any], Depends(require_admin)]
 Pagination = Annotated[PaginationParams, Depends(PaginationParams)]
 RequestID = Annotated[str, Depends(get_request_id)]
 TraceID = Annotated[str, Depends(get_trace_id)]

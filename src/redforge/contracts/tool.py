@@ -1,7 +1,10 @@
 from datetime import datetime
 from enum import Enum
+
 from pydantic import BaseModel
+
 from .intent import RiskLevel
+
 
 class ToolCall(BaseModel):
     tool_name: str
@@ -11,6 +14,7 @@ class ToolCall(BaseModel):
     risk_level: RiskLevel
     session_id: str
     approved: bool
+
 
 class ToolResult(BaseModel):
     tool_name: str
@@ -23,12 +27,14 @@ class ToolResult(BaseModel):
     timed_out: bool
     error: str | None
 
+
 class VerificationStatus(str, Enum):
     PASSED = "passed"
     FAILED_SCHEMA = "failed_schema"
     FAILED_SCOPE = "failed_scope"
     FAILED_TIMEOUT = "failed_timeout"
     FAILED_ERROR = "failed_error"
+
 
 class VerifiedResult(BaseModel):
     tool_result: ToolResult

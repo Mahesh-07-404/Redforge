@@ -1,5 +1,3 @@
-from typing import List
-
 class StrategySelector:
     @staticmethod
     def select_strategy(goal_text: str) -> str:

@@ -1,12 +1,12 @@
 """Reports package for RedForge."""
 
-from redforge.reports.engine import ReportService, ReportEngine
+from redforge.reports.engine import ReportEngine, ReportService
 from redforge.reports.generators import (
     CVE,
-    Report,
-    CVEGenerator,
-    ReportGenerator,
     AutomationEngine,
+    CVEGenerator,
+    Report,
+    ReportGenerator,
     Workflow,
 )
 

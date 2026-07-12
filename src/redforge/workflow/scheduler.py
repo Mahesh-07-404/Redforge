@@ -1,12 +1,12 @@
-from typing import List
 from .contracts import WorkflowStage
+
 
 class WorkflowScheduler:
     @staticmethod
-    def schedule_stages(stages: List[WorkflowStage]) -> List[WorkflowStage]:
+    def schedule_stages(stages: list[WorkflowStage]) -> list[WorkflowStage]:
         sorted_stages = []
         visited = set()
-        
+
         def visit(stage):
             if stage.id in visited:
                 return
@@ -16,7 +16,7 @@ class WorkflowScheduler:
                     visit(dep_stage)
             visited.add(stage.id)
             sorted_stages.append(stage)
-            
+
         for stage in stages:
             visit(stage)
         return sorted_stages

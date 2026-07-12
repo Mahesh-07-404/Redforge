@@ -1,22 +1,27 @@
+from typing import Literal
+
 from pydantic import BaseModel
-from typing import List, Literal, Optional
+
 from .base import BaseToolOutput
+
 
 class NmapPort(BaseModel):
     port: int
     protocol: Literal["tcp", "udp"]
     state: Literal["open", "closed", "filtered"]
-    service: Optional[str] = None
-    version: Optional[str] = None
+    service: str | None = None
+    version: str | None = None
+
 
 class NmapHostResult(BaseModel):
     ip: str
-    hostname: Optional[str] = None
+    hostname: str | None = None
     state: Literal["up", "down"]
-    ports: List[NmapPort]
+    ports: list[NmapPort]
+
 
 class NmapScanResult(BaseToolOutput):
     tool_name: str = "nmap"
-    hosts: List[NmapHostResult]
+    hosts: list[NmapHostResult]
     scan_type: str = "syn"
     timing_template: int = 3

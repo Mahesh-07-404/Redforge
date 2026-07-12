@@ -1,14 +1,19 @@
-from typing import List, Optional
-from .planner_context import PlannerContext
 from .plan import Plan
-from .validators import PlannerValidator
+from .planner_context import PlannerContext
 from .strategy import (
-    PlanningStrategy, PassiveReconStrategy, WebEnumerationStrategy,
-    BugBountyStrategy, CTFStrategy, LearningStrategy, ReportStrategy
+    BugBountyStrategy,
+    CTFStrategy,
+    LearningStrategy,
+    PassiveReconStrategy,
+    PlanningStrategy,
+    ReportStrategy,
+    WebEnumerationStrategy,
 )
+from .validators import PlannerValidator
+
 
 class Planner:
-    def __init__(self, strategies: Optional[List[PlanningStrategy]] = None):
+    def __init__(self, strategies: list[PlanningStrategy] | None = None):
         self.validator = PlannerValidator()
         if strategies is None:
             self.strategies = [
@@ -17,7 +22,7 @@ class Planner:
                 BugBountyStrategy(),
                 CTFStrategy(),
                 LearningStrategy(),
-                ReportStrategy()
+                ReportStrategy(),
             ]
         else:
             self.strategies = strategies

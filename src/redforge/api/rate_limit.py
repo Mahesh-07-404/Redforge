@@ -2,12 +2,12 @@
 Rate Limiter — Phase 16: Unified API Gateway
 Token-bucket per-IP + per-key rate limiting with burst support.
 """
+
 from __future__ import annotations
 
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
 
 from .config import get_api_config
 from .exceptions import RateLimitError
@@ -16,9 +16,10 @@ from .exceptions import RateLimitError
 @dataclass
 class _Bucket:
     """Token-bucket state for one (key, endpoint) pair."""
+
     tokens: float
     capacity: float
-    refill_rate: float          # tokens per second
+    refill_rate: float  # tokens per second
     last_refill: float = field(default_factory=time.monotonic)
 
     def consume(self, amount: float = 1.0) -> bool:
@@ -49,7 +50,7 @@ class RateLimiter:
 
     def __init__(self) -> None:
         # key -> Bucket
-        self._buckets: Dict[str, _Bucket] = defaultdict(lambda: _Bucket(0, 0, 0))
+        self._buckets: dict[str, _Bucket] = defaultdict(lambda: _Bucket(0, 0, 0))
 
     def _bucket_key(self, identifier: str, endpoint: str) -> str:
         return f"{identifier}::{endpoint}"
@@ -71,7 +72,7 @@ class RateLimiter:
         refill_rate = per_minute / 60.0
         return _Bucket(tokens=float(burst), capacity=float(burst), refill_rate=refill_rate)
 
-    def check(self, identifier: str, endpoint: str = "default") -> Tuple[bool, float]:
+    def check(self, identifier: str, endpoint: str = "default") -> tuple[bool, float]:
         """
         Returns (allowed, retry_after_seconds).
         Raises RateLimitError if denied.
@@ -98,7 +99,7 @@ class RateLimiter:
         key = self._bucket_key(identifier, endpoint)
         self._buckets.pop(key, None)
 
-    def get_status(self, identifier: str, endpoint: str = "default") -> Dict:
+    def get_status(self, identifier: str, endpoint: str = "default") -> dict:
         key = self._bucket_key(identifier, endpoint)
         if key not in self._buckets:
             return {"tokens": "N/A", "capacity": "N/A"}
@@ -111,7 +112,7 @@ class RateLimiter:
 
 
 # Singleton
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter() -> RateLimiter:

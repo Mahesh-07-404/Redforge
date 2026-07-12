@@ -1,0 +1,2 @@
+isort_after_errors=42
+ruff_after_summary=Found 169 errors. No fixes available (33 hidden fixes can be enabled with the `--unsafe-fixes` option). 

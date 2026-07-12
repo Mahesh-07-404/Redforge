@@ -1,10 +1,13 @@
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 from pydantic import BaseModel
+
 
 class EvidenceReference(BaseModel):
     task_id: str
     artifact_id: str
     hash: str
+
 
 class NormalizedEntity(BaseModel):
     id: str
@@ -16,6 +19,6 @@ class NormalizedEntity(BaseModel):
     execution_id: str
     target: str
     timestamp: str
-    tags: List[str] = []
-    metadata: Dict[str, Any] = {}
-    evidence_reference: Optional[EvidenceReference] = None
+    tags: list[str] = []
+    metadata: dict[str, Any] = {}
+    evidence_reference: EvidenceReference | None = None

@@ -2,19 +2,20 @@
 API Contracts — Phase 16: Unified API Gateway
 Pydantic schemas for all request/response bodies.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 from enum import Enum
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
+
 
 class SessionModeEnum(str, Enum):
     bugbounty = "bugbounty"
@@ -51,35 +52,38 @@ class WorkflowStatusEnum(str, Enum):
 # Standard API Envelope
 # ---------------------------------------------------------------------------
 
+
 class APIResponse(BaseModel):
     """Standard envelope returned by every non-streaming endpoint."""
+
     request_id: str = Field(default_factory=lambda: str(uuid4()))
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     status: str = "success"
     version: str = "2.0.0"
     duration_ms: float = 0.0
-    payload: Optional[Any] = None
-    errors: List[str] = []
+    payload: Any | None = None
+    errors: list[str] = []
 
     @classmethod
-    def ok(cls, payload: Any, duration_ms: float = 0.0) -> "APIResponse":
+    def ok(cls, payload: Any, duration_ms: float = 0.0) -> APIResponse:
         return cls(status="success", payload=payload, duration_ms=duration_ms)
 
     @classmethod
-    def error(cls, errors: List[str], status: str = "error") -> "APIResponse":
+    def error(cls, errors: list[str], status: str = "error") -> APIResponse:
         return cls(status=status, errors=errors)
 
 
 class ErrorResponse(BaseModel):
     error_code: str
     message: str
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
     trace_id: str = Field(default_factory=lambda: str(uuid4()))
 
 
 # ---------------------------------------------------------------------------
 # Auth schemas
 # ---------------------------------------------------------------------------
+
 
 class TokenRequest(BaseModel):
     username: str
@@ -94,81 +98,83 @@ class TokenResponse(BaseModel):
 
 class APIKeyRequest(BaseModel):
     name: str
-    scopes: List[str] = ["read", "write"]
-    expires_days: Optional[int] = None
+    scopes: list[str] = ["read", "write"]
+    expires_days: int | None = None
 
 
 class APIKeyResponse(BaseModel):
     key_id: str
     api_key: str
     name: str
-    scopes: List[str]
+    scopes: list[str]
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
 
 # ---------------------------------------------------------------------------
 # Session schemas
 # ---------------------------------------------------------------------------
 
+
 class SessionCreateRequest(BaseModel):
     mode: SessionModeEnum
-    target: Optional[str] = None
+    target: str | None = None
     autonomy: AutonomyEnum = AutonomyEnum.manual
     name: str = ""
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class SessionResponse(BaseModel):
     id: str
     mode: str
-    target: Optional[str]
+    target: str | None
     autonomy: str
     status: str
     name: str = ""
     created_at: datetime
     updated_at: datetime
-    memory_namespace: Optional[str] = None
-    metadata: Dict[str, Any] = {}
+    memory_namespace: str | None = None
+    metadata: dict[str, Any] = {}
 
 
 class SessionUpdateRequest(BaseModel):
-    target: Optional[str] = None
-    autonomy: Optional[str] = None
-    name: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    target: str | None = None
+    autonomy: str | None = None
+    name: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
 # Chat / Conversation schemas
 # ---------------------------------------------------------------------------
 
+
 class ChatRequest(BaseModel):
     message: str
-    session_id: Optional[str] = None
+    session_id: str | None = None
     stream: bool = True
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class ChatResponse(BaseModel):
     session_id: str
     message: str
-    intent: Optional[Dict[str, Any]] = None
-    plan: Optional[Dict[str, Any]] = None
-    findings: List[Dict[str, Any]] = []
-    events: List[Dict[str, Any]] = []
+    intent: dict[str, Any] | None = None
+    plan: dict[str, Any] | None = None
+    findings: list[dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
 
 
 class ConversationMessage(BaseModel):
     role: str
     content: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class ConversationHistoryResponse(BaseModel):
     session_id: str
-    messages: List[ConversationMessage] = []
+    messages: list[ConversationMessage] = []
     total: int = 0
 
 
@@ -176,27 +182,28 @@ class ConversationHistoryResponse(BaseModel):
 # Workflow schemas
 # ---------------------------------------------------------------------------
 
+
 class WorkflowStartRequest(BaseModel):
     workflow_id: str
-    target: Optional[str] = None
-    parameters: Dict[str, Any] = {}
-    session_id: Optional[str] = None
+    target: str | None = None
+    parameters: dict[str, Any] = {}
+    session_id: str | None = None
 
 
 class WorkflowResponse(BaseModel):
     workflow_id: str
     run_id: str
     status: WorkflowStatusEnum
-    session_id: Optional[str] = None
+    session_id: str | None = None
     started_at: datetime = Field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     stages_completed: int = 0
     stages_total: int = 0
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class WorkflowListResponse(BaseModel):
-    workflows: List[Dict[str, Any]] = []
+    workflows: list[dict[str, Any]] = []
     total: int = 0
 
 
@@ -204,17 +211,18 @@ class WorkflowListResponse(BaseModel):
 # Planner schemas
 # ---------------------------------------------------------------------------
 
+
 class PlanRequest(BaseModel):
     session_id: str
-    intent: Dict[str, Any]
-    context: Dict[str, Any] = {}
+    intent: dict[str, Any]
+    context: dict[str, Any] = {}
 
 
 class PlanResponse(BaseModel):
     session_id: str
     plan_id: str
     summary: str
-    phases: List[Dict[str, Any]] = []
+    phases: list[dict[str, Any]] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -222,10 +230,11 @@ class PlanResponse(BaseModel):
 # Reasoning schemas
 # ---------------------------------------------------------------------------
 
+
 class ReasoningRequest(BaseModel):
     session_id: str
     goal: str
-    context: Dict[str, Any] = {}
+    context: dict[str, Any] = {}
 
 
 class ReasoningResponse(BaseModel):
@@ -234,7 +243,7 @@ class ReasoningResponse(BaseModel):
     decision: str
     strategy: str
     confidence: float
-    next_actions: List[str] = []
+    next_actions: list[str] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -242,11 +251,12 @@ class ReasoningResponse(BaseModel):
 # Execution schemas
 # ---------------------------------------------------------------------------
 
+
 class ExecutionRequest(BaseModel):
     session_id: str
-    plan_id: Optional[str] = None
+    plan_id: str | None = None
     tool: str
-    command: List[str]
+    command: list[str]
     timeout: int = 60
 
 
@@ -257,14 +267,15 @@ class ExecutionResponse(BaseModel):
     status: str
     stdout: str = ""
     stderr: str = ""
-    exit_code: Optional[int] = None
+    exit_code: int | None = None
     duration_ms: float = 0.0
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
 
 
 # ---------------------------------------------------------------------------
 # Report schemas
 # ---------------------------------------------------------------------------
+
 
 class ReportRequest(BaseModel):
     session_id: str
@@ -280,7 +291,7 @@ class ReportResponse(BaseModel):
     title: str
     content: str
     finding_count: int = 0
-    severity_summary: Dict[str, int] = {}
+    severity_summary: dict[str, int] = {}
     generated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -288,11 +299,12 @@ class ReportResponse(BaseModel):
 # Memory schemas
 # ---------------------------------------------------------------------------
 
+
 class MemoryStoreRequest(BaseModel):
     session_id: str
     content: str
     tier: str = "short"
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class MemoryQueryRequest(BaseModel):
@@ -307,13 +319,13 @@ class MemoryEntry(BaseModel):
     tier: str
     relevance: float = 1.0
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class MemoryQueryResponse(BaseModel):
     session_id: str
     query: str
-    results: List[MemoryEntry] = []
+    results: list[MemoryEntry] = []
     total: int = 0
 
 
@@ -321,10 +333,11 @@ class MemoryQueryResponse(BaseModel):
 # Plugin schemas
 # ---------------------------------------------------------------------------
 
+
 class PluginInstallRequest(BaseModel):
     plugin_id: str
-    version: Optional[str] = None
-    source: Optional[str] = None
+    version: str | None = None
+    source: str | None = None
 
 
 class PluginResponse(BaseModel):
@@ -339,7 +352,7 @@ class PluginResponse(BaseModel):
 
 
 class PluginListResponse(BaseModel):
-    plugins: List[PluginResponse] = []
+    plugins: list[PluginResponse] = []
     total: int = 0
 
 
@@ -347,10 +360,11 @@ class PluginListResponse(BaseModel):
 # MCP schemas
 # ---------------------------------------------------------------------------
 
+
 class MCPToolResponse(BaseModel):
     name: str
     description: str
-    input_schema: Dict[str, Any] = {}
+    input_schema: dict[str, Any] = {}
     version: str = "1.0.0"
 
 
@@ -362,14 +376,15 @@ class MCPResourceResponse(BaseModel):
 
 
 class MCPDiscoveryResponse(BaseModel):
-    tools: List[MCPToolResponse] = []
-    resources: List[MCPResourceResponse] = []
+    tools: list[MCPToolResponse] = []
+    resources: list[MCPResourceResponse] = []
     server_version: str = "2.0.0"
 
 
 # ---------------------------------------------------------------------------
 # System / Health schemas
 # ---------------------------------------------------------------------------
+
 
 class HealthResponse(BaseModel):
     status: str
@@ -380,7 +395,7 @@ class HealthResponse(BaseModel):
 
 class ReadinessResponse(BaseModel):
     ready: bool
-    checks: Dict[str, bool] = {}
+    checks: dict[str, bool] = {}
     message: str = ""
 
 
@@ -413,11 +428,12 @@ class MetricsResponse(BaseModel):
 # WebSocket event schemas
 # ---------------------------------------------------------------------------
 
+
 class WSEvent(BaseModel):
     event_type: str
-    session_id: Optional[str] = None
+    session_id: str | None = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    payload: Dict[str, Any] = {}
+    payload: dict[str, Any] = {}
 
 
 class WSChatEvent(WSEvent):

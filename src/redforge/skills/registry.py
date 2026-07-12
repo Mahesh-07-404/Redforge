@@ -2,36 +2,39 @@
 
 import logging
 import os
-import yaml
 import re
-from pathlib import Path
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import yaml
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class SkillMetadata:
     name: str
     category: str
-    mode: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
+    mode: str | None = None
+    tags: list[str] = field(default_factory=list)
     priority: int = 5
     token_cost: int = 500
     content: str = ""
     path: str = ""
 
+
 class SkillRegistry:
     """Registry that loads, catalogs, and indexes skills with metadata"""
 
-    def __init__(self, skills_dir: Optional[str | Path] = None):
+    def __init__(self, skills_dir: str | Path | None = None):
         if skills_dir:
             self.skills_dir = Path(skills_dir)
         else:
             # Default to skills/ directory under root
             self.skills_dir = Path(__file__).resolve().parent.parent.parent.parent / "skills"
-            
-        self.skills: Dict[str, SkillMetadata] = {}
+
+        self.skills: dict[str, SkillMetadata] = {}
 
     def load_registry(self) -> None:
         """Scan skills directory and parse metadata/frontmatter from markdown files"""
@@ -40,7 +43,9 @@ class SkillRegistry:
 
         self.skills = {}
         for root, dirs, files in os.walk(self.skills_dir):
-            dirs[:] = [d for d in dirs if not d.startswith(("__", ".", "cache", "versions", "adaptive"))]
+            dirs[:] = [
+                d for d in dirs if not d.startswith(("__", ".", "cache", "versions", "adaptive"))
+            ]
             for fname in files:
                 if fname.endswith(".md"):
                     file_path = Path(root) / fname
@@ -49,20 +54,26 @@ class SkillRegistry:
     def _register_file(self, file_path: Path) -> None:
         try:
             content = file_path.read_text(encoding="utf-8", errors="replace")
-        except (OSError, PermissionError) as exc:  # nosec B110 - best-effort skill file scan; skip unreadable files
+        except (
+            OSError,
+            PermissionError,
+        ) as exc:  # nosec B110 - best-effort skill file scan; skip unreadable files
             logger.debug("Skipping unreadable skill file '%s': %s", file_path, exc)
             return
 
         # Parse YAML frontmatter if available
-        metadata: Dict[str, Any] = {}
+        metadata: dict[str, Any] = {}
         content_body = content
-        
+
         frontmatter_match = re.match(r"^---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
         if frontmatter_match:
             try:
                 metadata = yaml.safe_load(frontmatter_match.group(1)) or {}
-                content_body = content[frontmatter_match.end():]
-            except (ValueError, yaml.YAMLError) as exc:  # nosec B110 - best-effort YAML frontmatter parse
+                content_body = content[frontmatter_match.end() :]
+            except (
+                ValueError,
+                yaml.YAMLError,
+            ) as exc:  # nosec B110 - best-effort YAML frontmatter parse
                 logger.debug("Failed to parse frontmatter in '%s': %s", file_path, exc)
 
         # Apply path-based fallbacks for missing fields
@@ -74,7 +85,7 @@ class SkillRegistry:
         parts = relative.parts
         category = metadata.get("category")
         if not category:
-            first_line = content.strip().split('\n')[0] if content.strip() else ""
+            first_line = content.strip().split("\n")[0] if content.strip() else ""
             match = re.match(r"^#\s*([A-Za-z\s]+?)(?:\s+Skill|\s+SYSTEM)?\s*:", first_line)
             if match:
                 lbl = match.group(1).strip().upper()
@@ -84,7 +95,7 @@ class SkillRegistry:
                     category = "MODES"
                 elif lbl in ("SAFETY", "SYSTEM", "MODES", "TOOLS", "EXECUTION"):
                     category = lbl
-            
+
             if not category:
                 if len(parts) > 1:
                     if parts[0].lower() == "domain" and len(parts) > 2:
@@ -93,7 +104,7 @@ class SkillRegistry:
                         category = parts[0].upper()
                 else:
                     category = "GENERAL"
-        
+
         # If it's a MODES folder, parse the mode
         mode = metadata.get("mode")
         if not mode and category.upper() == "MODES":
@@ -112,7 +123,9 @@ class SkillRegistry:
         else:
             tags = list(tags_raw)
 
-        name = metadata.get("name") or ("/".join(list(parts[:-1]) + [file_path.stem]) if len(parts) > 1 else file_path.stem)
+        name = metadata.get("name") or (
+            "/".join(list(parts[:-1]) + [file_path.stem]) if len(parts) > 1 else file_path.stem
+        )
         priority = int(metadata.get("priority", 5))
         token_cost = int(metadata.get("token_cost", len(content_body.split())))
 
@@ -128,8 +141,8 @@ class SkillRegistry:
         )
         self.skills[name] = skill
 
-    def get_skill(self, name: str) -> Optional[SkillMetadata]:
+    def get_skill(self, name: str) -> SkillMetadata | None:
         return self.skills.get(name)
 
-    def list_skills(self) -> List[SkillMetadata]:
+    def list_skills(self) -> list[SkillMetadata]:
         return list(self.skills.values())

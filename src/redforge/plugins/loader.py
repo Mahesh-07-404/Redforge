@@ -1,6 +1,7 @@
 from .contracts import PluginMetadata
-from .registry import PluginRegistry
 from .exceptions import PluginLoadError
+from .registry import PluginRegistry
+
 
 class PluginLoader:
     def __init__(self, registry: PluginRegistry):

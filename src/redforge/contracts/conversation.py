@@ -1,13 +1,14 @@
-from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
-from .session import Session
-from .intent import ParsedIntent
+
 from ..providers.base import Message
+from .intent import ParsedIntent
+from .session import Session
+
 
 class ConversationContext(BaseModel):
-    active_session: Optional[Session] = None
-    active_target: Optional[str] = None
-    current_goal: Optional[str] = None
-    current_intent: Optional[ParsedIntent] = None
-    previous_messages: List[Message] = []
-    conversation_summary: Optional[str] = None
+    active_session: Session | None = None
+    active_target: str | None = None
+    current_goal: str | None = None
+    current_intent: ParsedIntent | None = None
+    previous_messages: list[Message] = []
+    conversation_summary: str | None = None

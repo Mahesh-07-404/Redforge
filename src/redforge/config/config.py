@@ -1,10 +1,11 @@
 """Configuration management service for RedForge."""
 
 import os
-import yaml
-from pathlib import Path
-from typing import Optional, Dict, Any
 from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
+import yaml
 from pydantic import BaseModel, Field, model_validator
 
 DEFAULT_MODELS = {
@@ -14,6 +15,7 @@ DEFAULT_MODELS = {
     "groq": "llama-3.3-70b-versatile",
     "gemini": "gemini-2.0-flash",
 }
+
 
 def resolve_api_key(provider: str, api_key: str = "") -> str:
     """Return the explicit key or the first standard env var for a provider."""
@@ -82,14 +84,14 @@ class ToolsConfig(BaseModel):
     install_missing: bool = False
     installation_method: str = "auto"
     timeout: int = 300
-    custom_paths: Dict[str, str] = Field(default_factory=dict)
-    required_tools: Dict[str, list] = Field(default_factory=dict)
+    custom_paths: dict[str, str] = Field(default_factory=dict)
+    required_tools: dict[str, list] = Field(default_factory=dict)
 
 
 class IntegrationsConfig(BaseModel):
-    hackerone: Dict[str, Any] = Field(default_factory=lambda: {"api_token": "", "enabled": False})
-    bugcrowd: Dict[str, Any] = Field(default_factory=lambda: {"api_key": "", "enabled": False})
-    openbugbounty: Dict[str, Any] = Field(default_factory=lambda: {"enabled": False})
+    hackerone: dict[str, Any] = Field(default_factory=lambda: {"api_token": "", "enabled": False})
+    bugcrowd: dict[str, Any] = Field(default_factory=lambda: {"api_key": "", "enabled": False})
+    openbugbounty: dict[str, Any] = Field(default_factory=lambda: {"enabled": False})
 
 
 class LoggingConfig(BaseModel):
@@ -118,7 +120,7 @@ class Settings(BaseModel):
     security: SecurityConfig = Field(default_factory=SecurityConfig)
 
 
-def find_config_file() -> Optional[Path]:
+def find_config_file() -> Path | None:
     """Find config.yaml in common locations"""
     search_paths = [
         Path.cwd() / "config.yaml",
@@ -133,18 +135,18 @@ def find_config_file() -> Optional[Path]:
     return None
 
 
-def load_config(config_path: Optional[Path] = None) -> Settings:
+def load_config(config_path: Path | None = None) -> Settings:
     """Load configuration from YAML file"""
     if config_path is None:
         config_path = find_config_file()
     if config_path and config_path.exists():
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             config_data = yaml.safe_load(f)
         return Settings(**config_data)
     return Settings()
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance"""
     return load_config()
@@ -159,7 +161,8 @@ def save_config(settings: Settings, config_path: Path) -> None:
 
 class ConfigService:
     """Runtime configuration management service"""
-    def __init__(self, config_path: Optional[Path] = None):
+
+    def __init__(self, config_path: Path | None = None):
         self.config_path = config_path or find_config_file()
         self._settings = load_config(self.config_path)
 

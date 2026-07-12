@@ -1,9 +1,11 @@
 import time
-from .contracts import TaskResult
-from .state import ExecutionStatus
-from .process import ProcessManager
-from .parser import OutputParser
+
 from ..planner.task import Task
+from .contracts import TaskResult
+from .parser import OutputParser
+from .process import ProcessManager
+from .state import ExecutionStatus
+
 
 class Runner:
     async def execute_task(self, task: Task, timeout: float = 60.0, retries: int = 1) -> TaskResult:
@@ -11,13 +13,13 @@ class Runner:
         command = [binary]
         if binary == "echo":
             command.append(f"Running task {task.title}")
-            
+
         start_time = time.time()
         status = ExecutionStatus.COMPLETED
         stdout, stderr, exit_code = "", "", 0
         error_msg = None
-        
-        for attempt in range(retries):
+
+        for _attempt in range(retries):
             pm = ProcessManager(command)
             try:
                 pm.spawn()
@@ -35,10 +37,10 @@ class Runner:
             except Exception as e:
                 status = ExecutionStatus.FAILED
                 error_msg = f"Failed to launch process: {str(e)}"
-                
+
         duration = time.time() - start_time
         structured = OutputParser.parse(binary, stdout)
-        
+
         return TaskResult(
             task_id=task.id,
             status=status,
@@ -46,5 +48,5 @@ class Runner:
             structured_output=structured,
             exit_code=exit_code,
             duration=duration,
-            error=error_msg
+            error=error_msg,
         )

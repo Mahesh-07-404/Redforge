@@ -1,9 +1,10 @@
 """Base LLM provider interface"""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, AsyncIterator, Dict, Any
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 from redforge.providers.catalog import DEFAULT_MODELS
 
@@ -19,22 +20,22 @@ class MessageRole(Enum):
 class Message:
     role: str
     content: str
-    name: Optional[str] = None
-    tool_call_id: Optional[str] = None
+    name: str | None = None
+    tool_call_id: str | None = None
 
 
 @dataclass
 class ChatResponse:
     content: str
     model: str
-    finish_reason: Optional[str] = None
-    usage: Optional[Dict[str, int]] = None
-    raw_response: Optional[Dict[str, Any]] = None
+    finish_reason: str | None = None
+    usage: dict[str, int] | None = None
+    raw_response: dict[str, Any] | None = None
 
 
 class LLMProvider(ABC):
     """Abstract base class for LLM providers"""
-    
+
     def __init__(
         self,
         model: str,
@@ -42,7 +43,7 @@ class LLMProvider(ABC):
         base_url: str = "",
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        **kwargs
+        **kwargs,
     ):
         self.model = model
         self.api_key = api_key
@@ -51,42 +52,39 @@ class LLMProvider(ABC):
         self.max_tokens = max_tokens
         self.extra_kwargs = kwargs
         self.provider = self.__class__.__name__.lower().replace("provider", "")
-    
+
     @abstractmethod
     async def chat(
         self,
-        messages: List[Message],
-        tools: Optional[List[Dict]] = None,
-        tool_choice: Optional[str] = None,
-        **kwargs
+        messages: list[Message],
+        tools: list[dict] | None = None,
+        tool_choice: str | None = None,
+        **kwargs,
     ) -> ChatResponse:
         """Send a chat request and get a response"""
         pass
-    
+
     @abstractmethod
     async def chat_stream(
-        self,
-        messages: List[Message],
-        tools: Optional[List[Dict]] = None,
-        **kwargs
+        self, messages: list[Message], tools: list[dict] | None = None, **kwargs
     ) -> AsyncIterator[str]:
         """Send a chat request and stream the response"""
         yield ""
-    
+
     @abstractmethod
     def is_available(self) -> bool:
         """Check if the provider is available/configured"""
         pass
-    
+
     @abstractmethod
-    async def list_models(self) -> List[str]:
+    async def list_models(self) -> list[str]:
         """List available models for this provider"""
         pass
-    
+
     def supports_tools(self) -> bool:
         """Check if this provider supports function calling"""
         return False
-    
+
     def supports_streaming(self) -> bool:
         """Check if this provider supports streaming"""
         return True
@@ -94,7 +92,7 @@ class LLMProvider(ABC):
 
 class ProviderFactory:
     """Factory for creating LLM providers"""
-    
+
     _providers = {
         "ollama": "redforge.providers.ollama.OllamaProvider",
         "openai": "redforge.providers.openai.OpenAIProvider",
@@ -102,7 +100,7 @@ class ProviderFactory:
         "groq": "redforge.providers.groq.GroqProvider",
         "gemini": "redforge.providers.gemini.GeminiProvider",
     }
-    
+
     @classmethod
     def create(
         cls,
@@ -112,66 +110,71 @@ class ProviderFactory:
         base_url: str = "",
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        **kwargs
+        **kwargs,
     ) -> LLMProvider:
         """Create an LLM provider instance"""
         provider_lower = provider.lower()
         model = model or DEFAULT_MODELS.get(provider_lower, DEFAULT_MODELS["gemini"])
-        
+
         if provider_lower == "ollama":
             from redforge.providers.ollama import OllamaProvider
+
             return OllamaProvider(
                 model=model,
                 base_url=base_url or "http://localhost:11434",
                 temperature=temperature,
                 max_tokens=max_tokens,
-                **kwargs
+                **kwargs,
             )
-        
+
         elif provider_lower == "openai":
             from redforge.providers.openai import OpenAIProvider
+
             return OpenAIProvider(
                 model=model,
                 api_key=api_key,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                **kwargs
+                **kwargs,
             )
-        
+
         elif provider_lower == "anthropic":
             from redforge.providers.anthropic import AnthropicProvider
+
             return AnthropicProvider(
                 model=model,
                 api_key=api_key,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                **kwargs
+                **kwargs,
             )
-        
+
         elif provider_lower == "groq":
             from redforge.providers.groq import GroqProvider
+
             return GroqProvider(
                 model=model,
                 api_key=api_key,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                **kwargs
+                **kwargs,
             )
-        
+
         elif provider_lower == "gemini":
             from redforge.providers.gemini import GeminiProvider
+
             return GeminiProvider(
                 model=model,
                 api_key=api_key,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                **kwargs
+                **kwargs,
             )
-        
+
         else:
             raise ValueError(f"Unknown provider: {provider}")
-    
+
     @classmethod
-    def list_providers(cls) -> List[str]:
+    def list_providers(cls) -> list[str]:
         """List available provider names"""
         return list(cls._providers.keys())

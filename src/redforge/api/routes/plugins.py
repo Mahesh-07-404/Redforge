@@ -1,18 +1,18 @@
 """
 Plugin routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+
+from fastapi import APIRouter, Path
+
+from ..contracts import PluginInstallRequest, PluginListResponse
+from ..dependencies import AuthInfo, ReadAuth, RequestID, Timer
+from ..response import no_content, success
 
 logger = logging.getLogger(__name__)
-
-from fastapi import APIRouter, Depends, Path
-
-from ..contracts import PluginInstallRequest, PluginListResponse, PluginResponse
-from ..dependencies import get_current_auth, get_request_id, get_timer, ReadAuth
-from ..response import success, no_content
 
 router = APIRouter(prefix="/plugins", tags=["Plugins"])
 
@@ -20,6 +20,7 @@ router = APIRouter(prefix="/plugins", tags=["Plugins"])
 def _get_manager():
     try:
         from redforge.plugins.manager import PluginManager
+
         return PluginManager()
     except Exception as exc:  # nosec B110 - plugin manager failure is handled by returning None
         logger.debug("Failed to load PluginManager: %s", exc)
@@ -27,7 +28,7 @@ def _get_manager():
 
 
 @router.get("", summary="List installed plugins")
-async def list_plugins(auth: ReadAuth, request_id: str = Depends(get_request_id), timer=Depends(get_timer)):
+async def list_plugins(auth: ReadAuth, request_id: RequestID, timer: Timer):
     """List all installed plugins with their status."""
     plugins: list = []
     mgr = _get_manager()
@@ -50,9 +51,9 @@ async def list_plugins(auth: ReadAuth, request_id: str = Depends(get_request_id)
 @router.post("/install", status_code=201, summary="Install a plugin")
 async def install_plugin(
     body: PluginInstallRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Install a plugin by ID (requires admin scope)."""
     result: dict = {"plugin_id": body.plugin_id, "installed": False}
@@ -68,9 +69,9 @@ async def install_plugin(
 
 @router.post("/{plugin_id}/enable", summary="Enable a plugin")
 async def enable_plugin(
+    auth: AuthInfo,
+    request_id: RequestID,
     plugin_id: str = Path(...),
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
 ):
     mgr = _get_manager()
     if mgr:
@@ -83,9 +84,9 @@ async def enable_plugin(
 
 @router.post("/{plugin_id}/disable", summary="Disable a plugin")
 async def disable_plugin(
+    auth: AuthInfo,
+    request_id: RequestID,
     plugin_id: str = Path(...),
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
 ):
     mgr = _get_manager()
     if mgr:
@@ -98,8 +99,8 @@ async def disable_plugin(
 
 @router.delete("/{plugin_id}", status_code=204, summary="Uninstall a plugin")
 async def uninstall_plugin(
+    auth: AuthInfo,
     plugin_id: str = Path(...),
-    auth=Depends(get_current_auth),
 ):
     mgr = _get_manager()
     if mgr:

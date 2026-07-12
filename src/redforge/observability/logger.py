@@ -1,16 +1,24 @@
 from __future__ import annotations
 
 import contextvars
-import json
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from .contracts import LogEntry, LogLevel
 
 # Context Variables for tracing request contexts across tasks
-context_request_id = contextvars.ContextVar("request_id", default=None)
-context_session_id = contextvars.ContextVar("session_id", default=None)
-context_workflow_id = contextvars.ContextVar("workflow_id", default=None)
-context_execution_id = contextvars.ContextVar("execution_id", default=None)
+context_request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "request_id", default=None
+)
+context_session_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "session_id", default=None
+)
+context_workflow_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "workflow_id", default=None
+)
+context_execution_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "execution_id", default=None
+)
 
 
 class StructuredLogger:
@@ -18,15 +26,15 @@ class StructuredLogger:
 
     def __init__(self, component: str) -> None:
         self.component = component
-        self._output_lines: List[str] = []
+        self._output_lines: list[str] = []
 
     def bind(
         self,
-        request_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        workflow_id: Optional[str] = None,
-        execution_id: Optional[str] = None,
-    ) -> Dict[str, contextvars.Token]:
+        request_id: str | None = None,
+        session_id: str | None = None,
+        workflow_id: str | None = None,
+        execution_id: str | None = None,
+    ) -> dict[str, contextvars.Token]:
         """Bind trace IDs to current execution context."""
         tokens = {}
         if request_id is not None:
@@ -39,7 +47,7 @@ class StructuredLogger:
             tokens["execution_id"] = context_execution_id.set(execution_id)
         return tokens
 
-    def unbind(self, tokens: Dict[str, contextvars.Token]) -> None:
+    def unbind(self, tokens: dict[str, contextvars.Token]) -> None:
         """Restore previous trace IDs in the execution context."""
         if "request_id" in tokens:
             context_request_id.reset(tokens["request_id"])
@@ -54,8 +62,8 @@ class StructuredLogger:
         self,
         level: LogLevel,
         message: str,
-        duration: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        duration: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> LogEntry:
         """Write a log record."""
         entry = LogEntry(
@@ -77,22 +85,22 @@ class StructuredLogger:
         print(json_line, flush=True)
         return entry
 
-    def debug(self, msg: str, duration: Optional[float] = None, **kwargs) -> LogEntry:
+    def debug(self, msg: str, duration: float | None = None, **kwargs) -> LogEntry:
         return self.log(LogLevel.DEBUG, msg, duration, kwargs)
 
-    def info(self, msg: str, duration: Optional[float] = None, **kwargs) -> LogEntry:
+    def info(self, msg: str, duration: float | None = None, **kwargs) -> LogEntry:
         return self.log(LogLevel.INFO, msg, duration, kwargs)
 
-    def warning(self, msg: str, duration: Optional[float] = None, **kwargs) -> LogEntry:
+    def warning(self, msg: str, duration: float | None = None, **kwargs) -> LogEntry:
         return self.log(LogLevel.WARNING, msg, duration, kwargs)
 
-    def error(self, msg: str, duration: Optional[float] = None, **kwargs) -> LogEntry:
+    def error(self, msg: str, duration: float | None = None, **kwargs) -> LogEntry:
         return self.log(LogLevel.ERROR, msg, duration, kwargs)
 
-    def critical(self, msg: str, duration: Optional[float] = None, **kwargs) -> LogEntry:
+    def critical(self, msg: str, duration: float | None = None, **kwargs) -> LogEntry:
         return self.log(LogLevel.CRITICAL, msg, duration, kwargs)
 
-    def get_lines(self) -> List[str]:
+    def get_lines(self) -> list[str]:
         """Retrieve recorded JSON lines (useful for tests)."""
         return self._output_lines
 

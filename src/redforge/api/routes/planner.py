@@ -1,15 +1,16 @@
 """
 Planner routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from ..contracts import PlanRequest, PlanResponse
-from ..dependencies import get_current_auth, get_request_id, get_timer
+from ..dependencies import AuthInfo, RequestID, Timer
 from ..response import success
 
 router = APIRouter(prefix="/planner", tags=["Planner"])
@@ -18,9 +19,9 @@ router = APIRouter(prefix="/planner", tags=["Planner"])
 @router.post("/plan", summary="Generate an execution plan")
 async def create_plan(
     body: PlanRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Generate a structured execution plan from an intent."""
     plan_id = str(uuid4())
@@ -29,8 +30,11 @@ async def create_plan(
 
     try:
         from redforge.planner.engine import PlannerEngine
+
         engine = PlannerEngine()
-        plan = engine.create_plan(session_id=body.session_id, intent=body.intent, context=body.context)
+        plan = engine.create_plan(
+            session_id=body.session_id, intent=body.intent, context=body.context
+        )
         if hasattr(plan, "phases"):
             phases = [p if isinstance(p, dict) else vars(p) for p in plan.phases]
         if hasattr(plan, "summary"):

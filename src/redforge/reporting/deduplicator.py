@@ -1,9 +1,9 @@
-from typing import List
 from .contracts import Finding
+
 
 class Deduplicator:
     @staticmethod
-    def deduplicate(findings: List[Finding]) -> List[Finding]:
+    def deduplicate(findings: list[Finding]) -> list[Finding]:
         seen_keys = set()
         deduped = []
         for f in findings:

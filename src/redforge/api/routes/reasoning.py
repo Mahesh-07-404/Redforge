@@ -1,15 +1,16 @@
 """
 Reasoning routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from ..contracts import ReasoningRequest, ReasoningResponse
-from ..dependencies import get_current_auth, get_request_id, get_timer
+from ..dependencies import AuthInfo, RequestID, Timer
 from ..response import success
 
 router = APIRouter(prefix="/reasoning", tags=["Reasoning"])
@@ -18,9 +19,9 @@ router = APIRouter(prefix="/reasoning", tags=["Reasoning"])
 @router.post("/decide", summary="Invoke the autonomous reasoning engine")
 async def decide(
     body: ReasoningRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """Run one reasoning step for a given goal and context."""
     reasoning_id = str(uuid4())
@@ -31,6 +32,7 @@ async def decide(
 
     try:
         from redforge.reasoning.engine import ReasoningEngine
+
         engine = ReasoningEngine()
         result = engine.reason(
             goal=body.goal,

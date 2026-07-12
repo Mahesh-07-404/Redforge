@@ -1,6 +1,8 @@
-from typing import Any
-from ..contracts.intent import ParsedIntent, IntentType
+from typing import cast
+
 from ..contracts.conversation import ConversationContext
+from ..contracts.intent import IntentType, ParsedIntent
+
 
 class IntentRouter:
     def __init__(self, conversation_mgr, session_service, report_engine, pipeline_runner=None):
@@ -18,12 +20,23 @@ class IntentRouter:
             await event_callback("assistant_end", content=response)
         return response
 
-    async def route(self, intent: ParsedIntent, context: ConversationContext, token_callback=None, event_callback=None) -> str:
+    async def route(
+        self,
+        intent: ParsedIntent,
+        context: ConversationContext,
+        token_callback=None,
+        event_callback=None,
+    ) -> str:
         intent_type = intent.intent_type
-        
+
         if intent_type == IntentType.GENERAL_CHAT:
-            return await self.conversation_mgr.get_response(intent.raw_input, context, token_callback, event_callback)
-            
+            return cast(
+                str,
+                await self.conversation_mgr.get_response(
+                    intent.raw_input, context, token_callback, event_callback
+                ),
+            )
+
         elif intent_type == IntentType.SESSION:
             raw_input = intent.raw_input.lower()
             if "continue" in raw_input or "load" in raw_input or "yesterday" in raw_input:
@@ -35,13 +48,15 @@ class IntentRouter:
                     context.active_target = loaded_session.target
                     response = f"Session {loaded_session.id[:8]} loaded successfully."
                 else:
-                    new_sess = self.session_service.create(mode="bugbounty", target=None, autonomy="manual")
+                    new_sess = self.session_service.create(
+                        mode="bugbounty", target=None, autonomy="manual"
+                    )
                     context.active_session = new_sess
                     response = f"No previous session found. Started new session {new_sess.id[:8]}."
             else:
                 response = "Session Manager active. Please specify if you want to load, list, or delete a session."
             return await self._respond(response, token_callback, event_callback)
-                
+
         elif intent_type == IntentType.REPORT:
             if not context.active_target:
                 response = "Report generation requires an active target. Please set a target first."
@@ -49,32 +64,39 @@ class IntentRouter:
                 response = f"Report subsystem ready for target {context.active_target}."
             return await self._respond(response, token_callback, event_callback)
 
-        elif intent_type in (IntentType.PENTEST, IntentType.BUG_BOUNTY, IntentType.CTF, IntentType.SCAN, IntentType.RECON, IntentType.EXPLOIT):
+        elif intent_type in (
+            IntentType.PENTEST,
+            IntentType.BUG_BOUNTY,
+            IntentType.CTF,
+            IntentType.SCAN,
+            IntentType.RECON,
+            IntentType.EXPLOIT,
+        ):
             target = intent.target or context.active_target
             if not target:
                 response = "Please specify a target for this security task (e.g. 'on example.com')."
                 return await self._respond(response, token_callback, event_callback)
-                
+
             raw_lower = intent.raw_input.lower()
             if "safe command" in raw_lower or "scan the target" in raw_lower:
                 if self.pipeline_runner:
-                    return await self.pipeline_runner(intent)
-            
+                    return cast(str, await self.pipeline_runner(intent))
+
             response = f"Recognized security task: {intent_type.value.upper()} on {target}. Ready for execution."
             return await self._respond(response, token_callback, event_callback)
-            
+
         elif intent_type == IntentType.HELP:
             response = "RedForge Help: Supported commands include scanning, reconnaissance, exploiting, session management, and report generation."
             return await self._respond(response, token_callback, event_callback)
-            
+
         elif intent_type == IntentType.TOOL:
             response = "Tool Manager: Ready to execute safety-checked commands."
             return await self._respond(response, token_callback, event_callback)
-            
+
         elif intent_type == IntentType.CONFIG:
             response = "Configuration Engine: Access settings via config.yaml."
             return await self._respond(response, token_callback, event_callback)
-            
+
         else:
             response = "I'm not sure I understood your request. Could you please clarify if you want to run a security task, manage a session, or chat?"
             return await self._respond(response, token_callback, event_callback)

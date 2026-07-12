@@ -1,36 +1,39 @@
 from __future__ import annotations
 
 import time
-from typing import Dict, List, Optional
+
 from .contracts import MetricRecord
-from .exceptions import MetricError
 
 
 class MetricsCollector:
     """Manages system metrics collection, updates, and Prometheus scrapers output format."""
 
     def __init__(self) -> None:
-        self._metrics: List[MetricRecord] = []
+        self._metrics: list[MetricRecord] = []
         # Key: (name, label_key_values_tuple) -> value
-        self._counters: Dict[tuple, float] = {}
-        self._gauges: Dict[tuple, float] = {}
-        self._histograms: Dict[tuple, List[float]] = {}
+        self._counters: dict[tuple, float] = {}
+        self._gauges: dict[tuple, float] = {}
+        self._histograms: dict[tuple, list[float]] = {}
 
-    def increment(self, name: str, value: float = 1.0, labels: Optional[Dict[str, str]] = None) -> None:
+    def increment(
+        self, name: str, value: float = 1.0, labels: dict[str, str] | None = None
+    ) -> None:
         """Increment counter metric."""
         lbls = labels or {}
         key = (name, tuple(sorted(lbls.items())))
         self._counters[key] = self._counters.get(key, 0.0) + value
         self._record(name, self._counters[key], lbls)
 
-    def set_gauge(self, name: str, value: float, labels: Optional[Dict[str, str]] = None) -> None:
+    def set_gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """Set gauge metric."""
         lbls = labels or {}
         key = (name, tuple(sorted(lbls.items())))
         self._gauges[key] = value
         self._record(name, value, lbls)
 
-    def record_histogram(self, name: str, value: float, labels: Optional[Dict[str, str]] = None) -> None:
+    def record_histogram(
+        self, name: str, value: float, labels: dict[str, str] | None = None
+    ) -> None:
         """Record value in a histogram."""
         lbls = labels or {}
         key = (name, tuple(sorted(lbls.items())))
@@ -39,26 +42,26 @@ class MetricsCollector:
         self._histograms[key].append(value)
         self._record(name, value, lbls)
 
-    def _record(self, name: str, value: float, labels: Dict[str, str]) -> None:
+    def _record(self, name: str, value: float, labels: dict[str, str]) -> None:
         self._metrics.append(
             MetricRecord(name=name, value=value, labels=labels, timestamp=time.time())
         )
 
-    def get_metrics(self) -> List[MetricRecord]:
+    def get_metrics(self) -> list[MetricRecord]:
         """Get all raw metric records."""
         return self._metrics
 
     def export_prometheus(self) -> str:
         """Generate a Prometheus scrape response payload."""
         lines = []
-        
+
         # Export Counters
         for (name, labels_tuple), value in self._counters.items():
             labels_str = ",".join(f'{k}="{v}"' for k, v in labels_tuple)
             labels_block = f"{{{labels_str}}}" if labels_str else ""
             lines.append(f"# TYPE {name} counter")
             lines.append(f"{name}{labels_block} {value}")
-            
+
         # Export Gauges
         for (name, labels_tuple), value in self._gauges.items():
             labels_str = ",".join(f'{k}="{v}"' for k, v in labels_tuple)
@@ -70,7 +73,7 @@ class MetricsCollector:
         for (name, labels_tuple), values in self._histograms.items():
             labels_str = ",".join(f'{k}="{v}"' for k, v in labels_tuple)
             labels_block = f"{{{labels_str}}}" if labels_str else ""
-            
+
             h_sum = sum(values)
             h_count = len(values)
             lines.append(f"# TYPE {name} histogram")

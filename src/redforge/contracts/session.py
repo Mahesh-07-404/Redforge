@@ -1,7 +1,9 @@
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from pydantic import BaseModel
+
 
 class TargetType(str, Enum):
     Domain = "domain"
@@ -10,14 +12,17 @@ class TargetType(str, Enum):
     APK = "apk"
     CIDR = "cidr"
 
+
 class ScopePolicy(BaseModel):
-    allowed: List[str] = []
-    excluded: List[str] = []
+    allowed: list[str] = []
+    excluded: list[str] = []
+
 
 class Target(BaseModel):
     value: str
     type: TargetType
     scope: ScopePolicy
+
 
 class SessionMode(str, Enum):
     BugBounty = "bugbounty"
@@ -27,18 +32,22 @@ class SessionMode(str, Enum):
     Coding = "coding"
     Android = "android"
 
+
 class SessionStatus(str, Enum):
     Active = "active"
     Paused = "paused"
     Completed = "completed"
     Archived = "archived"
 
+
 class TargetState(BaseModel):
     target: str | None
     changed: bool = False
 
+
 class ModeState(BaseModel):
     mode: str
+
 
 class Session(BaseModel):
     id: str
@@ -48,7 +57,8 @@ class Session(BaseModel):
     created_at: datetime
     updated_at: datetime
     status: str = "active"
-    metadata: Dict[str, Any] = {}
-    memory_namespace: Optional[str] = None
+    metadata: dict[str, Any] = {}
+    memory_namespace: str | None = None
+
 
 SessionState = Session

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
 
 
 class GrafanaDashboardGenerator:
@@ -19,7 +18,7 @@ class GrafanaDashboardGenerator:
                         "enable": True,
                         "hide": True,
                         "name": "Annotations & Alerts",
-                        "type": "dashboard"
+                        "type": "dashboard",
                     }
                 ]
             },
@@ -43,9 +42,9 @@ class GrafanaDashboardGenerator:
                             "expr": "rate(redforge_api_requests_total[1m])",
                             "legendFormat": "{{method}} {{path}}",
                             "range": True,
-                            "refId": "A"
+                            "refId": "A",
                         }
-                    ]
+                    ],
                 },
                 {
                     "collapsed": False,
@@ -60,7 +59,7 @@ class GrafanaDashboardGenerator:
                             "expr": "redforge_queue_size_pending",
                             "legendFormat": "Pending Tasks Queue",
                             "range": True,
-                            "refId": "A"
+                            "refId": "A",
                         },
                         {
                             "datasource": {"type": "prometheus", "uid": "prometheus"},
@@ -68,9 +67,9 @@ class GrafanaDashboardGenerator:
                             "expr": "redforge_workers_active_load",
                             "legendFormat": "Active Workers Load",
                             "range": True,
-                            "refId": "B"
-                        }
-                    ]
+                            "refId": "B",
+                        },
+                    ],
                 },
                 {
                     "collapsed": False,
@@ -84,9 +83,9 @@ class GrafanaDashboardGenerator:
                             "editorMode": "code",
                             "expr": "redforge_system_cpu_usage_percent",
                             "range": True,
-                            "refId": "A"
+                            "refId": "A",
                         }
-                    ]
+                    ],
                 },
                 {
                     "collapsed": False,
@@ -100,9 +99,9 @@ class GrafanaDashboardGenerator:
                             "editorMode": "code",
                             "expr": "redforge_system_memory_usage_percent",
                             "range": True,
-                            "refId": "A"
+                            "refId": "A",
                         }
-                    ]
+                    ],
                 },
                 {
                     "collapsed": False,
@@ -116,10 +115,10 @@ class GrafanaDashboardGenerator:
                             "editorMode": "code",
                             "expr": "sum(redforge_alerts_total)",
                             "range": True,
-                            "refId": "A"
+                            "refId": "A",
                         }
-                    ]
-                }
+                    ],
+                },
             ],
             "schemaVersion": 36,
             "style": "dark",
@@ -129,6 +128,6 @@ class GrafanaDashboardGenerator:
             "timepicker": {},
             "timezone": "",
             "title": title,
-            "version": 1
+            "version": 1,
         }
         return json.dumps(dashboard_model, indent=2)

@@ -1,15 +1,15 @@
 """
 Execution routes — Phase 16: Unified API Gateway
 """
+
 from __future__ import annotations
 
-from datetime import datetime
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from ..contracts import ExecutionRequest, ExecutionResponse
-from ..dependencies import get_current_auth, get_request_id, get_timer
+from ..dependencies import AuthInfo, RequestID, Timer
 from ..response import success
 
 router = APIRouter(prefix="/execution", tags=["Execution"])
@@ -18,9 +18,9 @@ router = APIRouter(prefix="/execution", tags=["Execution"])
 @router.post("/run", summary="Execute a tool command (approved plans only)")
 async def run_tool(
     body: ExecutionRequest,
-    auth=Depends(get_current_auth),
-    request_id: str = Depends(get_request_id),
-    timer=Depends(get_timer),
+    auth: AuthInfo,
+    request_id: RequestID,
+    timer: Timer,
 ):
     """
     Execute a single tool against an approved plan step.
@@ -34,9 +34,10 @@ async def run_tool(
     findings: list = []
 
     try:
-        from redforge.contracts.tool import ToolCall
         from redforge.contracts.intent import RiskLevel
+        from redforge.contracts.tool import ToolCall
         from redforge.tools.runner import ToolRunner
+
         tool_call = ToolCall(
             tool_name=body.tool,
             command=body.command,
@@ -44,7 +45,7 @@ async def run_tool(
             timeout_seconds=body.timeout or 60,
             risk_level=RiskLevel.LOW,
             session_id=body.session_id,
-            approved=True
+            approved=True,
         )
         runner = ToolRunner()
         result = runner.run(tool_call)
