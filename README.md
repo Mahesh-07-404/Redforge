@@ -18,7 +18,7 @@ RedForge is a production-grade autonomous security testing platform. It integrat
 
 ## Features & Supported Tools
 
-* **Modes**: Bug Bounty, CTF Solver, Pentesting, Secure Coding, Mobile Android testing.
+* **Autonomous Intent-Based Cybersecurity Agent**: Automatically determines target scopes, plans actions, and executes security tools.
 * **Integrations**: Nmap, Subfinder, Nuclei, Ffuf, Nikto, Gobuster, and John the Ripper.
 * **Distributed Scheduling**: Dependency graphs with recursive cancellations.
 * **Autoscaling**: Automatic worker registry and heartbeat-based failure recovery.

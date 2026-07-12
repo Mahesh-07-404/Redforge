@@ -58,6 +58,25 @@ class DynamicSkillLoader:
         # 3. Tier 2 Mode skills based on active mode
         if active_mode:
             norm_mode = active_mode.upper()
+            if norm_mode == "AUTONOMOUS":
+                # Dynamically resolve category mode based on intent/query
+                query_lower = query.lower()
+                intent_upper = intent.upper()
+                if "ctf" in query_lower or intent_upper == "CTF":
+                    norm_mode = "CTF"
+                elif (
+                    "learn" in query_lower
+                    or "explain" in query_lower
+                    or intent_upper in ("LEARNING", "LEARN")
+                ):
+                    norm_mode = "LEARNING"
+                elif "apk" in query_lower or "android" in query_lower or "mobile" in query_lower:
+                    norm_mode = "ANDROID"
+                elif "code" in query_lower or "coding" in query_lower or intent_upper == "CODING":
+                    norm_mode = "CODING"
+                else:
+                    norm_mode = "BUGBOUNTY"
+
             t2_excl = {
                 "02_planning",
                 "03_execution",

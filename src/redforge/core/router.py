@@ -49,7 +49,7 @@ class IntentRouter:
                     response = f"Session {loaded_session.id[:8]} loaded successfully."
                 else:
                     new_sess = self.session_service.create(
-                        mode="bugbounty", target=None, autonomy="manual"
+                        mode="autonomous", target=None, autonomy="manual"
                     )
                     context.active_session = new_sess
                     response = f"No previous session found. Started new session {new_sess.id[:8]}."

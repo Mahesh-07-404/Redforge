@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 
 class SessionModeEnum(str, Enum):
+    autonomous = "autonomous"
     bugbounty = "bugbounty"
     ctf = "ctf"
     pentest = "pentest"
@@ -117,7 +118,7 @@ class APIKeyResponse(BaseModel):
 
 
 class SessionCreateRequest(BaseModel):
-    mode: SessionModeEnum
+    mode: SessionModeEnum = SessionModeEnum.autonomous
     target: str | None = None
     autonomy: AutonomyEnum = AutonomyEnum.manual
     name: str = ""

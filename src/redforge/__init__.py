@@ -1,7 +1,7 @@
-"""RedForge - CLI Pentesting AI Agent
+"""RedForge - Autonomous Intent-Based Cybersecurity Agent
 
 Autonomous security testing framework with:
-- 5 operational modes
+- Unified Autonomous agent
 - 128+ specialized skills
 - LangGraph agent orchestration
 - Workspace memory with RAG
@@ -11,19 +11,11 @@ Autonomous security testing framework with:
 __version__ = "0.1.0"
 __author__ = "RedForge Team"
 
+from redforge.contracts import Finding
+from redforge.core.agent import RedForgeAgent
+
 # Core exports
 from redforge.core.safety import SafetyEngine, SafetyLevel, Scope
-from redforge.modes.mode_implementations import (
-    AndroidMode,
-    BugBountyMode,
-    CodingMode,
-    CTFChallenge,
-    CTFMode,
-    Finding,
-    LearningMode,
-    Mode,
-    ModeFactory,
-)
 from redforge.plugins import PlatformManager
 from redforge.reports import CVEGenerator, ReportGenerator
 from redforge.tools import Platform, ToolManager, ToolRegistry
@@ -39,16 +31,9 @@ __all__ = [
     "ToolManager",
     "ToolRegistry",
     "Platform",
-    # Modes
-    "BugBountyMode",
-    "CTFMode",
-    "LearningMode",
-    "CodingMode",
-    "AndroidMode",
-    "ModeFactory",
-    "Mode",
+    # Agent
+    "RedForgeAgent",
     "Finding",
-    "CTFChallenge",
     # Advanced
     "CVEGenerator",
     "ReportGenerator",

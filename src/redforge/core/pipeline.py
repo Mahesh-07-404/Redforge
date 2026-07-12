@@ -77,7 +77,7 @@ class Pipeline:
             m = (
                 getattr(mode, "value")  # noqa: B009
                 if (mode is not None and hasattr(mode, "value"))
-                else (mode if mode else "bugbounty")
+                else (mode if mode else "autonomous")
             )
             t = (
                 getattr(target, "value")  # noqa: B009

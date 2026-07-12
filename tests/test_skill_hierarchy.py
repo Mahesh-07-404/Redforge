@@ -140,12 +140,17 @@ def test_response_validator_intent_bypass():
     assert "Hallucination detected" in reason_fake
 
 @pytest.mark.asyncio
-async def test_agent_intent_classification():
+async def test_agent_intent_classification(tmp_path):
     # Setup dummy agent config/llm
     mock_llm = MagicMock()
     mock_llm.chat = AsyncMock(return_value=MagicMock(content="SCAN"))
-    
-    agent = RedForgeAgent(llm_provider="gemini")
+
+    from redforge.config.config import get_settings
+    settings = get_settings()
+    settings.memory.persist_dir = str(tmp_path)
+    settings.session.data_dir = str(tmp_path)
+
+    agent = RedForgeAgent(config=settings, llm_provider="gemini")
     agent.llm = mock_llm
     
     # Instant heuristic classification for greetings

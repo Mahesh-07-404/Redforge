@@ -9,7 +9,7 @@ def test_session_manager_create_and_load(tmp_path):
     
     session = manager.create(mode="bugbounty", target="example.com", autonomy="manual")
     assert session.id is not None
-    assert session.mode == "bugbounty"
+    assert session.mode == "autonomous"
     
     loaded = manager.load(session.id)
     assert loaded is not None

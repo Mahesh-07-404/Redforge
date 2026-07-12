@@ -97,7 +97,7 @@ Implements the core logic and workflow execution.
 
 ### 4. Planner Layer (`src/redforge/planner/`)
 Encapsulates the Planner and Task Graph engine responsible for generating dry-run plans without executing tools.
-* **`planner_context.py`**: Definess `PlannerContext` containing active session, target, goal, intent, active mode, and user preferences.
+* **`planner_context.py`**: Definess `PlannerContext` containing active session, target, goal, intent, active capabilities, and user preferences.
 * **`task.py`**: Data structure representing an individual unit of work (`Task`) detailing id, description, dependencies, estimated duration, risk level, status, and required confirmations.
 * **`task_graph.py`**: Implements topological sorting to resolve task execution order and perform cycle detection.
 * **`plan.py`**: Holds the compiled `Plan` consisting of the target goal, ordered tasks, dependencies, confidence score, and warnings.
@@ -106,7 +106,7 @@ Encapsulates the Planner and Task Graph engine responsible for generating dry-ru
 
 ### 5. Tool Registry Layer (`src/redforge/tools/`)
 Implements security tool metadata definition, capability discovery, platform detection, and dry-run installation mapping.
-* **`tool.py`**: Pydantic `Tool` model containing ID, name, binary name, platforms, session mode compatibility, categories, description, capability links, required permissions, install methods, documentation, health, and availability. Features backward compatibility properties matching legacy tools format.
+* **`tool.py`**: Pydantic `Tool` model containing ID, name, binary name, platforms, capability compatibility, categories, description, capability links, required permissions, install methods, documentation, health, and availability. Features backward compatibility properties matching legacy tools format.
 * **`registry.py`**: Central registry providing tool registration, lookup by capability (with ranking), lookup by name/ID, and metadata caching. Exposes classmethods to support old tool suite test flows.
 * **`resolver.py`**: Resolves execution plan capabilities dynamically against registered tools.
 * **`capabilities.py`**: Declares security capability enums (Subdomain Enumeration, Port Scanning, Directory Brute Force, Web Crawling, Fuzzing, etc.).

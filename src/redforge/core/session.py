@@ -82,9 +82,9 @@ class SessionService:
 
     def create(
         self,
-        mode: str,
-        target: str | None,
-        autonomy: str,
+        mode: str = "autonomous",
+        target: str | None = None,
+        autonomy: str = "manual",
         session_id: str | None = None,
         name: str = "",
     ) -> Session:
@@ -92,6 +92,13 @@ class SessionService:
         memory_namespace = f"session_{sid[:8]}"
         now = datetime.now()
         status = "active"
+
+        # Deprecation warning and mapping for legacy modes
+        if mode and mode != "autonomous":
+            logger.warning(
+                f"Deprecated mode '{mode}' detected. Automatically converting to 'autonomous'."
+            )
+            mode = "autonomous"
 
         # Serialize target if complex
         target_str = None

@@ -870,11 +870,10 @@ class TestErrorHandling:
         assert resp.status_code in (404, 405)
 
     def test_validation_error_returns_422(self, client, auth_headers):
-        # Missing required field 'mode'
+        # Missing required field 'username' in TokenRequest
         resp = client.post(
-            "/api/v1/sessions",
-            json={"target": "example.com"},   # mode is required
-            headers=auth_headers,
+            "/api/v1/auth/token",
+            json={"password": "somepassword"},
         )
         assert resp.status_code == 422
 

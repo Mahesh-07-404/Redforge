@@ -12,11 +12,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from redforge.core.safety import SafetyEngine, SafetyLevel, Scope, ScopeEntry
 from redforge.tools import ToolManager, ToolRegistry, Platform
-from redforge.modes.mode_implementations import (
-    BugBountyMode, CTFMode, LearningMode, ModeFactory, Mode, ModeConfig
-)
 from redforge.reports import CVEGenerator, ReportGenerator
 from redforge.plugins import PlatformManager, Platform, Submission, create_submission
+from redforge.core.agent import RedForgeAgent
 
 
 # Safety Engine Tests
@@ -114,62 +112,18 @@ class TestToolManager:
         assert any(t.name == "nmap" for t in essential)
 
 
-# Mode Tests
-class TestModes:
-    """Test mode implementations"""
-    
-    def test_mode_factory(self):
-        """Test mode factory"""
-        bugbounty = ModeFactory.create(Mode.BUGBOUNTY)
-        assert isinstance(bugbounty, BugBountyMode)
-        
-        ctf = ModeFactory.create(Mode.CTF)
-        assert isinstance(ctf, CTFMode)
-    
-    def test_bugbounty_capabilities(self):
-        """Test bug bounty mode capabilities"""
-        config = ModeConfig(
-            name="bugbounty",
-            description="Test",
-            skills_dir="skills/MODES/BUGBOUNTY"
-        )
-        mode = BugBountyMode(config)
-        
-        caps = mode.get_capabilities()
-        assert len(caps) > 0
-        assert any("Reconnaissance" in c for c in caps)
-    
-    def test_ctf_challenges(self):
-        """Test CTF mode challenge handling"""
-        config = ModeConfig(
-            name="ctf",
-            description="Test",
-            skills_dir="skills/MODES/CTF"
-        )
-        mode = CTFMode(config)
-        
-        # Add a challenge
-        from redforge.modes.mode_implementations import CTFChallenge
-        challenge = CTFChallenge(
-            id="web-1",
-            name="SQL Injection",
-            category="web",
-            points=100,
-            flag="flag{sql_injection_test}",
-            hints=["Check for quotes", "Try OR 1=1"]
-        )
-        mode.add_challenge(challenge)
-        
-        assert mode.challenges.get("web-1") is not None
-        
-        # Solve challenge
-        result = mode._solve_challenge("solve", {
-            "challenge_id": "web-1",
-            "solution": "flag{sql_injection_test}"
-        })
-        
-        assert result["status"] == "correct"
-        assert result["points"] == 100
+# Agent Tests
+class TestRedForgeAgent:
+    """Test RedForgeAgent functionality"""
+
+    def test_agent_initialization(self):
+        """Test agent initializes correctly"""
+        agent = RedForgeAgent()
+        assert agent.pipeline is not None
+        status = agent.get_status()
+        assert "llm_provider" in status
+        assert "skills_total" in status
+
 
 
 # CVE Generator Tests
@@ -309,22 +263,30 @@ class TestPlatformManager:
 # Integration Tests
 class TestIntegration:
     """Integration tests"""
-    
-    def test_full_workflow(self):
-        """Test full bug bounty workflow"""
-        # Create mode
-        config = ModeConfig(
-            name="bugbounty",
-            description="Test",
-            skills_dir="skills/MODES/BUGBOUNTY"
-        )
-        mode = BugBountyMode(config)
-        
-        # Execute task
-        result = mode.execute("recon on example.com", {"target": "example.com"})
-        
-        assert "task" in result
-        assert "recon" in result
+
+    @pytest.mark.asyncio
+    async def test_full_workflow(self, tmp_path):
+        """Test full agent workflow"""
+        from redforge.config.config import get_settings
+        from unittest.mock import MagicMock, AsyncMock
+
+        settings = get_settings()
+        settings.memory.persist_dir = str(tmp_path)
+        settings.session.data_dir = str(tmp_path)
+
+        agent = RedForgeAgent(config=settings)
+
+        # Inject mock LLM provider to avoid calling external services or requiring google-genai
+        mock_llm = MagicMock()
+        mock_llm.chat = AsyncMock(return_value=MagicMock(content="I will scan the target."))
+        mock_llm.supports_streaming = MagicMock(return_value=False)
+        agent.pipeline.llm_provider = mock_llm
+
+        # Execute query
+        state = await agent.run("scan the target", session_id="test_sess", target="example.com")
+
+        assert state is not None
+        assert state.error is None
 
 
 if __name__ == "__main__":
