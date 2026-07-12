@@ -1,0 +1,14 @@
+id: rag_search_optimizer
+name: RAG Query Optimizer
+description: Expands and refines natural language queries for vector and hybrid database searches.
+category: rag
+tags: [rag, query, vector]
+variables: [user_query, context_focus]
+template: |
+  Refine and expand the search query for vector retrieval.
+  
+  Raw Query: {user_query}
+  Context Focus: {context_focus}
+  
+  Output 3 search variations optimizing for cybersecurity tools, concepts, and techniques.
+examples: []

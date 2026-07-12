@@ -2,6 +2,17 @@
 
 All notable changes to RedForge will be documented in this file.
 
+## [3.1.0] - 2026-07-12
+
+### Added
+* **Single Autonomous Agent Architecture**: Refactored the entire RedForge orchestrator to merge all user-facing modes into a single autonomous agent `RedForgeAgent`. Added natural language query conversion CLI with deprecation warning.
+* **Specialized Cybersecurity Skills Integration**: Uploaded, imported, and integrated a library of 817 specialized cybersecurity skills (covering red-teaming, blue-teaming, cloud-security, industrial-control-systems, zero-trust, IAM, cryptography, secure-development, forensics, malware-analysis, etc.) as the primary knowledge repository.
+* **Archived Legacy Skills**: Safely archived the legacy system, safety, and execution skills under `archive/legacy_skills/`.
+* **Dynamic Skill Engine**: Upgraded `SkillRegistry` and `SkillIndexer` to automatically discover, validate, cache, and hot-reload skills.
+* **RAG & Semantic Retrieval**: Integrated the Skill Engine with RAG (Qdrant semantic search) and keyword relevance lookup, enabling the agent to automatically select the most appropriate skills based on intent and user query.
+* **Centralized Prompt Library**: Extracted general prompt engineering patterns from analyzed system prompts, creating 15 reusable YAML prompt templates mapped across reasoning, planning, execution, recon, web, api, network, cloud, mobile, osint, reporting, memory, rag, workflow, and utilities.
+* **Automated Intent-Based Prompt Retrieval**: Fully integrated prompt selection and variable rendering into the Intent Engine, Reasoning Engine, Planner, Workflow Engine, Memory manager, RAG retrievers, and Executor.
+
 ## [3.0.0] - 2026-07-01
 
 ### Added

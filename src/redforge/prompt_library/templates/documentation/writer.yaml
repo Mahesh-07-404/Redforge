@@ -1,0 +1,15 @@
+id: documentation_writer
+name: Technical Writer & Documenter
+description: Guides standard technical writing, Markdown formatting, README compilation, and API specifications.
+category: documentation
+tags: [doc, technical, writing, markdown]
+variables: [topic, target_audience, draft_content]
+template: |
+  Write clean, clear, and structured technical documentation.
+  
+  Topic: {topic}
+  Target Audience: {target_audience}
+  Draft/Context Content: {draft_content}
+  
+  Ensure proper heading hierarchy, include clear code blocks with syntax highlighting, and explain configuration fields and APIs thoroughly.
+examples: []

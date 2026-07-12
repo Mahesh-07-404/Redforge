@@ -1,0 +1,12 @@
+id: osint_passive_gatherer
+name: Passive OSINT Gatherer
+description: Collects publicly exposed emails, domains, leaked passwords, and metadata without target contact.
+category: osint
+tags: [osint, email, shodan, whois]
+variables: [domain_or_org, sources]
+template: |
+  Collect OSINT intelligence on domain/organization: {domain_or_org}.
+  Sources: {sources}
+  
+  Verify WHOIS, DNS history, Shodan data, and public credential leaks safely.
+examples: []

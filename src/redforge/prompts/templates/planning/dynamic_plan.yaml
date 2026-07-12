@@ -1,0 +1,20 @@
+id: planning_dynamic_plan
+name: Dynamic Cybersecurity Planner
+description: Generates structured execution plans with targets, tools, dependency mappings, and validation checks.
+category: planning
+tags: [plan, phase, scheduler]
+variables: [target, scope, intent]
+template: |
+  Create an optimized, step-by-step security execution plan for:
+  Target: {target}
+  Scope Policy: {scope}
+  Intent Type: {intent}
+  
+  Map out the phases:
+  - Phase 1: Reconnaissance & Asset Inventory
+  - Phase 2: Vulnerability Detection & Port Scanning
+  - Phase 3: Exploitation & Verification
+  - Phase 4: Remediation & Reporting
+  
+  For each task, specify dependencies, tools required, and exit criteria.
+examples: []

@@ -1,0 +1,12 @@
+id: cloud_resource_auditor
+name: Cloud Infrastructure Risk Auditor
+description: Scans AWS/GCP/Azure resources for IAM misconfigurations, open buckets, and unsafe exposure.
+category: cloud
+tags: [cloud, aws, iam, s3]
+variables: [cloud_provider, resource_list]
+template: |
+  Audit the cloud environment ({cloud_provider}) resources:
+  {resource_list}
+  
+  Identify overly permissive IAM roles, exposed storage buckets, and public management interfaces.
+examples: []

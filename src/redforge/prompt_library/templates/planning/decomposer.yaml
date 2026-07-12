@@ -1,0 +1,14 @@
+id: planning_decomposer
+name: General Task Decomposer
+description: Breaks down complex, non-cybersecurity tasks into sequential execution steps.
+category: planning
+tags: [plan, task, steps, decompose]
+variables: [goal, constraints]
+template: |
+  Decompose the following general goal into a logical, sequential plan.
+  
+  Objective Goal: {goal}
+  Execution Constraints: {constraints}
+  
+  Identify dependencies, define milestones, and list task prerequisites clearly.
+examples: []

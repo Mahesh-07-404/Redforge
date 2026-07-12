@@ -1,0 +1,12 @@
+id: network_subnet_scan
+name: Internal Subnet Security Scanner
+description: Guides internal asset discovery, network topology mapping, and service identification.
+category: network
+tags: [network, subnet, topology]
+variables: [subnet_range, exclude_hosts]
+template: |
+  Discover and map services in subnet: {subnet_range}.
+  Exclude Hosts: {exclude_hosts}
+  
+  Perform ICMP sweep, identify active network hosts, and probe for open ports.
+examples: []

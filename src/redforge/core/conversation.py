@@ -38,14 +38,80 @@ class ConversationManager:
                 await event_callback("assistant_end", content=response)
             return response
 
-        system_prompt = (
-            "You are RedForge, a friendly, professional, and knowledgeable autonomous security assistant. "
-            "You are having a casual conversation with the user. "
-            "Provide natural, helpful, and concise responses. Do not request or require a target for general chat. "
-            "If the user asks follow-up questions, use the conversation history to answer them. "
-        )
+        # Dynamically retrieve the best prompt template from prompt_library based on user intent/text
+        from redforge.prompt_library.registry import get_prompt_library_registry
+
+        try:
+            library = get_prompt_library_registry()
+            query_lower = text.lower()
+
+            if any(
+                w in query_lower
+                for w in ["debug", "error", "exception", "traceback", "fix bug", "crash"]
+            ):
+                prompt_tmpl = library.get_prompt("debugging_debugger")
+                system_prompt = prompt_tmpl.template.format(
+                    error_message=text[:300],
+                    code_snippet="No snippet provided. Context: " + text,
+                    runtime_env="Unknown",
+                )
+            elif any(
+                w in query_lower
+                for w in ["architecture", "design", "diagram", "uml", "component", "api design"]
+            ):
+                prompt_tmpl = library.get_prompt("architecture_designer")
+                system_prompt = prompt_tmpl.template.format(
+                    requirements=text,
+                    constraints="Ensure modularity and clean separation of concerns.",
+                )
+            elif any(
+                w in query_lower
+                for w in [
+                    "code",
+                    "program",
+                    "script",
+                    "refactor",
+                    "function",
+                    "class",
+                    "write a",
+                    "implement",
+                ]
+            ):
+                prompt_tmpl = library.get_prompt("coding_developer")
+                system_prompt = prompt_tmpl.template.format(
+                    language="Python/Generic", task_description=text, code_context="None provided."
+                )
+            elif any(
+                w in query_lower
+                for w in [
+                    "document",
+                    "readme",
+                    "technical writing",
+                    "guide",
+                    "tutorial",
+                    "write a doc",
+                ]
+            ):
+                prompt_tmpl = library.get_prompt("documentation_writer")
+                system_prompt = prompt_tmpl.template.format(
+                    topic=text, target_audience="Developers / Users", draft_content=""
+                )
+            else:
+                prompt_tmpl = library.get_prompt("chat_general_chat")
+                system_prompt = prompt_tmpl.template.format(
+                    query=text, history=str(context.previous_messages[-5:])
+                )
+        except Exception as e:
+            logger.debug("Failed to render prompt from library: %s", e)
+            system_prompt = (
+                "You are RedForge, a friendly, professional, and knowledgeable autonomous security assistant. "
+                "You are having a casual conversation with the user. "
+                "Provide natural, helpful, and concise responses. Do not request or require a target for general chat. "
+                "If the user asks follow-up questions, use the conversation history to answer them. "
+            )
+
         if context.active_target:
-            system_prompt += f"The currently active target is {context.active_target}. "
+            system_prompt += f"\nThe currently active target is {context.active_target}."
 
         messages = [Message(role="system", content=system_prompt)]
 

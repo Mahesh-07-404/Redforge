@@ -1,0 +1,14 @@
+id: reasoning_critical_thought
+name: Critical Reasoning Agent
+description: Guides logical deductions, hypothesis vetting, and self-correction for general queries.
+category: reasoning
+tags: [reasoning, logic, critical, thinking]
+variables: [problem_statement, known_facts]
+template: |
+  Solve the following problem using logical reasoning.
+  
+  Problem: {problem_statement}
+  Known Facts: {known_facts}
+  
+  Examine all hypotheses, verify step-by-step logic, and check for cognitive biases or false assumptions before formulating the final answer.
+examples: []

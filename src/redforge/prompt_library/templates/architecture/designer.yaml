@@ -1,0 +1,14 @@
+id: architecture_designer
+name: Software Architecture Designer
+description: Guides system design, API modeling, component decomposition, and technology stack selection.
+category: architecture
+tags: [architecture, design, api, system]
+variables: [requirements, constraints]
+template: |
+  Propose a software architecture or system design based on these inputs.
+  
+  System Requirements: {requirements}
+  Design Constraints: {constraints}
+  
+  Break down components, model critical APIs or data flows, and justify the choices for patterns, protocols, and data stores.
+examples: []

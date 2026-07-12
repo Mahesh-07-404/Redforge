@@ -1,0 +1,14 @@
+id: workflow_generator
+name: General Workflow Generator
+description: Generates process flows, pipelines, and step-by-step guides for software workflows.
+category: workflow
+tags: [workflow, pipeline, steps, process]
+variables: [process_goal, steps_count]
+template: |
+  Generate a process workflow diagram or detailed step-by-step pipeline.
+  
+  Goal: {process_goal}
+  Target steps count: {steps_count}
+  
+  List stages, clarify decision conditions, and detail error recovery paths for each step.
+examples: []

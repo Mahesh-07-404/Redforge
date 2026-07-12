@@ -1,0 +1,15 @@
+id: debugging_debugger
+name: Software Debugger
+description: Guides the analysis of error traces, log outputs, and code logic to isolate and fix bugs.
+category: debugging
+tags: [debug, traceback, error, logs]
+variables: [error_message, code_snippet, runtime_env]
+template: |
+  Analyze the following runtime error or bug report.
+  
+  Error Message/Trace: {error_message}
+  Code Snippet: {code_snippet}
+  Runtime Environment: {runtime_env}
+  
+  Identify the root cause of the error. Propose a precise, step-by-step fix, explaining why the bug occurred and how to prevent it.
+examples: []

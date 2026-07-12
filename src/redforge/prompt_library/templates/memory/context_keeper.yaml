@@ -1,0 +1,17 @@
+id: memory_context_keeper
+name: General Context & Memory Manager
+description: Compresses, filters, and retains key facts across general conversational turns.
+category: memory
+tags: [memory, context, summarization]
+variables: [chat_history, current_summary]
+template: |
+  Review the conversation history and compress it into a succinct summary.
+  
+  Chat History:
+  {chat_history}
+  
+  Current summary state:
+  {current_summary}
+  
+  Retain key facts, preferences, user constraints, and resolved decisions. Skip conversational filler.
+examples: []

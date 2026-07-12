@@ -390,6 +390,25 @@ graph TD
 * **`mcp/manager.py`** (`MCPManager`): Coordinates MCP server/client lifecycles.
 
 
+### 15. Skill Engine Layer (`src/redforge/skills/` & `src/redforge/memory/skill_index.py` & `skills/`)
+
+Implements dynamic discovery, YAML frontmatter parsing, metadata validation, hot reloading, caching, and RAG/semantic indexing for the library of 817 cybersecurity skills.
+* **`skills/`**: Contains the primary repository of cybersecurity skills, organized as subdirectories containing `SKILL.md`, references, and scripts.
+* **`archive/legacy_skills/`**: Contains the archived legacy system, safety, and execution workflow skills.
+* **`src/redforge/skills/registry.py`** (`SkillRegistry`): Dynamically discovers, parses, validates, and caches skills, automatically loading legacy safety/system skills alongside the new cybersecurity skills.
+* **`src/redforge/skills/loader.py`** (`DynamicSkillLoader`): Selects the most relevant skills for a user query dynamically using RAG semantic search and keyword-based fallback, formatting them into the core system prompt context.
+* **`src/redforge/memory/skill_index.py`** (`SkillIndexer`): Auto-indexes all skills into the Qdrant vector database under the `skills` collection on startup/load.
+
+
+### 16. Prompt Library Layer (`src/redforge/prompts/`)
+
+Centralizes Prompt Engineering patterns as reusable YAML templates with variable checking and auto-retrieval.
+* **`src/redforge/prompts/templates/`**: Structured repository of prompt files mapping to Reasoning, Planning, Execution, Recon, Web, API, Network, Cloud, Mobile, OSINT, Reporting, Memory, RAG, Workflow, and Utilities.
+* **`src/redforge/prompts/registry.py`** (`PromptRegistry`): Automatically discovers, validates variables, renders templates, and retrieves the most suitable prompt based on intent and target context.
+
+
+
+
 
 
 

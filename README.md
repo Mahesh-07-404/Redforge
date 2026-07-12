@@ -61,3 +61,23 @@ npm install
 npm run dev
 ```
 Open `http://localhost:5173` in your browser.
+
+---
+
+## Skill Engine & Cybersecurity Skills
+
+RedForge integrates a library of 817 specialized cybersecurity skills as its primary knowledge source:
+* **Dynamic Discovery**: Automatic scanning of skill directories, validating YAML frontmatter metadata, and caching files.
+* **Semantic Indexing & RAG**: Automatic vector indexing of skills using Qdrant.
+* **Intent-Based Retrieval**: The agent automatically retrieves and binds relevant skills based on intent and query using RAG.
+
+---
+
+## Prompt Library
+
+RedForge implements a centralized Prompt Library storing reusable cybersecurity prompt templates:
+* **Structural Templates**: 15 custom prompt templates mapping to reasoning, planning, execution, recon, web, api, network, cloud, mobile, osint, reporting, memory, rag, workflow, and utilities.
+* **Intelligent Auto-Retrieval**: Automatic prompt resolution based on user intent and current target context.
+* **Variable Rendering**: Safe template parameter interpolation with required variable validation.
+
+

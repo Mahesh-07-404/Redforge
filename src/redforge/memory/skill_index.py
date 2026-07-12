@@ -4,11 +4,14 @@ import hashlib
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from redforge.memory.vector import (
     MemoryEntry,
@@ -31,6 +34,7 @@ class SkillCategory(str, Enum):
     SAFETY = "safety"
     LLM = "llm"
     GENERAL = "general"
+    CYBERSECURITY = "cybersecurity"
 
 
 @dataclass
@@ -114,43 +118,76 @@ class SkillIndexer:
             )
 
     def index_skills(self) -> int:
-        """Index all skill files"""
-        if not self.skills_dir.exists():
-            return 0
-
+        """Index all skill files (both new cybersecurity skills and legacy archive)"""
         self._skills_index.clear()
         entries = []
         count = 0
 
-        for root, _dirs, files in os.walk(self.skills_dir):
-            root_path = Path(root)
-
-            for file in files:
-                if file.endswith((".md", ".txt")):
-                    file_path = root_path / file
-                    try:
-                        skill = self._parse_skill_file(file_path, root_path)
-                        if skill:
-                            self._skills_index[skill.path] = skill
-
-                            entry = MemoryEntry(
-                                id=hashlib.md5(
-                                    skill.path.encode(), usedforsecurity=False
-                                ).hexdigest(),
-                                content=skill.content,
-                                metadata={
-                                    "name": skill.name,
-                                    "category": skill.category,
-                                    "mode": skill.mode,
-                                    "difficulty": skill.difficulty,
-                                    "tags": skill.tags,
-                                },
-                                entry_type="skill",
+        # 1. Index current skills directory
+        if self.skills_dir.exists():
+            for root, _dirs, files in os.walk(self.skills_dir):
+                root_path = Path(root)
+                # Skip legacy archive if mapped nestedly (we load it separately below)
+                if "archive" in root_path.parts:
+                    continue
+                for file in files:
+                    if file.endswith((".md", ".txt")):
+                        file_path = root_path / file
+                        try:
+                            skill = self._parse_skill_file(
+                                file_path, self.skills_dir, is_legacy=False
                             )
-                            entries.append(entry)
-                            count += 1
-                    except Exception as e:
-                        print(f"Error indexing {file_path}: {e}")
+                            if skill:
+                                self._skills_index[skill.path] = skill
+                                entry = MemoryEntry(
+                                    id=hashlib.md5(
+                                        skill.path.encode(), usedforsecurity=False
+                                    ).hexdigest(),
+                                    content=skill.content,
+                                    metadata={
+                                        "name": skill.name,
+                                        "category": skill.category,
+                                        "mode": skill.mode,
+                                        "difficulty": skill.difficulty,
+                                        "tags": skill.tags,
+                                    },
+                                    entry_type="skill",
+                                )
+                                entries.append(entry)
+                                count += 1
+                        except Exception as e:
+                            logger.debug("Error indexing %s: %s", file_path, e)
+
+        # 2. Index legacy archive directory
+        legacy_dir = self.skills_dir.parent / "archive" / "legacy_skills"
+        if legacy_dir.exists():
+            for root, _dirs, files in os.walk(legacy_dir):
+                root_path = Path(root)
+                for file in files:
+                    if file.endswith((".md", ".txt")):
+                        file_path = root_path / file
+                        try:
+                            skill = self._parse_skill_file(file_path, legacy_dir, is_legacy=True)
+                            if skill:
+                                self._skills_index[skill.path] = skill
+                                entry = MemoryEntry(
+                                    id=hashlib.md5(
+                                        skill.path.encode(), usedforsecurity=False
+                                    ).hexdigest(),
+                                    content=skill.content,
+                                    metadata={
+                                        "name": skill.name,
+                                        "category": skill.category,
+                                        "mode": skill.mode,
+                                        "difficulty": skill.difficulty,
+                                        "tags": skill.tags,
+                                    },
+                                    entry_type="skill",
+                                )
+                                entries.append(entry)
+                                count += 1
+                        except Exception as e:
+                            logger.debug("Error indexing legacy %s: %s", file_path, e)
 
         if entries:
             self.vector_store.add(entries)
@@ -158,33 +195,65 @@ class SkillIndexer:
         self._save_manifest()
         return count
 
-    def _parse_skill_file(self, file_path: Path, base_path: Path) -> SkillEntry | None:
+    def _parse_skill_file(
+        self, file_path: Path, base_path: Path, is_legacy: bool = False
+    ) -> SkillEntry | None:
         """Parse a skill file"""
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 content = f.read()
+
+            # Parse YAML frontmatter
+            metadata: dict[str, Any] = {}
+            content_body = content
+
+            frontmatter_match = re.match(r"^---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
+            if frontmatter_match:
+                try:
+                    metadata = yaml.safe_load(frontmatter_match.group(1)) or {}
+                    content_body = content[frontmatter_match.end() :]
+                except Exception as exc:
+                    logger.debug("Failed to parse frontmatter in '%s': %s", file_path, exc)
 
             relative_path = str(file_path.relative_to(base_path))
             parts = relative_path.split(os.sep)
 
-            category = parts[0] if len(parts) > 1 else "general"
-            mode = parts[1] if len(parts) > 2 else None
+            # Derive true name
+            name = metadata.get("name")
+            if not name:
+                if file_path.stem.upper() == "SKILL" and len(parts) > 1:
+                    name = parts[-2]
+                else:
+                    name = file_path.stem
+            name = name.replace("_", " ").replace("-", " ").title()
 
-            name = file_path.stem.replace("_", " ").replace("-", " ").title()
+            # Derive category and mode
+            category = (
+                metadata.get("category") or metadata.get("subdomain") or metadata.get("domain")
+            )
+            if not category:
+                if is_legacy:
+                    category = parts[0] if len(parts) > 1 else "general"
+                else:
+                    category = "cybersecurity"
+            category = category.upper()
 
-            summary = content[:200].replace("\n", " ").strip()
+            mode = metadata.get("mode") or metadata.get("subdomain")
+            if mode:
+                mode = mode.upper()
 
-            tags = []
-            if "sql" in content.lower():
+            summary = metadata.get("description") or content_body[:200].replace("\n", " ").strip()
+
+            tags_raw = metadata.get("tags", [])
+            if isinstance(tags_raw, str):
+                tags = [t.strip() for t in tags_raw.split(",") if t.strip()]
+            else:
+                tags = [str(t) for t in tags_raw if t is not None]
+
+            if "sql" in content.lower() and "sql" not in tags:
                 tags.append("sql")
-            if "xss" in content.lower():
+            if "xss" in content.lower() and "xss" not in tags:
                 tags.append("xss")
-            if "sqli" in content.lower() or "injection" in content.lower():
-                tags.append("injection")
-            if "recon" in content.lower():
-                tags.append("recon")
-            if "privesc" in content.lower():
-                tags.append("privesc")
 
             difficulty = "intermediate"
             if any(
@@ -197,7 +266,7 @@ class SkillIndexer:
             return SkillEntry(
                 name=name,
                 path=relative_path,
-                content=content,
+                content=content_body,
                 category=category,
                 mode=mode,
                 difficulty=difficulty,
@@ -205,7 +274,7 @@ class SkillIndexer:
                 summary=summary,
             )
         except Exception as e:
-            print(f"Error parsing {file_path}: {e}")
+            logger.debug("Error parsing %s: %s", file_path, e)
             return None
 
     def search_skills(
@@ -216,6 +285,30 @@ class SkillIndexer:
         limit: int = 10,
     ) -> list[SearchResult]:
         """Search skills by query"""
+        # Retrieve and render the RAG query optimizer template
+        from redforge.prompt_library.registry import get_prompt_library_registry
+        from redforge.prompts.registry import get_prompt_registry
+
+        try:
+            registry = get_prompt_registry()
+            rendered = registry.render(
+                "rag_search_optimizer",
+                user_query=query,
+                context_focus=category or "cybersecurity",
+            )
+            logger.debug("Rendered RAG search optimizer prompt:\n%s", rendered)
+        except Exception as e:
+            logger.debug("Failed to render RAG optimizer prompt: %s", e)
+
+        try:
+            lib_registry = get_prompt_library_registry()
+            rendered_gen = lib_registry.render(
+                "rag_retrieval_refiner", query_text=query, search_domain=category or "general"
+            )
+            logger.debug("Rendered general RAG retrieval refiner prompt:\n%s", rendered_gen)
+        except Exception as e:
+            logger.debug("Failed to render general RAG refiner prompt: %s", e)
+
         results = self.vector_store.search(query, limit=limit)
 
         if category or mode:

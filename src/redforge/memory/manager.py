@@ -1,6 +1,10 @@
+import logging
+
 from ..contracts.memory import ContextBudget, ContextBundle, MemoryEntry
 from .context_budget import ContextBudgetManager
 from .vector_store import QdrantAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryManager:
@@ -24,6 +28,33 @@ class MemoryManager:
 
     def build_context(self, intent: str, skills: list[str]) -> ContextBundle:
         budget = self.budget_manager.get_budget()
+
+        # Retrieve and render memory context synthesizer template
+        from redforge.prompt_library.registry import get_prompt_library_registry
+        from redforge.prompts.registry import get_prompt_registry
+
+        try:
+            registry = get_prompt_registry()
+            rendered = registry.render(
+                "memory_context_synthesizer",
+                chat_history="Intended activity matching: " + intent,
+                existing_memory="Active Skills: " + ", ".join(skills),
+            )
+            logger.debug("Rendered memory context synthesizer:\n%s", rendered)
+        except Exception as e:
+            logger.debug("Failed to render memory prompt: %s", e)
+
+        try:
+            lib_registry = get_prompt_library_registry()
+            rendered_gen = lib_registry.render(
+                "memory_context_keeper",
+                chat_history="Intended activity matching: " + intent,
+                current_summary="Active Skills: " + ", ".join(skills),
+            )
+            logger.debug("Rendered memory context keeper:\n%s", rendered_gen)
+        except Exception as e:
+            logger.debug("Failed to render general memory prompt: %s", e)
+
         content = "\n".join(skills)[: budget.system_prompt]
         return ContextBundle(content=content, total_tokens=len(content.split()))
 

@@ -1,0 +1,17 @@
+id: memory_context_synthesizer
+name: Long-Term Memory Synthesizer
+description: Updates, summarizes, and structures session-isolated long-term memory stores.
+category: memory
+tags: [memory, summarization, persistence]
+variables: [chat_history, existing_memory]
+template: |
+  Synthesize the conversation history and existing memories into structured context blocks.
+  
+  Chat History:
+  {chat_history}
+  
+  Existing memory:
+  {existing_memory}
+  
+  Identify new entities, updated findings, and target states. Update the memory entries concisely.
+examples: []

@@ -44,3 +44,5 @@ class ParsedIntent(BaseModel):
     entities: dict[str, str] = {}
     requires_approval: bool
     session_id: str
+    prompt_id: str | None = None
+    general_prompt_id: str | None = None

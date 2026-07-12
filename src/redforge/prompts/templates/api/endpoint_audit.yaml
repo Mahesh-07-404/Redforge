@@ -1,0 +1,14 @@
+id: api_endpoint_audit
+name: API Security Auditor
+description: Audits API endpoints for authentication, authorization (BOLA/BFLA), and rate-limiting issues.
+category: api
+tags: [api, endpoint, bola, auth]
+variables: [api_endpoints, auth_tokens]
+template: |
+  Audit the following API endpoints:
+  {api_endpoints}
+  
+  Using credentials: {auth_tokens}
+  
+  Test for BOLA/IDOR, broken function-level authorization, and weak rate-limiting mechanisms.
+examples: []

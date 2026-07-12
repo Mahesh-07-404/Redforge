@@ -1,0 +1,14 @@
+id: recon_passive_active
+name: Autonomous Reconnaissance Workflow
+description: Guides target enumeration, subdomain discovery, and open port scanning step-by-step.
+category: recon
+tags: [recon, subdomain, dns, nmap]
+variables: [target_host, scope_policy]
+template: |
+  Conduct reconnaissance on {target_host} according to the policy: {scope_policy}.
+  
+  Perform:
+  1. Passive subdomain enumeration.
+  2. Active service discovery on identified hosts.
+  3. Port and service banner grabbing.
+examples: []

@@ -1,0 +1,20 @@
+id: reasoning_thought_loop
+name: RedForge Autonomous Thought Loop
+description: Guides the agent through deep reasoning, hypothesis generation, and self-correction steps before executing actions.
+category: reasoning
+tags: [thought, reasoning, cot, correction]
+variables: [query, context]
+template: |
+  Perform a deep, step-by-step security analysis of the current objective.
+  
+  User Objective: {query}
+  Current Context: {context}
+  
+  Follow this reasoning process:
+  1. STATE GOAL: Break down the main objective into sub-goals.
+  2. HYPOTHESIS: Build a security hypothesis about the target (e.g. service configuration, potential vulnerabilities).
+  3. TEST METHOD: Plan the verification or scan commands.
+  4. REFLECT: Identify potential pitfalls, safety boundaries, and false assumptions.
+  
+  Structure your thinking clearly before proposing any command.
+examples: []

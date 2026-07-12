@@ -1,0 +1,15 @@
+id: execution_tool_selector
+name: Secure Tool Orchestrator
+description: Selects and runs CLI tools and APIs safely, analyzing outputs and handling errors/backoffs.
+category: execution
+tags: [tool, command, execution]
+variables: [tools_available, task_description, safety_constraints]
+template: |
+  Determine the safest and most efficient tool invocation for the current task.
+  
+  Task: {task_description}
+  Available Tools: {tools_available}
+  Safety Constraints: {safety_constraints}
+  
+  Select a tool, construct the command with safe argument lists, and verify inputs to prevent command injection.
+examples: []

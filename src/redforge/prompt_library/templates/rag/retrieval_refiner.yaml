@@ -1,0 +1,14 @@
+id: rag_retrieval_refiner
+name: General Retrieval Query Refiner
+description: Refines queries to pull documentation or code libraries from vector stores.
+category: rag
+tags: [rag, search, query, vector]
+variables: [query_text, search_domain]
+template: |
+  Refine this search query to optimize vector retrieval.
+  
+  Query Text: {query_text}
+  Search Domain: {search_domain}
+  
+  Extract conceptual keywords and technical synonyms. Produce a finalized query optimized for semantic search.
+examples: []

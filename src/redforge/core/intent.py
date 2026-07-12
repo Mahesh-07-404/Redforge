@@ -225,6 +225,24 @@ class IntentService:
         intent.risk_level = self.classifier.classify(intent.intent_type)
         intent = self.watcher.check(intent)
 
+        # Retrieve the most suitable prompt template automatically
+        from redforge.prompt_library.registry import get_prompt_library_registry
+        from redforge.prompts.registry import get_prompt_registry
+
+        try:
+            registry = get_prompt_registry()
+            suitable_prompt = registry.get_suitable_prompt(intent.intent_type.value)
+            intent.prompt_id = suitable_prompt.id
+        except Exception:
+            intent.prompt_id = "reasoning_thought_loop"
+
+        try:
+            lib_registry = get_prompt_library_registry()
+            suitable_gen_prompt = lib_registry.get_suitable_prompt(intent.intent_type.value)
+            intent.general_prompt_id = suitable_gen_prompt.id
+        except Exception:
+            intent.general_prompt_id = "chat_general_chat"
+
         if current_autonomy == "manual":
             intent.requires_approval = True
         elif current_autonomy == "partial" and intent.risk_level in [

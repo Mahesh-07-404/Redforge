@@ -1,0 +1,13 @@
+id: utilities_clarification_agent
+name: Clarification Requester
+description: Determines if a user prompt is ambiguous and requests targeted clarifications.
+category: utilities
+tags: [utility, clarify, input]
+variables: [user_input, ambiguity_reasons]
+template: |
+  Analyze user input: "{user_input}"
+  
+  Reasons for ambiguity: {ambiguity_reasons}
+  
+  Formulate a polite, precise clarifying question to resolve the target scope, tools to use, or execution constraints.
+examples: []

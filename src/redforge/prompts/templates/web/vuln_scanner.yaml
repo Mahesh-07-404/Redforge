@@ -1,0 +1,13 @@
+id: web_vuln_scanner
+name: Web Vulnerability Assessment Engine
+description: Orchestrates web app vulnerability analysis (SQLi, XSS, SSRF, LFI) safely and systematically.
+category: web
+tags: [web, sqli, xss, ssrf]
+variables: [base_url, findings]
+template: |
+  Analyze the web target {base_url} for security flaws.
+  
+  Current Findings: {findings}
+  
+  Systematically test input parameters, headers, and endpoints for injection flaws (SQLi, XSS), server-side request forgery (SSRF), and path traversal.
+examples: []

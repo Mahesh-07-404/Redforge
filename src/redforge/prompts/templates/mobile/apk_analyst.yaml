@@ -1,0 +1,14 @@
+id: mobile_apk_analyst
+name: Mobile Application Security Analyst
+description: Guides decompilation, static analysis, intent vetting, and credential leak checks in mobile applications.
+category: mobile
+tags: [mobile, android, apk, ios]
+variables: [apk_name, platform]
+template: |
+  Analyze {apk_name} on {platform}.
+  
+  Steps:
+  1. Check decompiled code for hardcoded API keys and secrets.
+  2. Inspect Android Manifest / iOS Info.plist for insecure configurations.
+  3. Validate broadcast receivers, content providers, and deep links.
+examples: []

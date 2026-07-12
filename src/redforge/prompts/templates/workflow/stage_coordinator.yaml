@@ -1,0 +1,12 @@
+id: workflow_stage_coordinator
+name: Autonomous Stage Coordinator
+description: Manages stage transitions (Recon -> Scan -> Exploit -> Verify -> Report) dynamically.
+category: workflow
+tags: [stage, workflow, lifecycle]
+variables: [current_stage, stage_history, execution_status]
+template: |
+  Evaluate the current stage ({current_stage}) and execution status ({execution_status}).
+  Stage History: {stage_history}
+  
+  Determine if the exit criteria of the current stage are met. Decide whether to transition to the next phase or re-run tasks.
+examples: []

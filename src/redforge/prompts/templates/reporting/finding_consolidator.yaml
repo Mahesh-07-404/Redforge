@@ -1,0 +1,14 @@
+id: reporting_finding_consolidator
+name: Cybersecurity Finding Consolidator
+description: Structures security findings with descriptions, severity scores (CVSS/SSVC), and actionable remediation steps.
+category: reporting
+tags: [report, cvss, finding, remediation]
+variables: [raw_findings, remediation_policy]
+template: |
+  Consolidate the following findings into a professional security report:
+  {raw_findings}
+  
+  Policy constraints: {remediation_policy}
+  
+  Include a title, description, proof of concept / evidence, CVSS v3 score, and clear remediation steps for each finding.
+examples: []
