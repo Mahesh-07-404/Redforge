@@ -154,7 +154,9 @@ def detect_platform() -> PlatformInfo:
         os_name = "macOS"
         try:
             sw_vers_path = shutil.which("sw_vers") or "/usr/bin/sw_vers"
-            result = subprocess.run([sw_vers_path, "-productVersion"], capture_output=True, text=True)  # nosec B603 B607
+            result = subprocess.run(
+                [sw_vers_path, "-productVersion"], capture_output=True, text=True
+            )  # nosec B603 B607
             os_version = result.stdout.strip()
         except (
             OSError,
@@ -259,7 +261,9 @@ def check_tool_available(tool: str) -> tuple[bool, str | None]:
     if sys.platform == "win32":
         try:
             where_path = shutil.which("where") or "C:\\Windows\\System32\\where.exe"
-            result = subprocess.run([where_path, tool], capture_output=True, text=True)  # nosec B603 B607
+            result = subprocess.run(
+                [where_path, tool], capture_output=True, text=True
+            )  # nosec B603 B607
             if result.returncode == 0:
                 return True, result.stdout.strip().split("\n")[0]
         except (
@@ -277,7 +281,9 @@ def get_tool_version(tool: str) -> str | None:
 
     for flag in version_flags:
         try:
-            result = subprocess.run([tool, flag], capture_output=True, text=True, timeout=5)  # nosec B603
+            result = subprocess.run(
+                [tool, flag], capture_output=True, text=True, timeout=5
+            )  # nosec B603
             if result.returncode == 0:
                 output = result.stdout + result.stderr
                 return output.strip().split("\n")[0]
@@ -298,6 +304,7 @@ def install_package(package: str, platform_info: PlatformInfo | None = None) -> 
         return False, "No package manager available"
 
     import re
+
     if not re.match(r"^[a-zA-Z0-9_.\-/@:]+$", package):
         return False, f"Invalid package name: {package}"
 

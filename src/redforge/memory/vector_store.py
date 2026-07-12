@@ -109,7 +109,10 @@ class QdrantAdapter:
         self._ensure_collection(collection_name)
         import hashlib
 
-        base = [float(b) / 255.0 for b in hashlib.md5(entry.content.encode(), usedforsecurity=False).digest()]
+        base = [
+            float(b) / 255.0
+            for b in hashlib.md5(entry.content.encode(), usedforsecurity=False).digest()
+        ]
         vector = base * 24
 
         entry_id = entry.id or str(uuid.uuid4())
@@ -159,7 +162,9 @@ class QdrantAdapter:
         self._ensure_collection(collection_name)
         import hashlib
 
-        base = [float(b) / 255.0 for b in hashlib.md5(query.encode(), usedforsecurity=False).digest()]
+        base = [
+            float(b) / 255.0 for b in hashlib.md5(query.encode(), usedforsecurity=False).digest()
+        ]
         vector = base * 24
 
         response = self.client.query_points(

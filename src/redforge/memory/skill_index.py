@@ -134,7 +134,9 @@ class SkillIndexer:
                             self._skills_index[skill.path] = skill
 
                             entry = MemoryEntry(
-                                id=hashlib.md5(skill.path.encode(), usedforsecurity=False).hexdigest(),
+                                id=hashlib.md5(
+                                    skill.path.encode(), usedforsecurity=False
+                                ).hexdigest(),
                                 content=skill.content,
                                 metadata={
                                     "name": skill.name,

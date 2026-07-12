@@ -225,6 +225,7 @@ class ToolExecutor:
                 return result
 
         import shlex
+
         args = ["nmap"] + shlex.split(flags) + [target]
         result = await self._run_subprocess(args, tool_name="nmap", timeout=timeout, shell=False)
         await self._emit_result(call_id, result)
@@ -288,6 +289,7 @@ class ToolExecutor:
     async def dns_enum(self, domain: str, timeout: int = 30) -> ToolResult:
         """Run basic DNS enumeration."""
         import re
+
         if not re.match(r"^[a-zA-Z0-9_\.\-]+$", domain):
             raise ValueError(f"Invalid domain name: {domain}")
 
