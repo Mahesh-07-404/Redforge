@@ -90,11 +90,17 @@ class ToolsConfig(BaseModel):
 
 class IntegrationsConfig(BaseModel):
     hackerone: dict[str, Any] = Field(
-        default_factory=lambda: {"api_token": "", "enabled": False}
-    )  # nosec B105
+        default_factory=lambda: {
+            "api_token": os.getenv("REDFORGE_HACKERONE_TOKEN", ""),
+            "enabled": False,
+        }
+    )
     bugcrowd: dict[str, Any] = Field(
-        default_factory=lambda: {"api_key": "", "enabled": False}
-    )  # nosec B105
+        default_factory=lambda: {
+            "api_key": os.getenv("REDFORGE_BUGCROWD_KEY", ""),
+            "enabled": False,
+        }
+    )
     openbugbounty: dict[str, Any] = Field(default_factory=lambda: {"enabled": False})
 
 
