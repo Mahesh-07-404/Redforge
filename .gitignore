@@ -83,3 +83,14 @@ credentials.json
 *.pem
 *.key
 *.p12
+
+# Formatting / lint / CI run artifacts
+style-format-*.patch
+style-format-*.txt
+*.patch
+
+# Benchmark output
+benchmark_report.json
+
+# Generated RAG skills index (rebuilt at runtime)
+data/skills_index/
