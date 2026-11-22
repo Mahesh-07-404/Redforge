@@ -33,7 +33,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Target for the operation (for backward compatibility)",
     )
 
+    parser.add_argument(
+        "--tui",
+        action="store_true",
+        help="Launch the interactive Textual terminal UI",
+    )
+
     args = parser.parse_args(argv)
+
+    # Launch the interactive TUI if requested (either `--tui` or `redforge tui`).
+    if args.tui or (args.query and args.query[0] == "tui" and len(args.query) == 1):
+        try:
+            from redforge.tui.textual_tui import RedForgeTUI
+        except ModuleNotFoundError as exc:
+            print(
+                f"TUI dependencies are not installed ({exc}). "
+                "Install with: pip install 'redforge[all]' or pip install textual rich",
+                file=sys.stderr,
+            )
+            return 1
+        RedForgeTUI().run()
+        return 0
 
     # Check for deprecated mode options
     if args.mode:

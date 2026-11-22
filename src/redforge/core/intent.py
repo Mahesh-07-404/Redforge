@@ -6,6 +6,64 @@ from abc import ABC, abstractmethod
 from ..contracts.intent import IntentType, ParsedIntent, RiskLevel
 from .session import EventBus, TargetStateMachine
 
+# Terms that signal a genuine security / pentesting context. Used to gate the
+# broader keyword strategies so everyday requests fall through to general chat.
+SECURITY_TERMS = (
+    "exploit",
+    "vulnerab",
+    "payload",
+    "injection",
+    "sqli",
+    "xss",
+    "csrf",
+    "rce",
+    "ssrf",
+    "nmap",
+    "subfinder",
+    "nuclei",
+    "ffuf",
+    "nikto",
+    "gobuster",
+    "burp",
+    "metasploit",
+    "hashcat",
+    "subdomain",
+    "recon",
+    "enumerat",
+    "fuzz",
+    "pentest",
+    "penetration",
+    "bug bounty",
+    "bugbounty",
+    "ctf",
+    "capture the flag",
+    "cybersecurity",
+    "malware",
+    "privilege escalation",
+    "privesc",
+    "reverse shell",
+    "cve",
+    "owasp",
+    "waf",
+    "brute force",
+    "bruteforce",
+    "sql injection",
+    "directory traversal",
+    "phishing",
+    "port scan",
+    "buffer overflow",
+    "cross-site",
+    "command injection",
+    "authentication bypass",
+    "hack",
+    "security",
+)
+
+
+def has_security_context(text: str) -> bool:
+    """True when the text references a clear security / pentesting concept."""
+    return any(term in text for term in SECURITY_TERMS)
+
 
 class IntentClassificationStrategy(ABC):
     @abstractmethod
@@ -39,7 +97,8 @@ class GeneralChatStrategy(IntentClassificationStrategy):
 
 
 class SessionStrategy(IntentClassificationStrategy):
-    SESSION_KEYWORDS = {"session", "continue", "load", "yesterday"}
+    # Require the word "session" so everyday "continue/load X" stays general chat.
+    SESSION_KEYWORDS = {"session", "resume session", "load session", "previous session"}
 
     def classify(self, raw_input: str) -> IntentType | None:
         text = raw_input.lower()
@@ -49,7 +108,8 @@ class SessionStrategy(IntentClassificationStrategy):
 
 
 class ReportStrategy(IntentClassificationStrategy):
-    REPORT_KEYWORDS = {"report", "findings", "cve", "generate"}
+    # Dropped bare "generate" so "generate a poem/email" is not a security report.
+    REPORT_KEYWORDS = {"report", "findings", "cve"}
 
     def classify(self, raw_input: str) -> IntentType | None:
         text = raw_input.lower()
@@ -59,17 +119,21 @@ class ReportStrategy(IntentClassificationStrategy):
 
 
 class HelpStrategy(IntentClassificationStrategy):
-    HELP_KEYWORDS = {"help", "commands", "how to use", "usage", "man page"}
+    # Only the tool's own help — a bare "help me ..." stays general chat.
+    HELP_KEYWORDS = {"how to use", "usage", "man page", "list commands", "show commands"}
 
     def classify(self, raw_input: str) -> IntentType | None:
-        text = raw_input.lower()
-        if any(kw in text for kw in self.HELP_KEYWORDS):
+        text = raw_input.lower().strip()
+        if text in ("help", "/help", "?", "commands") or any(
+            kw in text for kw in self.HELP_KEYWORDS
+        ):
             return IntentType.HELP
         return None
 
 
 class ConfigStrategy(IntentClassificationStrategy):
-    CONFIG_KEYWORDS = {"config", "configure", "setting", "setup", "options"}
+    # Dropped broad "setting/setup/options" that hijacked everyday requests.
+    CONFIG_KEYWORDS = {"config", "configure", "redforge settings"}
 
     def classify(self, raw_input: str) -> IntentType | None:
         text = raw_input.lower()
@@ -79,7 +143,8 @@ class ConfigStrategy(IntentClassificationStrategy):
 
 
 class ToolStrategy(IntentClassificationStrategy):
-    TOOL_KEYWORDS = {"tool", "run tool", "execute tool"}
+    # Dropped bare "tool" so "what tools for cooking" stays general chat.
+    TOOL_KEYWORDS = {"run tool", "execute tool", "list tools", "which tools", "available tools"}
 
     def classify(self, raw_input: str) -> IntentType | None:
         text = raw_input.lower()
@@ -93,7 +158,9 @@ class LearningStrategy(IntentClassificationStrategy):
 
     def classify(self, raw_input: str) -> IntentType | None:
         text = raw_input.lower()
-        if any(kw in text for kw in self.LEARNING_KEYWORDS):
+        # Only route to the security LEARNING workflow when the topic is a
+        # security concept; general "explain recursion" stays a chat answer.
+        if any(kw in text for kw in self.LEARNING_KEYWORDS) and has_security_context(text):
             return IntentType.LEARNING
         return None
 
@@ -101,11 +168,11 @@ class LearningStrategy(IntentClassificationStrategy):
 class SecurityWorkflowStrategy(IntentClassificationStrategy):
     def classify(self, raw_input: str) -> IntentType | None:
         text = raw_input.lower()
-        if "bug bounty" in text or "bugbounty" in text or "bounty" in text:
+        if "bug bounty" in text or "bugbounty" in text:
             return IntentType.BUG_BOUNTY
         if "pentest" in text or "penetration" in text:
             return IntentType.PENTEST
-        if "ctf" in text or "capture the flag" in text or "challenge" in text:
+        if "ctf" in text or "capture the flag" in text:
             return IntentType.CTF
         return None
 

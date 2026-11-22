@@ -5,6 +5,17 @@ from ..providers.base import LLMProvider, Message
 
 logger = logging.getLogger(__name__)
 
+_LLM_UNAVAILABLE = (
+    "I can't reach a language model right now, so I can't answer freely yet. "
+    "RedForge needs an LLM provider configured to handle general questions and "
+    "security reasoning. Quick options:\n"
+    "  • Local & free — install Ollama (https://ollama.com), run "
+    "`ollama pull llama3.2`, and set the provider to 'ollama'.\n"
+    "  • Cloud — add an API key (Gemini / OpenAI / Groq / Anthropic) to a `.env` "
+    "file or `config.yaml`.\n"
+    "In the TUI you can also run `/model <provider>` to switch."
+)
+
 
 class ConversationManager:
     def __init__(self, llm_provider: LLMProvider):
@@ -104,10 +115,13 @@ class ConversationManager:
         except Exception as e:
             logger.debug("Failed to render prompt from library: %s", e)
             system_prompt = (
-                "You are RedForge, a friendly, professional, and knowledgeable autonomous security assistant. "
-                "You are having a casual conversation with the user. "
-                "Provide natural, helpful, and concise responses. Do not request or require a target for general chat. "
-                "If the user asks follow-up questions, use the conversation history to answer them. "
+                "You are RedForge, a friendly, capable, general-purpose AI assistant who is also "
+                "an expert in offensive security and penetration testing. Help with anything the "
+                "user asks — everyday questions, writing, coding, planning, explanations, casual "
+                "conversation — and bring security expertise when the topic calls for it. Never "
+                "refuse a normal, non-security request by insisting you only do security work; "
+                "answer it directly. Do not request or require a target for general chat. "
+                "Use the conversation history to answer follow-up questions. "
             )
 
         if context.active_target:
@@ -143,14 +157,18 @@ class ConversationManager:
                     content = resp.content
                     if token_callback:
                         await token_callback(content)
-                except Exception:
-                    content = "Hello! I'm here to assist you with security testing. What would you like to do?"
+                except Exception as exc:
+                    logger.warning("LLM unavailable for general chat: %s", exc)
+                    content = _LLM_UNAVAILABLE
+                    if token_callback:
+                        await token_callback(content)
         else:
             try:
                 resp = await self.llm_provider.chat(messages)
                 content = resp.content
-            except Exception:
-                content = "Hello! I'm here to assist you with security testing. What would you like to do?"
+            except Exception as exc:
+                logger.warning("LLM unavailable for general chat: %s", exc)
+                content = _LLM_UNAVAILABLE
 
         if event_callback:
             await event_callback("assistant_end", content=content)

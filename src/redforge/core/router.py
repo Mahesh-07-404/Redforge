@@ -98,5 +98,12 @@ class IntentRouter:
             return await self._respond(response, token_callback, event_callback)
 
         else:
-            response = "I'm not sure I understood your request. Could you please clarify if you want to run a security task, manage a session, or chat?"
-            return await self._respond(response, token_callback, event_callback)
+            # Fall back to the general conversational assistant so RedForge can
+            # handle normal / general-purpose requests (chat, coding, questions)
+            # in addition to dedicated security tasks.
+            return cast(
+                str,
+                await self.conversation_mgr.get_response(
+                    intent.raw_input, context, token_callback, event_callback
+                ),
+            )
